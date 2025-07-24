@@ -1,0 +1,72 @@
+export interface Area {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  areaId: string | null;
+  status: 'Active' | 'Paused' | 'Completed' | 'Archive';
+  driveFolderUrl: string;
+  createdAt: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  projectId: string | null;
+  context: string;
+  dueDate: string | null;
+  isCompleted: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export type ViewType = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'logbook' | 'project';
+
+export interface AppState {
+  areas: Area[];
+  projects: Project[];
+  tasks: Task[];
+  currentView: ViewType;
+  selectedProjectId: string | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export interface GoogleScriptResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
+
+export interface Contact {
+  name: string;
+  email: string;
+  resourceName: string;
+}
+
+export interface CalendarEvent {
+  eventId: string;
+  eventUrl: string;
+}
+
+export interface Document {
+  documentId: string;
+  documentUrl: string;
+}
+
+export interface GoogleIntegrations {
+  calendar?: CalendarEvent;
+  document?: Document;
+}
+
+export interface TaskWithIntegrations {
+  task: Task;
+  integrations: GoogleIntegrations;
+}

@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900 m-0;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .task-item {
+    @apply bg-white border-b border-gray-100 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors;
+  }
+  
+  .task-checkbox {
+    @apply w-5 h-5 rounded-full border-2 border-gray-300 hover:border-primary-500 cursor-pointer flex items-center justify-center transition-colors;
+  }
+  
+  .task-checkbox.completed {
+    @apply bg-primary-500 border-primary-500;
+  }
+  
+  .sidebar-item {
+    @apply flex items-center px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-md cursor-pointer transition-colors;
+  }
+  
+  .sidebar-item.active {
+    @apply bg-primary-50 text-primary-700;
+  }
+}
