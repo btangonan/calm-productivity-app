@@ -196,8 +196,8 @@ const GoogleIntegrations = () => {
             {Object.entries(integrationStatus).map(([service, status]) => (
               <div key={service} className="flex items-center">
                 <span className="capitalize mr-2 font-medium">{service}:</span>
-                <span className={status.toString().includes('✓') ? 'text-green-600' : 'text-red-600'}>
-                  {status}
+                <span className={String(status).includes('✓') ? 'text-green-600' : 'text-red-600'}>
+                  {String(status)}
                 </span>
               </div>
             ))}
