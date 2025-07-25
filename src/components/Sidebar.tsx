@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { ViewType } from '../types';
 import ProjectForm from './ProjectForm';
+import AreaForm from './AreaForm';
 
 const Sidebar = () => {
   const { state, dispatch } = useApp();
-  const { currentView, selectedProjectId, projects, tasks } = state;
+  const { currentView, selectedProjectId, areas, projects, tasks } = state;
   const [showProjectForm, setShowProjectForm] = useState(false);
+  const [showAreaForm, setShowAreaForm] = useState(false);
 
   const handleViewChange = (view: ViewType) => {
     dispatch({ type: 'SET_CURRENT_VIEW', payload: view });
@@ -129,6 +131,38 @@ const Sidebar = () => {
           </div>
         </div>
 
+        {/* Areas Section */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Areas</h2>
+            <button 
+              onClick={() => setShowAreaForm(true)}
+              className="text-gray-400 hover:text-gray-600 text-lg"
+            >
+              +
+            </button>
+          </div>
+          
+          <div className="space-y-1">
+            {areas.map(area => (
+              <div
+                key={area.id}
+                className="sidebar-item"
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    <span className="text-lg mr-3">🏷️</span>
+                    <span className="truncate">{area.name}</span>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {projects.filter(p => p.areaId === area.id && p.status === 'Active').length}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Projects Section */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -171,6 +205,13 @@ const Sidebar = () => {
         <ProjectForm 
           onClose={() => setShowProjectForm(false)}
           onSubmit={() => setShowProjectForm(false)}
+        />
+      )}
+      
+      {showAreaForm && (
+        <AreaForm 
+          onClose={() => setShowAreaForm(false)}
+          onSubmit={() => setShowAreaForm(false)}
         />
       )}
     </div>

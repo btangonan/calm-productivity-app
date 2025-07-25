@@ -23,7 +23,8 @@ declare global {
 }
 
 class ApiService {
-  private isGoogleAppsScript = typeof window !== 'undefined' && window.google?.script;
+  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzePtrrW95Ht91fVZycizbrMtH83WHmu1kZVonWUxFkEq3iy5HFIe8sYZ2as2p4_Q0n/exec';
+  private isGoogleAppsScript = true; // Enable Apps Script integration
 
   // Mock data for development
   private mockAreas: Area[] = [
@@ -88,21 +89,36 @@ class ApiService {
     }
   ];
 
-  private executeGoogleScript<T>(functionName: string, ...args: any[]): Promise<GoogleScriptResponse<T>> {
-    return new Promise((resolve, reject) => {
-      if (!this.isGoogleAppsScript) {
-        // Return mock data for development
+  private async executeGoogleScript<T>(functionName: string, ...args: any[]): Promise<GoogleScriptResponse<T>> {
+    if (!this.isGoogleAppsScript) {
+      // Return mock data for development
+      return new Promise((resolve) => {
         setTimeout(() => {
           resolve(this.getMockResponse<T>(functionName, ...args));
         }, 300); // Simulate network delay
-        return;
+      });
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('function', functionName);
+      formData.append('parameters', JSON.stringify(args));
+
+      const response = await fetch(this.APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      window.google.script.run
-        .withSuccessHandler((result: GoogleScriptResponse<T>) => resolve(result))
-        .withFailureHandler((error: any) => reject(error))
-        [functionName](...args);
-    });
+      const result = await response.json();
+      return result as GoogleScriptResponse<T>;
+    } catch (error) {
+      console.error('Apps Script request failed:', error);
+      throw error;
+    }
   }
 
   private getMockResponse<T>(functionName: string, ...args: any[]): GoogleScriptResponse<T> {
@@ -154,6 +170,14 @@ class ApiService {
   async getAreas(): Promise<Area[]> {
     const response = await this.executeGoogleScript<Area[]>('getAreas');
     return response.data || [];
+  }
+
+  async createArea(name: string, description: string): Promise<Area> {
+    const response = await this.executeGoogleScript<Area>('createArea', name, description);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to create area');
+    }
+    return response.data;
   }
 
   async getProjects(areaId?: string): Promise<Project[]> {

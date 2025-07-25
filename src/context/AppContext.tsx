@@ -14,6 +14,7 @@ type AppAction =
   | { type: 'SET_TASKS'; payload: Task[] }
   | { type: 'SET_CURRENT_VIEW'; payload: ViewType }
   | { type: 'SET_SELECTED_PROJECT'; payload: string | null }
+  | { type: 'ADD_AREA'; payload: Area }
   | { type: 'ADD_TASK'; payload: Task }
   | { type: 'UPDATE_TASK'; payload: Task }
   | { type: 'DELETE_TASK'; payload: string }
@@ -61,6 +62,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         tasks: state.tasks.filter(task => task.id !== action.payload),
       };
+    case 'ADD_AREA':
+      return { ...state, areas: [...state.areas, action.payload] };
     case 'ADD_PROJECT':
       return { ...state, projects: [...state.projects, action.payload] };
     case 'UPDATE_PROJECT':
