@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../types';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import TaskForm from './TaskForm';
 
 interface SortableTaskItemProps {
   task: Task;
@@ -11,6 +13,7 @@ interface SortableTaskItemProps {
 const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   const { state, dispatch } = useApp();
   const { tasks } = state;
+  const [showEditForm, setShowEditForm] = useState(false);
 
   const {
     attributes,
@@ -40,6 +43,15 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
       console.error('Failed to update task:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to update task' });
     }
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowEditForm(true);
+  };
+
+  const handleCloseEditForm = () => {
+    setShowEditForm(false);
   };
 
   const formatDate = (dateString: string | null) => {
@@ -94,9 +106,20 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <h3 className={`text-sm font-medium ${task.isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-              {task.title}
-            </h3>
+            <div className="flex items-center">
+              <h3 className={`text-sm font-medium ${task.isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                {task.title}
+              </h3>
+              <button
+                onClick={handleEditClick}
+                className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+                title="Edit task"
+              >
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
+                </svg>
+              </button>
+            </div>
             
             <div className="flex items-center space-x-2">
               {task.dueDate && (
@@ -129,6 +152,14 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
           )}
         </div>
       </div>
+      
+      {showEditForm && (
+        <TaskForm 
+          editingTask={task}
+          onClose={handleCloseEditForm}
+          onSubmit={handleCloseEditForm}
+        />
+      )}
     </div>
   );
 };

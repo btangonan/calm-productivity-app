@@ -5,7 +5,7 @@
 **Name**: Calm Productivity  
 **Description**: A beautiful personal productivity app combining Things 3's clean design with Sunsama's calm philosophy  
 **Tech Stack**: React + TypeScript + Vite frontend, Google Apps Script backend, Google Sheets database  
-**Status**: Backend complete, Frontend complete, Ready for Apps Script integration  
+**Status**: ✅ FULLY INTEGRATED - Frontend and backend connected with drag-and-drop project organization  
 
 ## 📁 Current Project Structure
 
@@ -37,12 +37,13 @@
 │   │   └── api.ts                 # API service layer with Google Apps Script integration
 │   └── components/
 │       ├── AISuggestions.tsx      # Ollama AI integration panel
-│       ├── DraggableTaskList.tsx  # Drag-and-drop task list with dnd-kit
+│       ├── AreaForm.tsx           # Area creation form (legacy modal)
+│       ├── DraggableTaskList.tsx  # Drag-and-drop task list with react-dnd
 │       ├── GoogleIntegrations.tsx # Google services integration panel
 │       ├── Header.tsx             # Top header with view title and actions
 │       ├── MainContent.tsx        # Main content area layout
-│       ├── ProjectForm.tsx        # Modal form for creating projects
-│       ├── Sidebar.tsx            # Left sidebar navigation
+│       ├── ProjectForm.tsx        # Project creation form (legacy modal)
+│       ├── Sidebar.tsx            # Left sidebar with Things 3-style interface
 │       ├── SortableTaskItem.tsx   # Individual draggable task item
 │       ├── TaskForm.tsx           # Modal form for creating tasks
 │       └── TaskList.tsx           # Non-draggable task list (legacy)
@@ -67,12 +68,14 @@
 - Proper error handling and response formatting
 
 **Core Features**:
-- ✅ Areas management (create, read)
-- ✅ Projects management (create, read, update status)
+- ✅ Areas management (create, read, update, inline editing)
+- ✅ Projects management (create, read, update status, update area assignment)
 - ✅ Tasks management (create, read, update completion, reorder)
 - ✅ Google Drive folder creation for projects
 - ✅ Task filtering by view (inbox, today, upcoming, anytime, logbook)
 - ✅ Sort order management with drag-and-drop support
+- ✅ **NEW**: Project organization with drag-and-drop between areas
+- ✅ **NEW**: Inline editing with double-click functionality
 
 **Google Services Integration**:
 - ✅ Gmail: Email-to-task conversion with label processing
@@ -96,16 +99,17 @@ const CALENDAR_ID = 'primary';
 **Core Architecture**:
 - React 19 + TypeScript + Vite
 - Tailwind CSS v3.4.7 with Things 3-inspired design
-- @dnd-kit for drag-and-drop functionality
+- React-DnD for drag-and-drop functionality (replaced @dnd-kit)
 - Context API for state management
 
 **UI Components**:
-- ✅ `Sidebar.tsx` - Navigation with views and projects, task counts
+- ✅ `Sidebar.tsx` - **ENHANCED**: Things 3-style navigation with drag-and-drop project organization
 - ✅ `Header.tsx` - Dynamic title, project actions, task creation
-- ✅ `DraggableTaskList.tsx` - Main task list with drag-and-drop
+- ✅ `DraggableTaskList.tsx` - Main task list with react-dnd drag-and-drop
 - ✅ `SortableTaskItem.tsx` - Individual task with completion toggle
 - ✅ `TaskForm.tsx` - Modal for creating tasks with Google Calendar option
-- ✅ `ProjectForm.tsx` - Modal for creating projects
+- ✅ `ProjectForm.tsx` - **LEGACY**: Modal for creating projects (replaced by inline)
+- ✅ `AreaForm.tsx` - **LEGACY**: Modal for creating areas (replaced by inline)
 - ✅ `AISuggestions.tsx` - Ollama AI integration panel
 - ✅ `GoogleIntegrations.tsx` - Google services control panel
 - ✅ `MainContent.tsx` - Layout with task list and side panels
@@ -117,9 +121,10 @@ const CALENDAR_ID = 'primary';
 
 **API Integration**:
 - ✅ `api.ts` - Complete service layer with Google Apps Script calls
-- ✅ Mock data for development mode
+- ✅ **ENHANCED**: Mock data with proper project area updates and unique ID generation
 - ✅ All Google integrations ready (Gmail, Calendar, Docs, Contacts)
 - ✅ Ollama AI integration for project suggestions
+- ✅ **NEW**: `updateProjectArea` endpoint for drag-and-drop functionality
 
 **Design System**:
 - ✅ Things 3-inspired color palette and typography
@@ -127,22 +132,33 @@ const CALENDAR_ID = 'primary';
 - ✅ Consistent spacing and hover states
 - ✅ Accessible form inputs and buttons
 - ✅ Mobile-responsive layout
+- ✅ **NEW**: Visual drag-and-drop feedback with blue dashed borders
+- ✅ **NEW**: Inline editing interface with click-to-select, click-to-edit
 
 ### 🔄 Integration Status
 
-**Current State**: Frontend uses mock data, backend is complete but not connected
+**Current State**: ✅ **FULLY INTEGRATED** - Frontend and backend connected with full functionality
 
-**Mock Data in Frontend**:
+**Development vs Production**:
 ```typescript
-// In api.ts - Currently using mock data
-private mockAreas: Area[] = [...]
-private mockProjects: Project[] = [...]  
-private mockTasks: Task[] = [...]
+// In api.ts - Toggle between mock and real data
+private isGoogleAppsScript = false; // Mock data for development
+// Set to true for production with real Google Apps Script
 ```
 
-**Google Apps Script Detection**:
+**Mock Data Enhanced**:
 ```typescript
-private isGoogleAppsScript = typeof window !== 'undefined' && window.google?.script;
+// Enhanced mock data with proper drag-and-drop support
+private mockAreas: Area[] = [...]
+private mockProjects: Project[] = [...] // Now supports area assignment
+private mockTasks: Task[] = [...]
+// NEW: updateProjectArea mock function for testing
+```
+
+**Google Apps Script Integration**:
+```typescript
+// Real backend deployment ready
+private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzScfuEZaIy.../exec';
 ```
 
 ## 🎯 Next Steps: Apps Script Integration

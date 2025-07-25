@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -22,10 +22,12 @@ import {
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
 import SortableTaskItem from './SortableTaskItem';
+import TaskForm from './TaskForm';
 
 const DraggableTaskList = () => {
   const { state, dispatch } = useApp();
   const { tasks, currentView, selectedProjectId } = state;
+  const [showTaskForm, setShowTaskForm] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -122,41 +124,57 @@ const DraggableTaskList = () => {
       : 'No tasks found';
       
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center min-h-0">
         <div className="text-center">
-          <div className="text-6xl mb-4">📝</div>
-          <p className="text-gray-500 text-lg">{emptyMessage}</p>
-          <p className="text-gray-400 text-sm mt-2">
-            {currentView !== 'logbook' && 'Click "Add Task" to create your first task'}
-          </p>
+          <p className="text-gray-500 text-lg mb-4">{emptyMessage}</p>
+          {currentView !== 'logbook' && (
+            <button 
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              onClick={() => setShowTaskForm(true)}
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Task
+            </button>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-      >
-        <SortableContext
-          items={filteredTasks.map(task => task.id)}
-          strategy={verticalListSortingStrategy}
+    <>
+      <div className="flex-1 overflow-y-auto">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
         >
-          <div className="divide-y divide-gray-100">
-            {filteredTasks.map((task) => (
-              <SortableTaskItem
-                key={task.id}
-                task={task}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
-    </div>
+          <SortableContext
+            items={filteredTasks.map(task => task.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="divide-y divide-gray-100">
+              {filteredTasks.map((task) => (
+                <SortableTaskItem
+                  key={task.id}
+                  task={task}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
+      
+      {showTaskForm && (
+        <TaskForm 
+          onClose={() => setShowTaskForm(false)}
+          onSubmit={() => setShowTaskForm(false)}
+        />
+      )}
+    </>
   );
 };
 

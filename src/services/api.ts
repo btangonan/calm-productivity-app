@@ -194,6 +194,22 @@ class ApiService {
         this.mockProjects.push(newProject);
         console.log('Mock: Created project', newProject.id);
         return { success: true, data: newProject as T };
+      case 'createTask':
+        const [taskTitle, taskDescription, taskProjectId, taskContext, taskDueDate] = args;
+        const newTask = {
+          id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          title: taskTitle,
+          description: taskDescription || '',
+          projectId: taskProjectId || null,
+          context: taskContext || '',
+          dueDate: taskDueDate || null,
+          isCompleted: false,
+          sortOrder: this.mockTasks.length + 1,
+          createdAt: new Date().toISOString()
+        };
+        this.mockTasks.push(newTask);
+        console.log('Mock: Created task', newTask.id);
+        return { success: true, data: newTask as T };
       default:
         return { success: true, data: null as T };
     }

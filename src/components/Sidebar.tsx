@@ -1,24 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import type { ViewType } from '../types';
-import ProjectForm from './ProjectForm';
-import AreaForm from './AreaForm';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useDrag, useDrop } from 'react-dnd';
 import { apiService } from '../services/api';
+import TaskForm from './TaskForm';
 
 const Sidebar = () => {
   const { state, dispatch } = useApp();
   const { currentView, selectedProjectId, areas, projects, tasks } = state;
-  const [showProjectForm, setShowProjectForm] = useState(false);
-  const [showAreaForm, setShowAreaForm] = useState(false);
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
-  const [selectedAreaForProject, setSelectedAreaForProject] = useState<string | null>(null);
   const [showCreateDropdown, setShowCreateDropdown] = useState(false);
   const [editingItem, setEditingItem] = useState<{ id: string; type: 'area' | 'project'; name: string } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -78,10 +75,6 @@ const Sidebar = () => {
     setExpandedAreas(newExpanded);
   };
 
-  const handleAddProjectToArea = (areaId: string) => {
-    setSelectedAreaForProject(areaId);
-    setShowProjectForm(true);
-  };
 
   const getProjectsForArea = (areaId: string) => {
     return projects.filter(project => project.areaId === areaId && project.status === 'Active');
@@ -169,6 +162,24 @@ const Sidebar = () => {
     }
   };
 
+  const handleItemClick = (id: string, type: 'area' | 'project', name: string) => {
+    if (type === 'project') {
+      // For projects: if already selected, start editing; otherwise select it
+      if (selectedProjectId === id && currentView === 'project') {
+        setEditingItem({ id, type, name });
+      } else {
+        handleProjectSelect(id);
+      }
+    } else {
+      // For areas: if area is expanded and not currently editing, start editing
+      if (expandedAreas.has(id)) {
+        setEditingItem({ id, type, name });
+      } else {
+        toggleAreaExpansion(id);
+      }
+    }
+  };
+
   // Draggable Project Component
   const DraggableProject = ({ project }: { project: any }) => {
     const [{ isDragging }, drag] = useDrag({
@@ -189,7 +200,6 @@ const Sidebar = () => {
         className={`sidebar-item ${
           currentView === 'project' && selectedProjectId === project.id ? 'active' : ''
         } ${isDragging ? 'opacity-50' : ''} cursor-move`}
-        onClick={() => !isDragging && handleProjectSelect(project.id)}
       >
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center flex-1">
@@ -207,16 +217,16 @@ const Sidebar = () => {
                     setEditingItem(null);
                   }
                 }}
-                className="bg-transparent border-none outline-none text-sm flex-1"
+                className="bg-transparent border-none outline-none flex-1"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
               <span 
                 className="truncate cursor-pointer" 
-                onDoubleClick={(e) => {
+                onClick={(e) => {
                   e.stopPropagation();
-                  setEditingItem({ id: project.id, type: 'project', name: project.name });
+                  handleItemClick(project.id, 'project', project.name);
                 }}
               >
                 {project.name}
@@ -259,7 +269,12 @@ const Sidebar = () => {
     <DndProvider backend={HTML5Backend}>
       <div className="w-64 bg-white border-r border-gray-200 h-screen overflow-y-auto">
         <div className="p-4">
-        <h1 className="text-xl font-semibold text-gray-900 mb-6">Calm Productivity</h1>
+        <div className="flex items-center justify-between mb-6 px-3">
+          <h1 className="text-xl font-semibold text-gray-900">Now & Later</h1>
+          <span className="text-sm text-gray-500 hover:text-gray-600 cursor-pointer" onClick={() => setShowTaskForm(true)} title="Add Task">
+            +
+          </span>
+        </div>
         
         {/* Standard Views */}
         <div className="mb-6">
@@ -343,16 +358,16 @@ const Sidebar = () => {
 
         {/* Areas & Projects Section */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 px-3">
             <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Areas & Projects</h2>
             <div className="relative" ref={dropdownRef}>
-              <button 
+              <span 
                 onClick={() => setShowCreateDropdown(!showCreateDropdown)}
-                className="text-gray-400 hover:text-gray-600 text-lg"
+                className="text-sm text-gray-500 hover:text-gray-600 cursor-pointer"
                 title="Add Area or Project"
               >
                 +
-              </button>
+              </span>
               
               {showCreateDropdown && (
                 <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[120px]">
@@ -389,53 +404,49 @@ const Sidebar = () => {
                 return (
                   <DroppableArea key={area.id} area={area}>
                     {/* Area Header */}
-                    <div className="flex items-center justify-between group">
-                      <div 
-                        className="flex items-center flex-1 sidebar-item cursor-pointer"
-                        onClick={() => toggleAreaExpansion(area.id)}
-                      >
-                        <span className={`mr-2 text-xs transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                          ▶
-                        </span>
-                        <span className="text-lg mr-3">🏷️</span>
-                        {editingItem?.id === area.id && editingItem?.type === 'area' ? (
-                          <input
-                            type="text"
-                            value={editingItem.name}
-                            onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                            onBlur={() => saveItemName(area.id, 'area', editingItem.name)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                saveItemName(area.id, 'area', editingItem.name);
-                              } else if (e.key === 'Escape') {
-                                setEditingItem(null);
-                              }
-                            }}
-                            className="bg-transparent border-none outline-none text-sm flex-1"
-                            autoFocus
-                          />
-                        ) : (
-                          <span 
-                            className="truncate cursor-pointer" 
-                            onDoubleClick={() => setEditingItem({ id: area.id, type: 'area', name: area.name })}
-                          >
-                            {area.name}
+                    <div 
+                      className="sidebar-item cursor-pointer group"
+                      onClick={() => toggleAreaExpansion(area.id)}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center">
+                          <span className={`mr-2 text-xs transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                            ▶
                           </span>
+                          <span className="text-lg mr-3">🏷️</span>
+                          {editingItem?.id === area.id && editingItem?.type === 'area' ? (
+                            <input
+                              type="text"
+                              value={editingItem.name}
+                              onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                              onBlur={() => saveItemName(area.id, 'area', editingItem.name)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  saveItemName(area.id, 'area', editingItem.name);
+                                } else if (e.key === 'Escape') {
+                                  setEditingItem(null);
+                                }
+                              }}
+                              className="bg-transparent border-none outline-none flex-1"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span 
+                              className="truncate cursor-pointer" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleItemClick(area.id, 'area', area.name);
+                              }}
+                            >
+                              {area.name}
+                            </span>
+                          )}
+                        </div>
+                        {areaProjects.length > 0 && (
+                          <span className="text-sm text-gray-500">{areaProjects.length}</span>
                         )}
-                        <span className="text-sm text-gray-500 ml-auto mr-2">
-                          {areaProjects.length}
-                        </span>
                       </div>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddProjectToArea(area.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 text-sm px-1"
-                        title="Add Project to Area"
-                      >
-                        +
-                      </button>
                     </div>
                     
                     {/* Projects under this Area */}
@@ -475,26 +486,12 @@ const Sidebar = () => {
         </div>
       </div>
       
-    {showProjectForm && (
-      <ProjectForm 
-        onClose={() => {
-          setShowProjectForm(false);
-          setSelectedAreaForProject(null);
-        }}
-        onSubmit={() => {
-          setShowProjectForm(false);
-          setSelectedAreaForProject(null);
-        }}
-        preselectedAreaId={selectedAreaForProject}
-      />
-    )}
-    
-    {showAreaForm && (
-      <AreaForm 
-        onClose={() => setShowAreaForm(false)}
-        onSubmit={() => setShowAreaForm(false)}
-      />
-    )}
+      {showTaskForm && (
+        <TaskForm 
+          onClose={() => setShowTaskForm(false)}
+          onSubmit={() => setShowTaskForm(false)}
+        />
+      )}
     </DndProvider>
   );
 };

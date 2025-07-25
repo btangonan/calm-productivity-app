@@ -1,22 +1,37 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import type { Task } from '../types';
 
 interface TaskFormProps {
   onClose: () => void;
   onSubmit?: () => void;
+  editingTask?: Task | null;
 }
 
-const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit }) => {
+const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) => {
   const { state, dispatch } = useApp();
   const { projects, currentView, selectedProjectId } = state;
   
+  const getInitialProjectId = () => {
+    if (editingTask) return editingTask.projectId || '';
+    if (currentView === 'project' && selectedProjectId) return selectedProjectId;
+    return '';
+  };
+  
+  const getInitialDueDate = () => {
+    if (editingTask && editingTask.dueDate) {
+      return new Date(editingTask.dueDate).toISOString().split('T')[0];
+    }
+    return '';
+  };
+  
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    projectId: currentView === 'project' && selectedProjectId ? selectedProjectId : '',
-    context: '',
-    dueDate: '',
+    title: editingTask?.title || '',
+    description: editingTask?.description || '',
+    projectId: getInitialProjectId(),
+    context: editingTask?.context || '',
+    dueDate: getInitialDueDate(),
     createCalendarEvent: false,
   });
   
@@ -28,20 +43,39 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit }) => {
 
     setLoading(true);
     try {
-      const newTask = await apiService.createTask(
-        formData.title,
-        formData.description,
-        formData.projectId || undefined,
-        formData.context,
-        formData.dueDate || undefined
-      );
+      if (editingTask) {
+        // Update existing task
+        const updatedTask = {
+          ...editingTask,
+          title: formData.title,
+          description: formData.description,
+          projectId: formData.projectId || null,
+          context: formData.context,
+          dueDate: formData.dueDate || null,
+        };
+        
+        dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
+        
+        // TODO: Add API call to update task
+        // await apiService.updateTask(editingTask.id, updatedTask);
+      } else {
+        // Create new task
+        const newTask = await apiService.createTask(
+          formData.title,
+          formData.description,
+          formData.projectId || undefined,
+          formData.context,
+          formData.dueDate || undefined
+        );
 
-      dispatch({ type: 'ADD_TASK', payload: newTask });
+        dispatch({ type: 'ADD_TASK', payload: newTask });
+      }
+      
       onSubmit?.();
       onClose();
     } catch (error) {
-      console.error('Failed to create task:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to create task' });
+      console.error('Failed to save task:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to save task' });
     } finally {
       setLoading(false);
     }
@@ -60,7 +94,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Add New Task</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{editingTask ? 'Edit Task' : 'Add New Task'}</h2>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -176,7 +210,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit }) => {
               disabled={loading || !formData.title.trim()}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating...' : 'Create Task'}
+              {loading ? (editingTask ? 'Updating...' : 'Creating...') : (editingTask ? 'Update Task' : 'Create Task')}
             </button>
           </div>
         </form>

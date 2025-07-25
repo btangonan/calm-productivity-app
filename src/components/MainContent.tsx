@@ -15,8 +15,8 @@ const MainContent = () => {
     <div className="flex-1 flex flex-col bg-gray-50">
       <Header />
       
-      <div className="flex-1 flex">
-        <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
           <DraggableTaskList />
         </div>
         
