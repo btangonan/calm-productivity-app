@@ -1,4 +1,4 @@
-import type { Area, Project, Task, GoogleScriptResponse, Contact, TaskWithIntegrations, Document } from '../types';
+import type { Area, Project, Task, GoogleScriptResponse, Contact, TaskWithIntegrations, Document, ProjectFile, TaskAttachment } from '../types';
 
 // Google Apps Script API functions
 // These will be available when deployed as a Google Apps Script web app
@@ -31,6 +31,42 @@ class ApiService {
     { id: '1', name: 'Personal', description: 'Personal tasks and projects', createdAt: new Date().toISOString() },
     { id: '2', name: 'Work', description: 'Work-related items', createdAt: new Date().toISOString() }
   ];
+
+  private mockProjectFiles: Record<string, ProjectFile[]> = {
+    '1': [
+      {
+        id: 'file_1',
+        name: 'Kitchen_Plans.pdf',
+        mimeType: 'application/pdf',
+        size: 2048000,
+        url: 'https://drive.google.com/file/d/example1/view',
+        thumbnailUrl: 'https://drive.google.com/thumbnail?id=example1',
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        modifiedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+      },
+      {
+        id: 'file_2',
+        name: 'Contractor_Quotes.xlsx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        size: 512000,
+        url: 'https://drive.google.com/file/d/example2/view',
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        modifiedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ],
+    '2': [
+      {
+        id: 'file_3',
+        name: 'Q4_Strategy.pptx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        size: 4096000,
+        url: 'https://drive.google.com/file/d/example3/view',
+        thumbnailUrl: 'https://drive.google.com/thumbnail?id=example3',
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        modifiedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    ]
+  };
 
   private mockProjects: Project[] = [
     {
@@ -86,6 +122,69 @@ class ApiService {
       isCompleted: false,
       sortOrder: 1,
       createdAt: new Date().toISOString()
+    },
+    {
+      id: '4',
+      title: 'Test task with very long description',
+      description: 'This task has an extremely long description that demonstrates the new expand/collapse functionality. When collapsed, you see just a snippet. When expanded, you can see the full description plus a dedicated area for future features like checklists, attachments, and other rich content. This expandable system will make tasks much more powerful while keeping the interface clean and organized.',
+      projectId: '1',
+      context: '@computer',
+      dueDate: null,
+      isCompleted: false,
+      sortOrder: 2,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '5',
+      title: 'Short task',
+      description: 'Simple task with short description',
+      projectId: '2',  
+      context: '@office',
+      dueDate: null,
+      isCompleted: false,
+      sortOrder: 1,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '6',
+      title: 'Future checklist task',
+      description: 'This task will eventually have checklists:\n\n• Research vendors\n• Get three quotes\n• Compare pricing\n• Make recommendation\n\nThe expand area below will show these as interactive checkboxes in a future update.',
+      projectId: null,
+      context: '@research',
+      dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      isCompleted: false,
+      sortOrder: 1,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '7',
+      title: 'Task with sample attachments',
+      description: 'This task demonstrates the attachment functionality with a sample image and document.',
+      projectId: '1',
+      context: '@computer',
+      dueDate: null,
+      isCompleted: false,
+      sortOrder: 3,
+      createdAt: new Date().toISOString(),
+      attachments: [
+        {
+          id: 'att_sample_1',
+          name: 'project-mockup.png',
+          mimeType: 'image/png',
+          size: 245760,
+          url: 'https://picsum.photos/400/300?random=1',
+          thumbnailUrl: 'https://picsum.photos/400/300?random=1',
+          uploadedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          id: 'att_sample_2',
+          name: 'requirements.pdf',
+          mimeType: 'application/pdf',
+          size: 1024000,
+          url: 'https://example.com/sample.pdf',
+          uploadedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+        }
+      ]
     }
   ];
 
@@ -195,7 +294,7 @@ class ApiService {
         console.log('Mock: Created project', newProject.id);
         return { success: true, data: newProject as T };
       case 'createTask':
-        const [taskTitle, taskDescription, taskProjectId, taskContext, taskDueDate] = args;
+        const [taskTitle, taskDescription, taskProjectId, taskContext, taskDueDate, taskAttachments] = args;
         const newTask = {
           id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           title: taskTitle,
@@ -205,11 +304,42 @@ class ApiService {
           dueDate: taskDueDate || null,
           isCompleted: false,
           sortOrder: this.mockTasks.length + 1,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          attachments: taskAttachments || []
         };
         this.mockTasks.push(newTask);
         console.log('Mock: Created task', newTask.id);
         return { success: true, data: newTask as T };
+      case 'getProjectFiles':
+        const [fileProjectId] = args;
+        const projectFiles = this.mockProjectFiles[fileProjectId] || [];
+        return { success: true, data: projectFiles as T };
+      case 'uploadFileToProject':
+        const [uploadProjectId, file] = args;
+        const newFile: ProjectFile = {
+          id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: file.name,
+          mimeType: file.type,
+          size: file.size,
+          url: `https://drive.google.com/file/d/mock_${Date.now()}/view`,
+          thumbnailUrl: file.type.startsWith('image/') ? `https://drive.google.com/thumbnail?id=mock_${Date.now()}` : undefined,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString()
+        };
+        
+        if (!this.mockProjectFiles[uploadProjectId]) {
+          this.mockProjectFiles[uploadProjectId] = [];
+        }
+        this.mockProjectFiles[uploadProjectId].push(newFile);
+        console.log('Mock: Uploaded file', newFile.id, 'to project', uploadProjectId);
+        return { success: true, data: newFile as T };
+      case 'deleteProjectFile':
+        const [deleteProjectId, fileId] = args;
+        if (this.mockProjectFiles[deleteProjectId]) {
+          this.mockProjectFiles[deleteProjectId] = this.mockProjectFiles[deleteProjectId].filter(f => f.id !== fileId);
+          console.log('Mock: Deleted file', fileId, 'from project', deleteProjectId);
+        }
+        return { success: true, data: null as T };
       default:
         return { success: true, data: null as T };
     }
@@ -247,8 +377,8 @@ class ApiService {
     return response.data;
   }
 
-  async createTask(title: string, description: string, projectId?: string, context?: string, dueDate?: string): Promise<Task> {
-    const response = await this.executeGoogleScript<Task>('createTask', title, description, projectId, context, dueDate);
+  async createTask(title: string, description: string, projectId?: string, context?: string, dueDate?: string, attachments?: TaskAttachment[]): Promise<Task> {
+    const response = await this.executeGoogleScript<Task>('createTask', title, description, projectId, context, dueDate, attachments);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create task');
     }
@@ -373,6 +503,27 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
   async testGoogleIntegrations(): Promise<any> {
     const response = await this.executeGoogleScript<any>('testIntegrations');
     return response.data || {};
+  }
+
+  // File Management Methods
+  async getProjectFiles(projectId: string): Promise<ProjectFile[]> {
+    const response = await this.executeGoogleScript<ProjectFile[]>('getProjectFiles', projectId);
+    return response.data || [];
+  }
+
+  async uploadFileToProject(projectId: string, file: File): Promise<ProjectFile> {
+    const response = await this.executeGoogleScript<ProjectFile>('uploadFileToProject', projectId, file);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to upload file');
+    }
+    return response.data;
+  }
+
+  async deleteProjectFile(projectId: string, fileId: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>('deleteProjectFile', projectId, fileId);
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete file');
+    }
   }
 }
 

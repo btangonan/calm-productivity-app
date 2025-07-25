@@ -5,6 +5,7 @@ import type { Task } from '../types';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
 import TaskForm from './TaskForm';
+import TaskDescription, { shouldTaskBeExpandable } from './TaskDescription';
 
 interface SortableTaskItemProps {
   task: Task;
@@ -14,6 +15,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   const { state, dispatch } = useApp();
   const { tasks } = state;
   const [showEditForm, setShowEditForm] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const {
     attributes,
@@ -54,6 +56,11 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
     setShowEditForm(false);
   };
 
+  const toggleExpanded = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsExpanded(!isExpanded);
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
     const date = new Date(dateString);
@@ -84,6 +91,8 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
     return 'text-gray-500'; // Future dates
   };
 
+  const isExpandable = shouldTaskBeExpandable(task);
+
   return (
     <div
       ref={setNodeRef}
@@ -93,6 +102,27 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
       }`}
     >
       <div className="flex items-start space-x-3">
+        {/* Expand arrow */}
+        {isExpandable ? (
+          <button
+            onClick={toggleExpanded}
+            className="mt-0.5 p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+            title={isExpanded ? "Collapse task" : "Expand task"}
+          >
+            <svg 
+              className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        ) : (
+          <div className="w-4 h-4 mt-0.5" /> // Spacer for non-expandable tasks
+        )}
+
+        {/* Task checkbox */}
         <div
           className={`task-checkbox mt-0.5 ${task.isCompleted ? 'completed' : ''}`}
           onClick={() => handleTaskToggle(task.id, !task.isCompleted)}
@@ -146,9 +176,11 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
           </div>
           
           {task.description && (
-            <p className="text-sm text-gray-600 mt-1 truncate">
-              {task.description}
-            </p>
+            <TaskDescription 
+              description={task.description} 
+              task={task} 
+              isExpanded={isExpanded}
+            />
           )}
         </div>
       </div>

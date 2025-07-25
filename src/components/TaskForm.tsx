@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
-import type { Task } from '../types';
+import TaskAttachments from './TaskAttachments';
+import type { Task, TaskAttachment } from '../types';
 
 interface TaskFormProps {
   onClose: () => void;
@@ -34,6 +35,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
     dueDate: getInitialDueDate(),
     createCalendarEvent: false,
   });
+
+  const [attachments, setAttachments] = useState<TaskAttachment[]>(
+    editingTask?.attachments || []
+  );
   
   const [loading, setLoading] = useState(false);
 
@@ -52,6 +57,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           projectId: formData.projectId || null,
           context: formData.context,
           dueDate: formData.dueDate || null,
+          attachments: attachments,
         };
         
         dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
@@ -65,7 +71,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           formData.description,
           formData.projectId || undefined,
           formData.context,
-          formData.dueDate || undefined
+          formData.dueDate || undefined,
+          attachments
         );
 
         dispatch({ type: 'ADD_TASK', payload: newTask });
@@ -196,6 +203,18 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
               </label>
             </div>
           )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Attachments
+            </label>
+            <TaskAttachments
+              attachments={attachments}
+              onAttachmentsChange={setAttachments}
+              isEditing={true}
+              maxFiles={3}
+            />
+          </div>
 
           <div className="flex justify-end space-x-3 pt-4">
             <button

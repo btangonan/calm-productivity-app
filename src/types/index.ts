@@ -15,6 +15,16 @@ export interface Project {
   createdAt: string;
 }
 
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  thumbnailUrl?: string;
+  uploadedAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -25,6 +35,7 @@ export interface Task {
   isCompleted: boolean;
   sortOrder: number;
   createdAt: string;
+  attachments?: TaskAttachment[];
 }
 
 export type ViewType = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'logbook' | 'project';
@@ -69,4 +80,15 @@ export interface GoogleIntegrations {
 export interface TaskWithIntegrations {
   task: Task;
   integrations: GoogleIntegrations;
+}
+
+export interface ProjectFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  thumbnailUrl?: string;
+  createdAt: string;
+  modifiedAt: string;
 }

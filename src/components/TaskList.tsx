@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
 import TaskForm from './TaskForm';
+import TaskDescription, { shouldTaskBeExpandable } from './TaskDescription';
 import type { Task } from '../types';
 
 const TaskList = () => {
@@ -9,6 +10,7 @@ const TaskList = () => {
   const { tasks, currentView, selectedProjectId } = state;
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   const filteredTasks = useMemo(() => {
     let filtered = [...tasks];
@@ -75,6 +77,19 @@ const TaskList = () => {
     setEditingTask(null);
   };
 
+  const toggleTaskExpanded = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedTasks(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(taskId)) {
+        newExpanded.delete(taskId);
+      } else {
+        newExpanded.add(taskId);
+      }
+      return newExpanded;
+    });
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
     const date = new Date(dateString);
@@ -134,19 +149,44 @@ const TaskList = () => {
     <>
       <div className="flex-1 overflow-y-auto">
         <div className="divide-y divide-gray-100">
-          {filteredTasks.map((task) => (
-            <div key={task.id} className="task-item group">
-              <div className="flex items-start space-x-3">
-                <div
-                  className={`task-checkbox mt-0.5 ${task.isCompleted ? 'completed' : ''}`}
-                  onClick={() => handleTaskToggle(task.id, !task.isCompleted)}
-                >
-                  {task.isCompleted && (
-                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+          {filteredTasks.map((task) => {
+            const isExpanded = expandedTasks.has(task.id);
+            const isExpandable = shouldTaskBeExpandable(task);
+            
+            return (
+              <div key={task.id} className="task-item group">
+                <div className="flex items-start space-x-3">
+                  {/* Expand arrow */}
+                  {isExpandable ? (
+                    <button
+                      onClick={(e) => toggleTaskExpanded(task.id, e)}
+                      className="mt-0.5 p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+                      title={isExpanded ? "Collapse task" : "Expand task"}
+                    >
+                      <svg 
+                        className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <div className="w-4 h-4 mt-0.5" /> // Spacer for non-expandable tasks
                   )}
-                </div>
+
+                  {/* Task checkbox */}
+                  <div
+                    className={`task-checkbox mt-0.5 ${task.isCompleted ? 'completed' : ''}`}
+                    onClick={() => handleTaskToggle(task.id, !task.isCompleted)}
+                  >
+                    {task.isCompleted && (
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -180,14 +220,17 @@ const TaskList = () => {
                   </div>
                   
                   {task.description && (
-                    <p className="text-sm text-gray-600 mt-1 truncate">
-                      {task.description}
-                    </p>
+                    <TaskDescription 
+                      description={task.description} 
+                      task={task} 
+                      isExpanded={isExpanded}
+                    />
                   )}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       

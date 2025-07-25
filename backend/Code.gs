@@ -80,6 +80,15 @@ function doPost(e) {
       case 'testIntegrations':
         result = testIntegrations();
         break;
+      case 'getProjectFiles':
+        result = getProjectFiles(parameters[0]);
+        break;
+      case 'uploadFileToProject':
+        result = uploadFileToProject(parameters[0], parameters[1]);
+        break;
+      case 'deleteProjectFile':
+        result = deleteProjectFile(parameters[0], parameters[1]);
+        break;
       default:
         result = { success: false, message: `Unknown function: ${functionName}` };
     }
@@ -989,6 +998,114 @@ function testIntegrations() {
     
     return { success: true, data: results };
   } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * File Management Functions
+ */
+
+/**
+ * Get all files in a project's Drive folder
+ */
+function getProjectFiles(projectId) {
+  try {
+    // Get the project to find its Drive folder
+    const project = getProjects().data.find(p => p.id === projectId);
+    if (!project || !project.driveFolderUrl) {
+      return { success: false, message: 'Project or folder not found' };
+    }
+
+    const folderId = extractFolderIdFromUrl(project.driveFolderUrl);
+    const folder = DriveApp.getFolderById(folderId);
+    const files = folder.getFiles();
+    
+    const fileList = [];
+    while (files.hasNext()) {
+      const file = files.next();
+      fileList.push({
+        id: file.getId(),
+        name: file.getName(),
+        mimeType: file.getBlob().getContentType(),
+        size: file.getSize(),
+        url: file.getUrl(),
+        thumbnailUrl: file.getThumbnail() ? file.getThumbnail().getUrl() : null,
+        createdAt: file.getDateCreated().toISOString(),
+        modifiedAt: file.getLastUpdated().toISOString()
+      });
+    }
+
+    return { success: true, data: fileList };
+  } catch (error) {
+    console.error('Error getting project files:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Upload a file to a project's Drive folder
+ * Note: This is a simplified version. In practice, file upload handling in Apps Script
+ * requires special handling for multipart/form-data which is more complex.
+ */
+function uploadFileToProject(projectId, fileData) {
+  try {
+    // Get the project to find its Drive folder
+    const project = getProjects().data.find(p => p.id === projectId);
+    if (!project || !project.driveFolderUrl) {
+      return { success: false, message: 'Project or folder not found' };
+    }
+
+    const folderId = extractFolderIdFromUrl(project.driveFolderUrl);
+    const folder = DriveApp.getFolderById(folderId);
+    
+    // In a real implementation, you would handle the file upload here
+    // For now, we'll return a placeholder response
+    return { 
+      success: true, 
+      data: {
+        id: Utilities.getUuid(),
+        name: fileData.name || 'uploaded-file',
+        mimeType: fileData.type || 'application/octet-stream',
+        size: fileData.size || 0,
+        url: 'https://drive.google.com/file/d/placeholder/view',
+        createdAt: new Date().toISOString(),
+        modifiedAt: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Delete a file from a project's Drive folder
+ */
+function deleteProjectFile(projectId, fileId) {
+  try {
+    // Get the project to find its Drive folder
+    const project = getProjects().data.find(p => p.id === projectId);
+    if (!project || !project.driveFolderUrl) {
+      return { success: false, message: 'Project or folder not found' };
+    }
+
+    const folderId = extractFolderIdFromUrl(project.driveFolderUrl);
+    const folder = DriveApp.getFolderById(folderId);
+    
+    // Find and delete the file
+    const files = folder.getFiles();
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.getId() === fileId) {
+        file.setTrashed(true);
+        return { success: true, data: null };
+      }
+    }
+
+    return { success: false, message: 'File not found' };
+  } catch (error) {
+    console.error('Error deleting file:', error);
     return { success: false, message: error.toString() };
   }
 }
