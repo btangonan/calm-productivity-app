@@ -32,6 +32,9 @@ function doPost(e) {
       case 'getAreas':
         result = getAreas();
         break;
+      case 'createArea':
+        result = createArea(parameters[0], parameters[1]);
+        break;
       case 'getProjects':
         result = getProjects(parameters[0]);
         break;
