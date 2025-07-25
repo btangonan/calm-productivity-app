@@ -1,9 +1,93 @@
 // Calm Productivity App - Google Apps Script Backend
 // This script manages the Google Sheets database and Google Drive integration
 
-const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE';
-const DRIVE_FOLDER_ID = 'YOUR_DRIVE_FOLDER_ID_HERE'; // Parent folder for all project folders
+const SPREADSHEET_ID = '1NaVZ4zBLnoXMSskvTyHGbgpxFoazSbEhXG-X8ier9xM';
+const DRIVE_FOLDER_ID = '1qof5IfgXPIUsDFk8cFaBMGEl6VEH1qAG'; // Parent folder for all project folders
 const CALENDAR_ID = 'primary'; // Use primary calendar or specify a custom calendar ID
+
+/**
+ * Handle GET requests from the frontend
+ */
+function doGet(e) {
+  return ContentService
+    .createTextOutput(JSON.stringify({
+      success: true,
+      message: "Calm Productivity API is running!",
+      version: "1.0.0"
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Handle POST requests from the frontend
+ */
+function doPost(e) {
+  try {
+    const functionName = e.parameter.function;
+    const parameters = JSON.parse(e.parameter.parameters || '[]');
+    
+    // Call the appropriate function
+    let result;
+    switch (functionName) {
+      case 'getAreas':
+        result = getAreas();
+        break;
+      case 'getProjects':
+        result = getProjects(parameters[0]);
+        break;
+      case 'getTasks':
+        result = getTasks(parameters[0], parameters[1]);
+        break;
+      case 'createProject':
+        result = createProject(parameters[0], parameters[1], parameters[2]);
+        break;
+      case 'createTask':
+        result = createTask(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
+        break;
+      case 'updateTaskCompletion':
+        result = updateTaskCompletion(parameters[0], parameters[1]);
+        break;
+      case 'updateProjectStatus':
+        result = updateProjectStatus(parameters[0], parameters[1]);
+        break;
+      case 'reorderTasks':
+        result = reorderTasks(parameters[0]);
+        break;
+      case 'processGmailToTasks':
+        result = processGmailToTasks();
+        break;
+      case 'syncTasksWithCalendar':
+        result = syncTasksWithCalendar();
+        break;
+      case 'createTaskWithIntegrations':
+        result = createTaskWithIntegrations(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4], parameters[5]);
+        break;
+      case 'createProjectDocument':
+        result = createProjectDocument(parameters[0], parameters[1], parameters[2]);
+        break;
+      case 'getContacts':
+        result = getContacts();
+        break;
+      case 'setupTriggers':
+        result = setupTriggers();
+        break;
+      case 'testIntegrations':
+        result = testIntegrations();
+        break;
+      default:
+        result = { success: false, message: `Unknown function: ${functionName}` };
+    }
+    
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, message: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
 /**
  * Initialize the Google Sheets database with required tabs and headers
