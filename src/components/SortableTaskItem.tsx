@@ -101,12 +101,24 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
         isDragging ? 'shadow-lg z-10' : ''
       }`}
     >
-      <div className="flex items-start space-x-3">
+      <div className="flex items-start space-x-1">
+        {/* Drag handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-0.5 text-gray-400 hover:text-gray-600 mt-0.5 flex-shrink-0"
+          title="Drag to reorder"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+          </svg>
+        </div>
+
         {/* Expand arrow */}
         {isExpandable ? (
           <button
             onClick={toggleExpanded}
-            className="mt-0.5 p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+            className="mt-0.5 p-0.5 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 -ml-0.5"
             title={isExpanded ? "Collapse task" : "Expand task"}
           >
             <svg 
@@ -119,12 +131,12 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
             </svg>
           </button>
         ) : (
-          <div className="w-4 h-4 mt-0.5" /> // Spacer for non-expandable tasks
+          <div className="w-4 h-4 mt-0.5 flex-shrink-0 -ml-0.5" /> // Spacer for non-expandable tasks
         )}
 
         {/* Task checkbox */}
         <div
-          className={`task-checkbox mt-0.5 ${task.isCompleted ? 'completed' : ''}`}
+          className={`task-checkbox mt-0.5 flex-shrink-0 ${task.isCompleted ? 'completed' : ''}`}
           onClick={() => handleTaskToggle(task.id, !task.isCompleted)}
         >
           {task.isCompleted && (
@@ -162,16 +174,6 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
                   {task.context}
                 </span>
               )}
-              <div
-                {...attributes}
-                {...listeners}
-                className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-600"
-                title="Drag to reorder"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                </svg>
-              </div>
             </div>
           </div>
           

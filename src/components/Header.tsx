@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import TaskForm from './TaskForm';
 
 const Header = () => {
   const { state } = useApp();
   const { currentView, selectedProjectId, projects } = state;
-  const [showTaskForm, setShowTaskForm] = useState(false);
 
   const getViewTitle = () => {
     switch (currentView) {
@@ -75,23 +72,8 @@ const Header = () => {
               Open Drive Folder
             </a>
           )}
-          
-          <button 
-            onClick={() => setShowTaskForm(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
-          >
-            <span className="mr-2">+</span>
-            Add Task
-          </button>
         </div>
       </div>
-      
-      {showTaskForm && (
-        <TaskForm 
-          onClose={() => setShowTaskForm(false)}
-          onSubmit={() => setShowTaskForm(false)}
-        />
-      )}
     </div>
   );
 };

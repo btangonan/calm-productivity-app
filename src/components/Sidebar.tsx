@@ -196,14 +196,25 @@ const Sidebar = () => {
 
     return (
       <div
-        ref={drag as any}
-        className={`sidebar-item ${
+        className={`sidebar-item group ${
           currentView === 'project' && selectedProjectId === project.id ? 'active' : ''
-        } ${isDragging ? 'opacity-50' : ''} cursor-move`}
+        } ${isDragging ? 'opacity-50' : ''}`}
       >
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center flex-1">
-            <span className="text-lg mr-3">📁</span>
+        <div className="flex items-center w-full min-w-0">
+          <div
+            ref={drag as any}
+            className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-600 mr-1 flex-shrink-0"
+            title="Drag to move to different area"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+            </svg>
+          </div>
+          <div 
+            className="flex items-center flex-1 cursor-pointer min-w-0"
+            onClick={() => handleItemClick(project.id, 'project', project.name)}
+          >
+            <span className="text-lg mr-2 flex-shrink-0">📁</span>
             {editingItem?.id === project.id && editingItem?.type === 'project' ? (
               <input
                 type="text"
@@ -217,24 +228,18 @@ const Sidebar = () => {
                     setEditingItem(null);
                   }
                 }}
-                className="bg-transparent border-none outline-none flex-1"
+                className="bg-transparent border-none outline-none flex-1 min-w-0"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span 
-                className="truncate cursor-pointer" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleItemClick(project.id, 'project', project.name);
-                }}
-              >
+              <span className="truncate min-w-0" title={project.name}>
                 {project.name}
               </span>
             )}
           </div>
           {getProjectTaskCount(project.id) > 0 && (
-            <span className="text-sm text-gray-500">{getProjectTaskCount(project.id)}</span>
+            <span className="text-sm text-gray-500 flex-shrink-0 ml-1 w-4 text-right">{getProjectTaskCount(project.id)}</span>
           )}
         </div>
       </div>
@@ -267,7 +272,7 @@ const Sidebar = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="w-64 bg-white border-r border-gray-200 h-screen overflow-y-auto">
+      <div className="w-full h-screen overflow-y-auto">
         <div className="p-4">
         <div className="flex items-center justify-between mb-6 px-3">
           <h1 className="text-xl font-semibold text-gray-900">Now & Later</h1>
@@ -451,12 +456,12 @@ const Sidebar = () => {
                     
                     {/* Projects under this Area */}
                     {isExpanded && (
-                      <div className="ml-6 space-y-1">
+                      <div className="space-y-1">
                         {areaProjects.map(project => (
                           <DraggableProject key={project.id} project={project} />
                         ))}
                         {areaProjects.length === 0 && (
-                          <div className="text-sm text-gray-400 italic">
+                          <div className="text-sm text-gray-400 italic ml-4">
                             No projects yet
                           </div>
                         )}

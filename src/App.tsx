@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import MainContent from './components/MainContent';
@@ -6,6 +6,9 @@ import { apiService } from './services/api';
 
 function AppContent() {
   const { state, dispatch } = useApp();
+  const [sidebarWidth, setSidebarWidth] = useState(280); // Start with reasonable width
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -30,6 +33,40 @@ function AppContent() {
 
     loadInitialData();
   }, [dispatch]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      const newWidth = e.clientX;
+      // Constrain width between 240px and 450px
+      const constrainedWidth = Math.min(Math.max(newWidth, 240), 450);
+      setSidebarWidth(constrainedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
 
   if (state.loading) {
     return (
@@ -61,7 +98,19 @@ function AppContent() {
 
   return (
     <div className="h-screen flex bg-gray-50">
-      <Sidebar />
+      <div 
+        ref={sidebarRef}
+        className="relative flex-shrink-0 bg-white border-r border-gray-200"
+        style={{ width: `${sidebarWidth}px` }}
+      >
+        <Sidebar />
+        {/* Resize handle */}
+        <div
+          className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-blue-400 bg-gray-200 border-r border-gray-300"
+          onMouseDown={handleMouseDown}
+          style={{ right: '-1px' }}
+        />
+      </div>
       <MainContent />
     </div>
   );
