@@ -5,16 +5,17 @@ import { apiService } from '../services/api';
 interface ProjectFormProps {
   onClose: () => void;
   onSubmit?: () => void;
+  preselectedAreaId?: string | null;
 }
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ onClose, onSubmit }) => {
+const ProjectForm: React.FC<ProjectFormProps> = ({ onClose, onSubmit, preselectedAreaId }) => {
   const { state, dispatch } = useApp();
   const { areas } = state;
   
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    areaId: '',
+    areaId: preselectedAreaId || '',
   });
   
   const [loading, setLoading] = useState(false);

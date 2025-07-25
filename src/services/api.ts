@@ -23,8 +23,8 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDS6ijoZZj2d-e1X1aX1yuTbA63Wz-cg2Aipvhw0VSJud5toxZWXqdXb_zX2ntV6Dn/exec';
-  private isGoogleAppsScript = true; // Use real Apps Script integration
+  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzScfuEZaIy-kaXeSec93vzw7DbaKfJJHzYEckavbRo37DhtdTYFQ9lP1c6CqHy3EKn/exec';
+  private isGoogleAppsScript = false; // Use mock data for now until deployment is fixed
 
   // Mock data for development
   private mockAreas: Area[] = [
@@ -161,6 +161,39 @@ class ApiService {
         }
         
         return { success: true, data: filteredTasks as T };
+      case 'updateProjectArea':
+        const [updateProjectId, newAreaId] = args;
+        const project = this.mockProjects.find(p => p.id === updateProjectId);
+        if (project) {
+          project.areaId = newAreaId;
+          console.log(`Mock: Updated project ${updateProjectId} to area ${newAreaId}`);
+        }
+        return { success: true, data: null as T };
+      case 'createArea':
+        const [areaName, areaDescription] = args;
+        const newArea = {
+          id: `area_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: areaName,
+          description: areaDescription || '',
+          createdAt: new Date().toISOString()
+        };
+        this.mockAreas.push(newArea);
+        console.log('Mock: Created area', newArea.id);
+        return { success: true, data: newArea as T };
+      case 'createProject':
+        const [projectName, projectDescription, projectAreaId] = args;
+        const newProject = {
+          id: `project_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: projectName,
+          description: projectDescription || '',
+          areaId: projectAreaId || null,
+          status: 'Active' as const,
+          driveFolderUrl: 'https://drive.google.com/drive/folders/mock',
+          createdAt: new Date().toISOString()
+        };
+        this.mockProjects.push(newProject);
+        console.log('Mock: Created project', newProject.id);
+        return { success: true, data: newProject as T };
       default:
         return { success: true, data: null as T };
     }
@@ -217,6 +250,13 @@ class ApiService {
     const response = await this.executeGoogleScript<void>('updateProjectStatus', projectId, status);
     if (!response.success) {
       throw new Error(response.message || 'Failed to update project');
+    }
+  }
+
+  async updateProjectArea(projectId: string, areaId: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>('updateProjectArea', projectId, areaId);
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to update project area');
     }
   }
 

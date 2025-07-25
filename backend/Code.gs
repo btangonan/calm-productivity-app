@@ -53,6 +53,9 @@ function doPost(e) {
       case 'updateProjectStatus':
         result = updateProjectStatus(parameters[0], parameters[1]);
         break;
+      case 'updateProjectArea':
+        result = updateProjectArea(parameters[0], parameters[1]);
+        break;
       case 'reorderTasks':
         result = reorderTasks(parameters[0]);
         break;
@@ -242,6 +245,25 @@ function updateProjectStatus(projectId, status) {
       if (data[i][0] === projectId) {
         sheet.getRange(i + 1, 5).setValue(status);
         return { success: true, message: 'Project status updated' };
+      }
+    }
+    
+    return { success: false, message: 'Project not found' };
+  } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function updateProjectArea(projectId, areaId) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('Projects');
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === projectId) {
+        sheet.getRange(i + 1, 4).setValue(areaId); // Column 4 is AreaID
+        return { success: true, message: 'Project area updated' };
       }
     }
     
