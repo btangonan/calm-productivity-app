@@ -24,7 +24,8 @@ const AreaForm = ({ onClose, onSubmit }: AreaFormProps) => {
       onSubmit();
     } catch (error) {
       console.error('Failed to create area:', error);
-      alert('Failed to create area. Please try again.');
+      console.error('Error details:', error.message);
+      alert(`Failed to create area: ${error.message || 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }

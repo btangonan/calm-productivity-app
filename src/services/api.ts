@@ -23,8 +23,8 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzePtrrW95Ht91fVZycizbrMtH83WHmu1kZVonWUxFkEq3iy5HFIe8sYZ2as2p4_Q0n/exec';
-  private isGoogleAppsScript = true; // Enable Apps Script integration
+  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDS6ijoZZj2d-e1X1aX1yuTbA63Wz-cg2Aipvhw0VSJud5toxZWXqdXb_zX2ntV6Dn/exec';
+  private isGoogleAppsScript = true; // Use real Apps Script integration
 
   // Mock data for development
   private mockAreas: Area[] = [
