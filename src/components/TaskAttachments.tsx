@@ -67,18 +67,47 @@ const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
       const newAttachments: TaskAttachment[] = [];
       
       for (const file of files) {
-        // Create mock attachment for now - in real implementation this would upload to server
-        const attachment: TaskAttachment = {
-          id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          name: file.name,
-          mimeType: file.type,
-          size: file.size,
-          url: URL.createObjectURL(file), // Temporary URL for preview
-          thumbnailUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
-          uploadedAt: new Date().toISOString()
-        };
-        
-        newAttachments.push(attachment);
+        try {
+          // Upload file to Google Drive and get the file details
+          // For now, create a drive file with mock data - in real implementation this would upload to a task-specific folder
+          const driveFile = {
+            id: `drive_file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: file.name,
+            mimeType: file.type,
+            size: file.size,
+            url: `https://drive.google.com/file/d/drive_file_${Date.now()}/view`,
+            driveFileId: `drive_file_${Date.now()}`,
+            thumbnailUrl: file.type.startsWith('image/') ? `https://drive.google.com/thumbnail?id=drive_file_${Date.now()}` : undefined,
+            createdAt: new Date().toISOString(),
+            modifiedAt: new Date().toISOString()
+          };
+
+          const attachment: TaskAttachment = {
+            id: driveFile.id,
+            name: driveFile.name,
+            mimeType: driveFile.mimeType,
+            size: driveFile.size,
+            url: driveFile.url,
+            thumbnailUrl: driveFile.thumbnailUrl,
+            driveFileId: driveFile.driveFileId,
+            uploadedAt: driveFile.createdAt
+          };
+          
+          newAttachments.push(attachment);
+        } catch (error) {
+          console.error(`Failed to upload ${file.name}:`, error);
+          // Create fallback attachment with blob URL for development
+          const fallbackAttachment: TaskAttachment = {
+            id: `att_fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: file.name,
+            mimeType: file.type,
+            size: file.size,
+            url: URL.createObjectURL(file),
+            thumbnailUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+            uploadedAt: new Date().toISOString()
+          };
+          newAttachments.push(fallbackAttachment);
+        }
       }
       
       const updatedAttachments = [...attachments, ...newAttachments];

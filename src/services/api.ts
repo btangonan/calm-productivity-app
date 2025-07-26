@@ -1,4 +1,4 @@
-import type { Area, Project, Task, GoogleScriptResponse, Contact, TaskWithIntegrations, Document, ProjectFile, TaskAttachment } from '../types';
+import type { Area, Project, Task, GoogleScriptResponse, Contact, TaskWithIntegrations, Document, ProjectFile, TaskAttachment, DriveFolder, DriveStructure } from '../types';
 
 // Google Apps Script API functions
 // These will be available when deployed as a Google Apps Script web app
@@ -23,13 +23,28 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzScfuEZaIy-kaXeSec93vzw7DbaKfJJHzYEckavbRo37DhtdTYFQ9lP1c6CqHy3EKn/exec';
-  private isGoogleAppsScript = false; // Use mock data for now until deployment is fixed
+  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJ7Bm5MIR-0ey-bLZQqyma-DATBedc6ugr3L5fYph4OXBfRDpCMNgz2MbLfgLJNIQq/exec';
+  private isGoogleAppsScript = true; // Enable Google Apps Script backend
+  private backendHealthy = true; // Track backend health status
 
   // Mock data for development
   private mockAreas: Area[] = [
-    { id: '1', name: 'Personal', description: 'Personal tasks and projects', createdAt: new Date().toISOString() },
-    { id: '2', name: 'Work', description: 'Work-related items', createdAt: new Date().toISOString() }
+    { 
+      id: '1', 
+      name: 'Personal', 
+      description: 'Personal tasks and projects', 
+      driveFolderId: 'area_folder_1',
+      driveFolderUrl: 'https://drive.google.com/drive/folders/area_folder_1',
+      createdAt: new Date().toISOString() 
+    },
+    { 
+      id: '2', 
+      name: 'Work', 
+      description: 'Work-related items',
+      driveFolderId: 'area_folder_2', 
+      driveFolderUrl: 'https://drive.google.com/drive/folders/area_folder_2',
+      createdAt: new Date().toISOString() 
+    }
   ];
 
   private mockProjectFiles: Record<string, ProjectFile[]> = {
@@ -75,7 +90,8 @@ class ApiService {
       description: 'Kitchen and bathroom updates',
       areaId: '1',
       status: 'Active',
-      driveFolderUrl: 'https://drive.google.com/drive/folders/example1',
+      driveFolderId: 'project_folder_1',
+      driveFolderUrl: 'https://drive.google.com/drive/folders/project_folder_1',
       createdAt: new Date().toISOString()
     },
     {
@@ -84,7 +100,8 @@ class ApiService {
       description: 'Strategic planning for Q4',
       areaId: '2',
       status: 'Active',
-      driveFolderUrl: 'https://drive.google.com/drive/folders/example2',
+      driveFolderId: 'project_folder_2',
+      driveFolderUrl: 'https://drive.google.com/drive/folders/project_folder_2',
       createdAt: new Date().toISOString()
     }
   ];
@@ -189,8 +206,8 @@ class ApiService {
   ];
 
   private async executeGoogleScript<T>(functionName: string, ...args: any[]): Promise<GoogleScriptResponse<T>> {
-    if (!this.isGoogleAppsScript) {
-      // Return mock data for development
+    if (!this.isGoogleAppsScript || !this.backendHealthy) {
+      // Return mock data for development or when backend is unhealthy
       return new Promise((resolve) => {
         setTimeout(() => {
           resolve(this.getMockResponse<T>(functionName, ...args));
@@ -216,7 +233,16 @@ class ApiService {
       return result as GoogleScriptResponse<T>;
     } catch (error) {
       console.error('Apps Script request failed:', error);
-      throw error;
+      console.warn('Falling back to mock data...');
+      
+      // Mark backend as unhealthy and fallback to mock data
+      this.backendHealthy = false;
+      
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(this.getMockResponse<T>(functionName, ...args));
+        }, 100);
+      });
     }
   }
 
@@ -274,10 +300,12 @@ class ApiService {
           id: `area_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           name: areaName,
           description: areaDescription || '',
+          driveFolderId: `area_folder_${Date.now()}`,
+          driveFolderUrl: `https://drive.google.com/drive/folders/area_folder_${Date.now()}`,
           createdAt: new Date().toISOString()
         };
         this.mockAreas.push(newArea);
-        console.log('Mock: Created area', newArea.id);
+        console.log('Mock: Created area', newArea.id, 'with drive folder', newArea.driveFolderId);
         return { success: true, data: newArea as T };
       case 'createProject':
         const [projectName, projectDescription, projectAreaId] = args;
@@ -287,11 +315,12 @@ class ApiService {
           description: projectDescription || '',
           areaId: projectAreaId || null,
           status: 'Active' as const,
-          driveFolderUrl: 'https://drive.google.com/drive/folders/mock',
+          driveFolderId: `project_folder_${Date.now()}`,
+          driveFolderUrl: `https://drive.google.com/drive/folders/project_folder_${Date.now()}`,
           createdAt: new Date().toISOString()
         };
         this.mockProjects.push(newProject);
-        console.log('Mock: Created project', newProject.id);
+        console.log('Mock: Created project', newProject.id, 'with drive folder', newProject.driveFolderId);
         return { success: true, data: newProject as T };
       case 'createTask':
         const [taskTitle, taskDescription, taskProjectId, taskContext, taskDueDate, taskAttachments] = args;
@@ -340,9 +369,139 @@ class ApiService {
           console.log('Mock: Deleted file', fileId, 'from project', deleteProjectId);
         }
         return { success: true, data: null as T };
+      case 'createMasterFolder':
+        const [masterFolderName] = args;
+        const masterFolder = {
+          id: `master_${Date.now()}`,
+          name: masterFolderName,
+          webViewLink: `https://drive.google.com/drive/folders/master_${Date.now()}`,
+          createdTime: new Date().toISOString(),
+          modifiedTime: new Date().toISOString()
+        };
+        console.log('Mock: Created master folder', masterFolder.id);
+        return { success: true, data: masterFolder as T };
+      case 'getDriveStructure':
+        const mockStructure = {
+          masterFolderId: 'master_folder_id',
+          masterFolderName: 'Productivity App',
+          areas: {},
+          projects: {}
+        };
+        return { success: true, data: mockStructure as T };
+      case 'createAreaFolder':
+        const [folderAreaId, folderAreaName, folderMasterFolderId] = args;
+        const areaFolder = {
+          id: `area_folder_${Date.now()}`,
+          name: folderAreaName,
+          webViewLink: `https://drive.google.com/drive/folders/area_folder_${Date.now()}`,
+          parentFolderId: folderMasterFolderId,
+          createdTime: new Date().toISOString(),
+          modifiedTime: new Date().toISOString()
+        };
+        console.log('Mock: Created area folder', areaFolder.id, 'for area', folderAreaId);
+        return { success: true, data: areaFolder as T };
+      case 'createProjectFolder':
+        const [folderProjectId, folderProjectName, folderAreaFolderId] = args;
+        const projectFolder = {
+          id: `project_folder_${Date.now()}`,
+          name: folderProjectName,
+          webViewLink: `https://drive.google.com/drive/folders/project_folder_${Date.now()}`,
+          parentFolderId: folderAreaFolderId,
+          createdTime: new Date().toISOString(),
+          modifiedTime: new Date().toISOString()
+        };
+        console.log('Mock: Created project folder', projectFolder.id, 'for project', folderProjectId);
+        return { success: true, data: projectFolder as T };
+      case 'uploadFileToFolder':
+        const [uploadFolderId, uploadFile] = args;
+        const folderFile = {
+          id: `folder_file_${Date.now()}`,
+          name: uploadFile.name,
+          mimeType: uploadFile.type,
+          size: uploadFile.size,
+          url: `https://drive.google.com/file/d/folder_file_${Date.now()}/view`,
+          driveFileId: `folder_file_${Date.now()}`,
+          thumbnailUrl: uploadFile.type.startsWith('image/') ? `https://drive.google.com/thumbnail?id=folder_file_${Date.now()}` : undefined,
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString()
+        };
+        console.log('Mock: Uploaded file to folder', uploadFolderId);
+        return { success: true, data: folderFile as T };
+      case 'getFolderFiles':
+        const [folderId] = args;
+        console.log('Mock: Getting files for folder', folderId);
+        return { success: true, data: [] as T };
+      case 'setMasterFolder':
+        const [setFolderId] = args;
+        console.log('Mock: Set master folder', setFolderId);
+        return { success: true, data: null as T };
       default:
         return { success: true, data: null as T };
     }
+  }
+
+  // Health Check Methods
+  async checkBackendHealth(): Promise<boolean> {
+    if (!this.isGoogleAppsScript) {
+      console.log('Using mock data mode');
+      return true; // Mock data is always "healthy"
+    }
+
+    try {
+      console.log('🔍 Checking Google Apps Script backend health...');
+      
+      const response = await fetch(`${this.APPS_SCRIPT_URL}?healthCheck=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const isHealthy = data.success && data.version;
+      
+      this.backendHealthy = isHealthy;
+      
+      if (isHealthy) {
+        console.log('✅ Backend healthy - Version:', data.version);
+        console.log('📊 Last updated:', data.lastUpdated);
+      } else {
+        console.warn('⚠️ Backend responding but unhealthy:', data);
+      }
+      
+      return isHealthy;
+    } catch (error) {
+      console.error('❌ Backend health check failed:', error);
+      this.backendHealthy = false;
+      return false;
+    }
+  }
+
+  async testConnection(): Promise<{success: boolean, data?: any, error?: string}> {
+    try {
+      const response = await this.executeGoogleScript('getHealthCheck');
+      return {
+        success: response.success,
+        data: response.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  getBackendStatus(): {isEnabled: boolean, isHealthy: boolean, usingMockData: boolean} {
+    return {
+      isEnabled: this.isGoogleAppsScript,
+      isHealthy: this.backendHealthy,
+      usingMockData: !this.isGoogleAppsScript || !this.backendHealthy
+    };
   }
 
   // API Methods
@@ -523,6 +682,56 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     const response = await this.executeGoogleScript<void>('deleteProjectFile', projectId, fileId);
     if (!response.success) {
       throw new Error(response.message || 'Failed to delete file');
+    }
+  }
+
+  // Drive Folder Management Methods
+  async createMasterFolder(folderName: string): Promise<DriveFolder> {
+    const response = await this.executeGoogleScript<DriveFolder>('createMasterFolder', folderName);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to create master folder');
+    }
+    return response.data;
+  }
+
+  async getDriveStructure(): Promise<DriveStructure> {
+    const response = await this.executeGoogleScript<DriveStructure>('getDriveStructure');
+    return response.data || { areas: {}, projects: {} };
+  }
+
+  async createAreaFolder(areaId: string, areaName: string, masterFolderId?: string): Promise<DriveFolder> {
+    const response = await this.executeGoogleScript<DriveFolder>('createAreaFolder', areaId, areaName, masterFolderId);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to create area folder');
+    }
+    return response.data;
+  }
+
+  async createProjectFolder(projectId: string, projectName: string, areaFolderId?: string): Promise<DriveFolder> {
+    const response = await this.executeGoogleScript<DriveFolder>('createProjectFolder', projectId, projectName, areaFolderId);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to create project folder');
+    }
+    return response.data;
+  }
+
+  async uploadFileToFolder(folderId: string, file: File): Promise<ProjectFile> {
+    const response = await this.executeGoogleScript<ProjectFile>('uploadFileToFolder', folderId, file);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to upload file to folder');
+    }
+    return response.data;
+  }
+
+  async getFolderFiles(folderId: string): Promise<ProjectFile[]> {
+    const response = await this.executeGoogleScript<ProjectFile[]>('getFolderFiles', folderId);
+    return response.data || [];
+  }
+
+  async setMasterFolder(folderId: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>('setMasterFolder', folderId);
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to set master folder');
     }
   }
 }

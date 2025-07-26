@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Apps Script Deployment Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #005999;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #007acc;
+        }
+        .success {
+            color: #28a745;
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .test-passed {
+            border-left: 4px solid #28a745;
+        }
+        .test-failed {
+            border-left: 4px solid #dc3545;
+        }
+        pre {
+            background: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007acc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .url-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .url-info strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Google Apps Script Deployment Test</h1>
+        
+        <div class="url-info">
+            <strong>Testing URL:</strong><br>
+            <code>https://script.google.com/macros/s/AKfycbzScfuEZaIy-kaXeSec93vzw7DbaKfJJHzYEckavbRo37DhtdTYFQ9lP1c6CqHy3EKn/exec</code>
+        </div>
+
+        <div>
+            <button onclick="runQuickTest()">🚀 Quick Test</button>
+            <button onclick="runFullTests()">🔍 Full Test Suite</button>
+            <button onclick="testGetRequest()">📥 Test GET</button>
+            <button onclick="testPostRequest()">📤 Test POST</button>
+            <button onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzScfuEZaIy-kaXeSec93vzw7DbaKfJJHzYEckavbRo37DhtdTYFQ9lP1c6CqHy3EKn/exec';
+        
+        function showResults(title, content, isSuccess = true) {
+            const resultsDiv = document.getElementById('results');
+            const resultClass = isSuccess ? 'results success' : 'results error';
+            resultsDiv.innerHTML += `
+                <div class="${resultClass}">
+                    <h3>${title}</h3>
+                    <pre>${typeof content === 'object' ? JSON.stringify(content, null, 2) : content}</pre>
+                </div>
+            `;
+        }
+
+        function showLoading(message) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML += `
+                <div class="results">
+                    <div class="loading"></div> ${message}
+                </div>
+            `;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function runQuickTest() {
+            showLoading('Running quick deployment test...');
+            
+            try {
+                const response = await fetch(`${APPS_SCRIPT_URL}?quickTest=${Date.now()}`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResults('✅ Quick Test PASSED', data, true);
+                } else {
+                    showResults('❌ Quick Test FAILED', data, false);
+                }
+            } catch (error) {
+                showResults('❌ Quick Test ERROR', error.message, false);
+            }
+        }
+
+        async function testGetRequest() {
+            showLoading('Testing GET request...');
+            
+            try {
+                const response = await fetch(`${APPS_SCRIPT_URL}?test=get&timestamp=${Date.now()}`);
+                const data = await response.json();
+                
+                const isSuccess = response.ok && data.success;
+                showResults(
+                    isSuccess ? '✅ GET Test PASSED' : '❌ GET Test FAILED',
+                    {
+                        status: response.status,
+                        statusText: response.statusText,
+                        data: data
+                    },
+                    isSuccess
+                );
+            } catch (error) {
+                showResults('❌ GET Test ERROR', error.message, false);
+            }
+        }
+
+        async function testPostRequest() {
+            showLoading('Testing POST request...');
+            
+            try {
+                const formData = new FormData();
+                formData.append('function', 'testFunction');
+                formData.append('parameters', JSON.stringify([]));
+
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData,
+                });
+                const data = await response.json();
+
+                const isSuccess = response.ok && data.success;
+                showResults(
+                    isSuccess ? '✅ POST Test PASSED' : '❌ POST Test FAILED',
+                    {
+                        status: response.status,
+                        statusText: response.statusText,
+                        data: data
+                    },
+                    isSuccess
+                );
+            } catch (error) {
+                showResults('❌ POST Test ERROR', error.message, false);
+            }
+        }
+
+        async function runFullTests() {
+            clearResults();
+            showLoading('Running comprehensive test suite...');
+            
+            const tests = [
+                { name: 'Basic Connection', test: testBasicConnection },
+                { name: 'Function Call', test: testFunctionCall },
+                { name: 'Health Check', test: testHealthCheck },
+                { name: 'Parameter Passing', test: testParameterPassing }
+            ];
+
+            let passed = 0;
+            let failed = 0;
+
+            for (const testCase of tests) {
+                try {
+                    const result = await testCase.test();
+                    if (result.success) {
+                        passed++;
+                        showResults(`✅ ${testCase.name} PASSED`, result.data, true);
+                    } else {
+                        failed++;
+                        showResults(`❌ ${testCase.name} FAILED`, result.error || result.data, false);
+                    }
+                } catch (error) {
+                    failed++;
+                    showResults(`❌ ${testCase.name} ERROR`, error.message, false);
+                }
+            }
+
+            showResults(
+                `📊 Test Suite Complete`,
+                `Passed: ${passed}, Failed: ${failed}, Total: ${tests.length}`,
+                failed === 0
+            );
+        }
+
+        async function testBasicConnection() {
+            const response = await fetch(`${APPS_SCRIPT_URL}?test=basic&timestamp=${Date.now()}`);
+            const data = await response.json();
+            
+            return {
+                success: response.ok && data.success,
+                data,
+                error: response.ok ? null : `HTTP ${response.status}: ${response.statusText}`
+            };
+        }
+
+        async function testFunctionCall() {
+            const formData = new FormData();
+            formData.append('function', 'testFunction');
+            formData.append('parameters', JSON.stringify([]));
+
+            const response = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+
+            return {
+                success: response.ok && data.success,
+                data,
+                error: response.ok ? null : `HTTP ${response.status}: ${response.statusText}`
+            };
+        }
+
+        async function testHealthCheck() {
+            const formData = new FormData();
+            formData.append('function', 'getHealthCheck');
+            formData.append('parameters', JSON.stringify([]));
+
+            const response = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+
+            return {
+                success: response.ok && data.success && data.status === 'healthy',
+                data,
+                error: response.ok ? null : `HTTP ${response.status}: ${response.statusText}`
+            };
+        }
+
+        async function testParameterPassing() {
+            const testData = `test-${Date.now()}`;
+            const formData = new FormData();
+            formData.append('function', 'testDeployment');
+            formData.append('parameters', JSON.stringify([testData]));
+
+            const response = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+
+            const parameterMatches = data.receivedData === testData;
+
+            return {
+                success: response.ok && data.success && parameterMatches,
+                data: {
+                    ...data,
+                    expectedData: testData,
+                    parameterMatches
+                },
+                error: response.ok ? (parameterMatches ? null : 'Parameter mismatch') : `HTTP ${response.status}: ${response.statusText}`
+            };
+        }
+
+        // Run a quick test when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runQuickTest, 1000);
+        });
+    </script>
+</body>
+</html>

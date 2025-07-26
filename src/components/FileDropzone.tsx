@@ -65,16 +65,19 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ projectId, onFilesUploaded 
       });
       setUploadProgress(progressTracker);
 
-      // Upload files one by one
+      // Upload files one by one to the project's Drive folder
       for (const file of files) {
         try {
           // Simulate progress updates (in real implementation, this would come from the API)
           progressTracker[file.name] = 25;
           setUploadProgress({...progressTracker});
 
-          // TODO: Implement actual file upload to Google Drive
-          // For now, we'll simulate the API call
-          await apiService.uploadFileToProject(projectId, file);
+          // Upload to project's Drive folder if available, otherwise use legacy method
+          if (project.driveFolderId) {
+            await apiService.uploadFileToFolder(project.driveFolderId, file);
+          } else {
+            await apiService.uploadFileToProject(projectId, file);
+          }
 
           progressTracker[file.name] = 100;
           setUploadProgress({...progressTracker});

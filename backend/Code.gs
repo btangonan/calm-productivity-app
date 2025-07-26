@@ -1,9 +1,17 @@
 // Calm Productivity App - Google Apps Script Backend
 // This script manages the Google Sheets database and Google Drive integration
 
+// DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
+const DEPLOYMENT_VERSION = "v2024.07.25.001";
+const LAST_UPDATED = "2024-07-25T20:00:00Z";
+
 const SPREADSHEET_ID = '1NaVZ4zBLnoXMSskvTyHGbgpxFoazSbEhXG-X8ier9xM';
-const DRIVE_FOLDER_ID = '1qof5IfgXPIUsDFk8cFaBMGEl6VEH1qAG'; // Parent folder for all project folders
+const DRIVE_FOLDER_ID = '1qof5IfgXPIUsDFk8cFaBMGEl6VEH1qAG'; // Master folder for the app (user configurable)
 const CALENDAR_ID = 'primary'; // Use primary calendar or specify a custom calendar ID
+
+// Folder structure constants
+const UNORGANIZED_PROJECTS_FOLDER = 'Unorganized Projects';
+const TASKS_SUBFOLDER = 'Tasks';
 
 /**
  * Handle GET requests from the frontend
@@ -13,7 +21,11 @@ function doGet(e) {
     .createTextOutput(JSON.stringify({
       success: true,
       message: "Calm Productivity API is running!",
-      version: "1.0.0"
+      version: DEPLOYMENT_VERSION,
+      lastUpdated: LAST_UPDATED,
+      serverTime: new Date().toISOString(),
+      testParameter: e.parameter.test || "none",
+      cacheBuster: Math.random().toString(36).substr(2, 9)
     }))
     .setMimeType(ContentService.MimeType.JSON);
 }
@@ -84,13 +96,25 @@ function doPost(e) {
         result = getProjectFiles(parameters[0]);
         break;
       case 'uploadFileToProject':
-        result = uploadFileToProject(parameters[0], parameters[1]);
+        result = uploadFileToProject(parameters[0], parameters[1], parameters[2], parameters[3]);
+        break;
+      case 'uploadFileToTask':
+        result = uploadFileToTask(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
         break;
       case 'deleteProjectFile':
         result = deleteProjectFile(parameters[0], parameters[1]);
         break;
+      case 'testFunction':
+        result = testFunction();
+        break;
+      case 'getHealthCheck':
+        result = getHealthCheck();
+        break;
+      case 'testDeployment':
+        result = testDeployment(parameters[0]);
+        break;
       default:
-        result = { success: false, message: `Unknown function: ${functionName}` };
+        result = { success: false, message: `Unknown function: ${functionName}`, version: DEPLOYMENT_VERSION };
     }
     
     return ContentService
@@ -155,9 +179,12 @@ function createArea(name, description = '') {
     const id = Utilities.getUuid();
     const createdAt = new Date().toISOString();
     
-    sheet.appendRow([id, name, description, createdAt]);
+    // Create Google Drive folder for the area
+    const driveFolderUrl = createAreaFolder(name, id);
     
-    return { success: true, data: { id, name, description, createdAt } };
+    sheet.appendRow([id, name, description, createdAt, driveFolderUrl]);
+    
+    return { success: true, data: { id, name, description, createdAt, driveFolderUrl } };
   } catch (error) {
     return { success: false, message: error.toString() };
   }
@@ -455,17 +482,141 @@ function reorderTasks(taskIds) {
 }
 
 /**
- * Google Drive Integration
+ * Google Drive Integration - Hierarchical Folder Management
  */
-function createProjectFolder(projectName, projectId) {
+
+/**
+ * Get or create the master app folder structure
+ */
+function initializeMasterFolderStructure() {
   try {
-    const parentFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    const folderName = `${projectName} (${projectId.substring(0, 8)})`;
-    const folder = parentFolder.createFolder(folderName);
+    const masterFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
     
-    return folder.getUrl();
+    // Create Unorganized Projects folder if it doesn't exist
+    let unorganizedFolder = null;
+    const folders = masterFolder.getFolders();
+    while (folders.hasNext()) {
+      const folder = folders.next();
+      if (folder.getName() === UNORGANIZED_PROJECTS_FOLDER) {
+        unorganizedFolder = folder;
+        break;
+      }
+    }
+    
+    if (!unorganizedFolder) {
+      unorganizedFolder = masterFolder.createFolder(UNORGANIZED_PROJECTS_FOLDER);
+    }
+    
+    return {
+      masterFolderId: DRIVE_FOLDER_ID,
+      unorganizedFolderId: unorganizedFolder.getId()
+    };
+  } catch (error) {
+    console.error('Error initializing master folder structure:', error);
+    return null;
+  }
+}
+
+/**
+ * Create or get an Area folder in Google Drive
+ */
+function createAreaFolder(areaName, areaId) {
+  try {
+    const masterFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    const folderName = `${areaName} (${areaId.substring(0, 8)})`;
+    
+    // Check if folder already exists
+    const folders = masterFolder.getFolders();
+    while (folders.hasNext()) {
+      const folder = folders.next();
+      if (folder.getName() === folderName) {
+        return folder.getUrl();
+      }
+    }
+    
+    // Create new area folder
+    const areaFolder = masterFolder.createFolder(folderName);
+    return areaFolder.getUrl();
+  } catch (error) {
+    console.error('Error creating area folder:', error);
+    return null;
+  }
+}
+
+/**
+ * Create a project folder within an area or in unorganized projects
+ */
+function createProjectFolder(projectName, projectId, areaId = null) {
+  try {
+    let parentFolder;
+    
+    if (areaId) {
+      // Find the area folder
+      const area = getAreas().data.find(a => a.id === areaId);
+      if (area && area.driveFolderUrl) {
+        const areaFolderId = extractFolderIdFromUrl(area.driveFolderUrl);
+        parentFolder = DriveApp.getFolderById(areaFolderId);
+      } else {
+        // If area doesn't have a folder yet, create it
+        const areaFolderUrl = createAreaFolder(area.name, areaId);
+        const areaFolderId = extractFolderIdFromUrl(areaFolderUrl);
+        parentFolder = DriveApp.getFolderById(areaFolderId);
+      }
+    } else {
+      // Use unorganized projects folder
+      const masterFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+      const folders = masterFolder.getFolders();
+      while (folders.hasNext()) {
+        const folder = folders.next();
+        if (folder.getName() === UNORGANIZED_PROJECTS_FOLDER) {
+          parentFolder = folder;
+          break;
+        }
+      }
+      if (!parentFolder) {
+        parentFolder = masterFolder.createFolder(UNORGANIZED_PROJECTS_FOLDER);
+      }
+    }
+    
+    const folderName = `${projectName} (${projectId.substring(0, 8)})`;
+    const projectFolder = parentFolder.createFolder(folderName);
+    
+    // Create Tasks subfolder for task attachments
+    projectFolder.createFolder(TASKS_SUBFOLDER);
+    
+    return projectFolder.getUrl();
   } catch (error) {
     console.error('Error creating project folder:', error);
+    return null;
+  }
+}
+
+/**
+ * Get or create Tasks subfolder within a project
+ */
+function getProjectTasksFolder(projectId) {
+  try {
+    const project = getProjects().data.find(p => p.id === projectId);
+    if (!project || !project.driveFolderUrl) {
+      throw new Error('Project or folder not found');
+    }
+    
+    const projectFolderId = extractFolderIdFromUrl(project.driveFolderUrl);
+    const projectFolder = DriveApp.getFolderById(projectFolderId);
+    
+    // Look for existing Tasks folder
+    const subfolders = projectFolder.getFolders();
+    while (subfolders.hasNext()) {
+      const folder = subfolders.next();
+      if (folder.getName() === TASKS_SUBFOLDER) {
+        return folder;
+      }
+    }
+    
+    // Create Tasks folder if it doesn't exist
+    return projectFolder.createFolder(TASKS_SUBFOLDER);
+  } catch (error) {
+    console.error('Error getting project tasks folder:', error);
     return null;
   }
 }
@@ -1048,9 +1199,8 @@ function getProjectFiles(projectId) {
  * Note: This is a simplified version. In practice, file upload handling in Apps Script
  * requires special handling for multipart/form-data which is more complex.
  */
-function uploadFileToProject(projectId, fileData) {
+function uploadFileToProject(projectId, fileName, fileContent, mimeType) {
   try {
-    // Get the project to find its Drive folder
     const project = getProjects().data.find(p => p.id === projectId);
     if (!project || !project.driveFolderUrl) {
       return { success: false, message: 'Project or folder not found' };
@@ -1059,22 +1209,72 @@ function uploadFileToProject(projectId, fileData) {
     const folderId = extractFolderIdFromUrl(project.driveFolderUrl);
     const folder = DriveApp.getFolderById(folderId);
     
-    // In a real implementation, you would handle the file upload here
-    // For now, we'll return a placeholder response
+    // Create blob from base64 content
+    const blob = Utilities.newBlob(
+      Utilities.base64Decode(fileContent),
+      mimeType,
+      fileName
+    );
+    
+    // Upload file to project folder
+    const file = folder.createFile(blob);
+    
     return { 
       success: true, 
       data: {
-        id: Utilities.getUuid(),
-        name: fileData.name || 'uploaded-file',
-        mimeType: fileData.type || 'application/octet-stream',
-        size: fileData.size || 0,
-        url: 'https://drive.google.com/file/d/placeholder/view',
-        createdAt: new Date().toISOString(),
-        modifiedAt: new Date().toISOString()
+        id: file.getId(),
+        name: file.getName(),
+        mimeType: file.getBlob().getContentType(),
+        size: file.getSize(),
+        url: file.getUrl(),
+        thumbnailUrl: file.getBlob().getContentType().startsWith('image/') ? 
+          `https://drive.google.com/thumbnail?id=${file.getId()}` : undefined,
+        createdAt: file.getDateCreated().toISOString(),
+        modifiedAt: file.getLastUpdated().toISOString()
       }
     };
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error uploading file to project:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Upload a file to a task (goes in project's Tasks subfolder)
+ */
+function uploadFileToTask(projectId, taskId, fileName, fileContent, mimeType) {
+  try {
+    const tasksFolder = getProjectTasksFolder(projectId);
+    if (!tasksFolder) {
+      return { success: false, message: 'Project tasks folder not found' };
+    }
+    
+    // Create blob from base64 content
+    const blob = Utilities.newBlob(
+      Utilities.base64Decode(fileContent),
+      mimeType,
+      fileName
+    );
+    
+    // Upload file to tasks folder
+    const file = tasksFolder.createFile(blob);
+    
+    return { 
+      success: true, 
+      data: {
+        id: file.getId(),
+        name: file.getName(),
+        mimeType: file.getBlob().getContentType(),
+        size: file.getSize(),
+        url: file.getUrl(),
+        thumbnailUrl: file.getBlob().getContentType().startsWith('image/') ? 
+          `https://drive.google.com/thumbnail?id=${file.getId()}` : undefined,
+        uploadedAt: file.getDateCreated().toISOString(),
+        taskId: taskId
+      }
+    };
+  } catch (error) {
+    console.error('Error uploading file to task:', error);
     return { success: false, message: error.toString() };
   }
 }
@@ -1108,4 +1308,66 @@ function deleteProjectFile(projectId, fileId) {
     console.error('Error deleting file:', error);
     return { success: false, message: error.toString() };
   }
+}
+
+/**
+ * Diagnostic Functions for Testing Deployment
+ */
+
+/**
+ * Simple test function to verify deployment is working
+ */
+function testFunction() {
+  return { 
+    success: true, 
+    message: "Test function called successfully", 
+    version: DEPLOYMENT_VERSION,
+    lastUpdated: LAST_UPDATED,
+    serverTime: new Date().toISOString(),
+    randomValue: Math.random()
+  };
+}
+
+/**
+ * Health check function for monitoring
+ */
+function getHealthCheck() {
+  try {
+    return {
+      success: true,
+      version: DEPLOYMENT_VERSION,
+      lastUpdated: LAST_UPDATED,
+      serverTime: new Date().toISOString(),
+      status: "healthy",
+      spreadsheetId: SPREADSHEET_ID,
+      driveFolderId: DRIVE_FOLDER_ID,
+      calendarId: CALENDAR_ID
+    };
+  } catch (error) {
+    return {
+      success: false,
+      version: DEPLOYMENT_VERSION,
+      serverTime: new Date().toISOString(),
+      status: "error",
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Test deployment with parameter echo
+ */
+function testDeployment(testData) {
+  return {
+    success: true,
+    message: "Deployment test successful",
+    version: DEPLOYMENT_VERSION,
+    lastUpdated: LAST_UPDATED,
+    serverTime: new Date().toISOString(),
+    receivedData: testData || "no data provided",
+    echo: {
+      input: testData,
+      processed: testData ? `Processed: ${testData}` : "No input to process"
+    }
+  };
 }

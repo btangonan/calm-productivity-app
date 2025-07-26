@@ -2,6 +2,8 @@ export interface Area {
   id: string;
   name: string;
   description: string;
+  driveFolderId?: string;
+  driveFolderUrl?: string;
   createdAt: string;
 }
 
@@ -11,7 +13,8 @@ export interface Project {
   description: string;
   areaId: string | null;
   status: 'Active' | 'Paused' | 'Completed' | 'Archive';
-  driveFolderUrl: string;
+  driveFolderId?: string;
+  driveFolderUrl?: string;
   createdAt: string;
 }
 
@@ -22,6 +25,7 @@ export interface TaskAttachment {
   size: number;
   url: string;
   thumbnailUrl?: string;
+  driveFileId?: string;
   uploadedAt: string;
 }
 
@@ -89,6 +93,23 @@ export interface ProjectFile {
   size: number;
   url: string;
   thumbnailUrl?: string;
+  driveFileId?: string;
   createdAt: string;
   modifiedAt: string;
+}
+
+export interface DriveFolder {
+  id: string;
+  name: string;
+  webViewLink: string;
+  parentFolderId?: string;
+  createdTime: string;
+  modifiedTime: string;
+}
+
+export interface DriveStructure {
+  masterFolderId?: string;
+  masterFolderName?: string;
+  areas: Record<string, DriveFolder>;
+  projects: Record<string, DriveFolder>;
 }
