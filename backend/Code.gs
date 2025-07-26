@@ -2,9 +2,9 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.26.008-NATIVE-CORS-FIX";
-const SCRIPT_VERSION = "3.0.0"; // Increment with each deployment for verification
-const LAST_UPDATED = "2024-07-26T18:30:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.26.016-REVERT-NATIVE-CORS";
+const SCRIPT_VERSION = "3.0.7"; // Increment with each deployment for verification
+const LAST_UPDATED = "2024-07-26T19:00:00Z";
 
 // CORS configuration
 const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'
@@ -21,19 +21,62 @@ const TASKS_SUBFOLDER = 'Tasks';
  * Handle GET requests from the frontend
  */
 function doGet(e) {
-  const result = {
-    success: true,
-    message: "Now and Later API is running!",
-    version: DEPLOYMENT_VERSION,
-    scriptVersion: SCRIPT_VERSION,
-    lastUpdated: LAST_UPDATED,
-    serverTime: new Date().toISOString(),
-    testParameter: e.parameter.test || "none",
-    cacheBuster: Math.random().toString(36).substr(2, 9),
-    functionsAvailable: ["doGet", "doPost", "doOptions", "parseMultipartFormData"]
-  };
+  let result;
+  try {
+    const functionName = e.parameter.function;
+    const parameters = JSON.parse(e.parameter.parameters || '[]');
+    const authToken = e.parameter.token; // Retrieve token from query parameter
 
-  // Simply return the TextOutput object. The platform adds the headers.
+    let userInfo = null;
+    if (authToken) {
+      try {
+        userInfo = verifyGoogleToken(authToken);
+        console.log('Authenticated user (GET):', userInfo ? userInfo.email : 'Token verification failed');
+      } catch (error) {
+        console.warn('Token verification failed (GET):', error);
+      }
+    }
+
+    switch (functionName) {
+      case 'getAreas':
+        result = getAreas();
+        break;
+      case 'getProjects':
+        result = getProjects(parameters[0]);
+        break;
+      case 'getTasks':
+        result = getTasks(parameters[0], parameters[1]);
+        break;
+      case 'getContacts':
+        result = getContacts();
+        break;
+      case 'getProjectFiles':
+        result = getProjectFiles(parameters[0]);
+        break;
+      case 'getDriveStructure':
+        result = getDriveStructure();
+        break;
+      case 'getFolderFiles':
+        result = getFolderFiles(parameters[0]);
+        break;
+      case 'healthCheck':
+        result = {
+          success: true,
+          message: "API is healthy! (GET)",
+          version: DEPLOYMENT_VERSION,
+          scriptVersion: SCRIPT_VERSION,
+          authenticated: !!authToken,
+          userEmail: userInfo ? userInfo.email : null,
+        };
+        break;
+      default:
+        result = { success: false, message: `Unknown GET function: '${functionName}'` };
+        break;
+    }
+  } catch (error) {
+    result = { success: false, message: error.toString(), stack: error.stack };
+  }
+
   return ContentService
     .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);

@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx5It7CT4JqtxxnCDCrhiPlgLve4sXqKjosYfVKO0f8JfrjHxydVQZ6Q62Q5kQGjAhq/exec';
+  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwsBcOw1dyI5ucJwrjmjIkJIgMWsNA8bttovtOiuvmK638vZuEreWWrQwoJCtHTNYj/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 
@@ -205,7 +205,7 @@ class ApiService {
     }
   ];
 
-  private async executeGoogleScript<T>(token: string, functionName: string, ...args: any[]): Promise<GoogleScriptResponse<T>> {
+  private async executeGoogleScript<T>(token: string, functionName: string, args: any[] = [], httpMethod: 'GET' | 'POST' = 'POST'): Promise<GoogleScriptResponse<T>> {
     if (!this.isGoogleAppsScript || !this.backendHealthy) {
       // Return mock data for development or when backend is unhealthy
       return this.getMockResponse<T>(functionName, ...args);
@@ -218,14 +218,26 @@ class ApiService {
         token: token, // Pass token in payload
       };
 
-      const response = await fetch(this.APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
-        body: JSON.stringify(payload),
+      let url = this.APPS_SCRIPT_URL;
+      const options: RequestInit = {
+        method: httpMethod,
         mode: 'cors',
-      });
+      };
+
+      if (httpMethod === 'GET') {
+        const params = new URLSearchParams();
+        params.append('function', functionName);
+        params.append('parameters', JSON.stringify(args));
+        params.append('token', token);
+        url = `${this.APPS_SCRIPT_URL}?${params.toString()}`;
+      } else { // POST
+        options.headers = {
+          'Content-Type': 'text/plain;charset=utf-8',
+        };
+        options.body = JSON.stringify(payload);
+      }
+
+      const response = await fetch(url, options);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -506,68 +518,68 @@ class ApiService {
   }
 
   // API Methods
-  async getAreas(token?: string): Promise<Area[]> {
-    const response = await this.executeGoogleScript<Area[]>(token, 'getAreas');
+  async getAreas(token: string): Promise<Area[]> {
+    const response = await this.executeGoogleScript<Area[]>(token, 'getAreas', [], 'GET');
     return response.data || [];
   }
 
-  async createArea(name: string, description: string, token?: string): Promise<Area> {
-    const response = await this.executeGoogleScript<Area>(token, 'createArea', name, description);
+  async createArea(name: string, description: string, token: string): Promise<Area> {
+    const response = await this.executeGoogleScript<Area>(token, 'createArea', [name, description]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create area');
     }
     return response.data;
   }
 
-  async getProjects(areaId?: string, token?: string): Promise<Project[]> {
-    const response = await this.executeGoogleScript<Project[]>(token, 'getProjects', areaId);
+  async getProjects(areaId: string | undefined, token: string): Promise<Project[]> {
+    const response = await this.executeGoogleScript<Project[]>(token, 'getProjects', [areaId], 'GET');
     return response.data || [];
   }
 
-  async getTasks(projectId?: string, view?: string, token?: string): Promise<Task[]> {
-    const response = await this.executeGoogleScript<Task[]>(token, 'getTasks', projectId, view);
+  async getTasks(projectId: string | undefined, view: string | undefined, token: string): Promise<Task[]> {
+    const response = await this.executeGoogleScript<Task[]>(token, 'getTasks', [projectId, view], 'GET');
     return response.data || [];
   }
 
-  async createProject(name: string, description: string, areaId?: string, token?: string): Promise<Project> {
-    const response = await this.executeGoogleScript<Project>(token, 'createProject', name, description, areaId);
+  async createProject(name: string, description: string, areaId: string | undefined, token: string): Promise<Project> {
+    const response = await this.executeGoogleScript<Project>(token, 'createProject', [name, description, areaId]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create project');
     }
     return response.data;
   }
 
-  async createTask(title: string, description: string, projectId?: string, context?: string, dueDate?: string, attachments?: TaskAttachment[], token?: string): Promise<Task> {
-    const response = await this.executeGoogleScript<Task>(token, 'createTask', title, description, projectId, context, dueDate, attachments);
+  async createTask(title: string, description: string, projectId: string | undefined, context: string | undefined, dueDate: string | undefined, attachments: TaskAttachment[] | undefined, token: string): Promise<Task> {
+    const response = await this.executeGoogleScript<Task>(token, 'createTask', [title, description, projectId, context, dueDate, attachments]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create task');
     }
     return response.data;
   }
 
-  async updateTaskCompletion(taskId: string, isCompleted: boolean): Promise<void> {
-    const response = await this.executeGoogleScript<void>('updateTaskCompletion', taskId, isCompleted);
+  async updateTaskCompletion(taskId: string, isCompleted: boolean, token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'updateTaskCompletion', [taskId, isCompleted]);
     if (!response.success) {
       throw new Error(response.message || 'Failed to update task');
     }
   }
 
-  async updateProjectStatus(projectId: string, status: Project['status']): Promise<void> {
-    const response = await this.executeGoogleScript<void>('updateProjectStatus', projectId, status);
+  async updateProjectStatus(projectId: string, status: Project['status'], token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'updateProjectStatus', [projectId, status]);
     if (!response.success) {
       throw new Error(response.message || 'Failed to update project');
     }
   }
 
-  async updateProjectArea(projectId: string, areaId: string): Promise<void> {
-    const response = await this.executeGoogleScript<void>('updateProjectArea', projectId, areaId);
+  async updateProjectArea(projectId: string, areaId: string, token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'updateProjectArea', [projectId, areaId]);
     if (!response.success) {
       throw new Error(response.message || 'Failed to update project area');
     }
   }
 
-  async reorderTasks(taskIds: string[]): Promise<void> {
-    const response = await this.executeGoogleScript<void>('reorderTasks', taskIds);
+  async reorderTasks(taskIds: string[], token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'reorderTasks', [taskIds]);
     if (!response.success) {
       throw new Error(response.message || 'Failed to reorder tasks');
     }
@@ -607,32 +619,29 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
   }
 
   // Google Integrations
-  async processGmailToTasks(): Promise<Task[]> {
-    const response = await this.executeGoogleScript<Task[]>('processGmailToTasks');
+  async processGmailToTasks(token: string): Promise<Task[]> {
+    const response = await this.executeGoogleScript<Task[]>(token, 'processGmailToTasks');
     return response.data || [];
   }
 
-  async syncTasksWithCalendar(): Promise<any> {
-    const response = await this.executeGoogleScript<any>('syncTasksWithCalendar');
+  async syncTasksWithCalendar(token: string): Promise<any> {
+    const response = await this.executeGoogleScript<any>(token, 'syncTasksWithCalendar');
     return response.data || [];
   }
 
   async createTaskWithIntegrations(
     title: string, 
     description: string, 
-    projectId?: string, 
-    context?: string, 
-    dueDate?: string,
-    createCalendarEvent?: boolean
+    projectId: string | undefined, 
+    context: string | undefined, 
+    dueDate: string | undefined,
+    createCalendarEvent: boolean | undefined,
+    token: string
   ): Promise<TaskWithIntegrations> {
     const response = await this.executeGoogleScript<TaskWithIntegrations>(
+      token, 
       'createTaskWithIntegrations', 
-      title, 
-      description, 
-      projectId, 
-      context, 
-      dueDate,
-      createCalendarEvent
+      [title, description, projectId, context, dueDate, createCalendarEvent]
     );
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create task with integrations');
@@ -640,100 +649,102 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     return response.data;
   }
 
-  async createProjectDocument(projectId: string, projectName: string, templateType: 'project-notes' | 'meeting-notes' | 'project-plan'): Promise<Document> {
-    const response = await this.executeGoogleScript<Document>('createProjectDocument', projectId, projectName, templateType);
+  async createProjectDocument(projectId: string, projectName: string, templateType: 'project-notes' | 'meeting-notes' | 'project-plan', token: string): Promise<Document> {
+    const response = await this.executeGoogleScript<Document>(token, 'createProjectDocument', [projectId, projectName, templateType]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create project document');
     }
     return response.data;
   }
 
-  async getContacts(): Promise<Contact[]> {
-    const response = await this.executeGoogleScript<Contact[]>('getContacts');
+  async getContacts(token: string): Promise<Contact[]> {
+    const response = await this.executeGoogleScript<Contact[]>(token, 'getContacts', [], 'GET');
     return response.data || [];
   }
 
-  async setupGoogleTriggers(): Promise<void> {
-    const response = await this.executeGoogleScript<void>('setupTriggers');
+  async setupGoogleTriggers(token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'setupTriggers');
     if (!response.success) {
       throw new Error(response.message || 'Failed to setup triggers');
     }
   }
 
-  async testGoogleIntegrations(): Promise<any> {
-    const response = await this.executeGoogleScript<any>('testIntegrations');
+  async testGoogleIntegrations(token: string): Promise<any> {
+    const response = await this.executeGoogleScript<any>(token, 'testIntegrations');
     return response.data || {};
   }
 
   // File Management Methods
-  async getProjectFiles(projectId: string): Promise<ProjectFile[]> {
-    const response = await this.executeGoogleScript<ProjectFile[]>('getProjectFiles', projectId);
+  async getProjectFiles(projectId: string, token: string): Promise<ProjectFile[]> {
+    const response = await this.executeGoogleScript<ProjectFile[]>(token, 'getProjectFiles', [projectId], 'GET');
     return response.data || [];
   }
 
-  async uploadFileToProject(projectId: string, file: File): Promise<ProjectFile> {
-    const response = await this.executeGoogleScript<ProjectFile>('uploadFileToProject', projectId, file);
+  async uploadFileToProject(projectId: string, file: File, token: string): Promise<ProjectFile> {
+    const response = await this.executeGoogleScript<ProjectFile>(token, 'uploadFileToProject', [projectId, file]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to upload file');
     }
     return response.data;
   }
 
-  async deleteProjectFile(projectId: string, fileId: string): Promise<void> {
-    const response = await this.executeGoogleScript<void>('deleteProjectFile', projectId, fileId);
+  async deleteProjectFile(projectId: string, fileId: string, token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'deleteProjectFile', [projectId, fileId]);
     if (!response.success) {
       throw new Error(response.message || 'Failed to delete file');
     }
+    return response.data;
   }
 
   // Drive Folder Management Methods
-  async createMasterFolder(folderName: string): Promise<DriveFolder> {
-    const response = await this.executeGoogleScript<DriveFolder>('createMasterFolder', folderName);
+  async createMasterFolder(folderName: string, token: string): Promise<DriveFolder> {
+    const response = await this.executeGoogleScript<DriveFolder>(token, 'createMasterFolder', [folderName]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create master folder');
     }
     return response.data;
   }
 
-  async getDriveStructure(): Promise<DriveStructure> {
-    const response = await this.executeGoogleScript<DriveStructure>('getDriveStructure');
+  async getDriveStructure(token: string): Promise<DriveStructure> {
+    const response = await this.executeGoogleScript<DriveStructure>(token, 'getDriveStructure', [], 'GET');
     return response.data || { areas: {}, projects: {} };
   }
 
-  async createAreaFolder(areaId: string, areaName: string, masterFolderId?: string): Promise<DriveFolder> {
-    const response = await this.executeGoogleScript<DriveFolder>('createAreaFolder', areaId, areaName, masterFolderId);
+  async createAreaFolder(areaId: string, areaName: string, masterFolderId: string | undefined, token: string): Promise<DriveFolder> {
+    const response = await this.executeGoogleScript<DriveFolder>(token, 'createAreaFolder', [areaId, areaName, masterFolderId]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create area folder');
     }
     return response.data;
   }
 
-  async createProjectFolder(projectId: string, projectName: string, areaFolderId?: string): Promise<DriveFolder> {
-    const response = await this.executeGoogleScript<DriveFolder>('createProjectFolder', projectId, projectName, areaFolderId);
+  async createProjectFolder(projectId: string, projectName: string, areaFolderId: string | undefined, token: string): Promise<DriveFolder> {
+    const response = await this.executeGoogleScript<DriveFolder>(token, 'createProjectFolder', [projectId, projectName, areaFolderId]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create project folder');
     }
     return response.data;
   }
 
-  async uploadFileToFolder(folderId: string, file: File): Promise<ProjectFile> {
-    const response = await this.executeGoogleScript<ProjectFile>('uploadFileToFolder', folderId, file);
+  async uploadFileToFolder(folderId: string, file: File, token: string): Promise<ProjectFile> {
+    const response = await this.executeGoogleScript<ProjectFile>(token, 'uploadFileToFolder', [folderId, file]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to upload file to folder');
     }
     return response.data;
   }
 
-  async getFolderFiles(folderId: string): Promise<ProjectFile[]> {
-    const response = await this.executeGoogleScript<ProjectFile[]>('getFolderFiles', folderId);
+  async getFolderFiles(folderId: string, token: string): Promise<ProjectFile[]> {
+    const response = await this.executeGoogleScript<ProjectFile[]>(token, 'getFolderFiles', [folderId], 'GET');
     return response.data || [];
   }
 
-  async setMasterFolder(folderId: string): Promise<void> {
-    const response = await this.executeGoogleScript<void>('setMasterFolder', folderId);
+  async setMasterFolder(folderId: string, token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'setMasterFolder', [folderId]);
     if (!response.success) {
       throw new Error(response.message || 'Failed to set master folder');
     }
+    return response.data;
   }
 }
 
