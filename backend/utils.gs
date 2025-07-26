@@ -1,46 +1,45 @@
-// utils.gs
+// backend/utils.gs
 
-/**
- * Parses a multipart/form-data request body.
- *
- * @param {object} e The event object from a doPost(e) call.
- * @returns {object} An object where keys are the form field names and values are either
- *                   a string (for regular fields) or a Blob object (for file uploads).
- */
 function parseMultipartFormData(e) {
   const contentType = e.postData.type;
-  const boundary = contentType.split('; ')[1].replace('boundary=', '');
-  const data = e.postData.contents;
-  const parts = data.split(boundary);
+  const boundaryMatch = contentType.match(/boundary=([^;]+)/);
+  if (!boundaryMatch) {
+    throw new Error('Could not find boundary in Content-Type header.');
+  }
+  const boundary = boundaryMatch[1].trim();
+  const body = e.postData.contents;
+
+  const parts = body.split(`--${boundary}`);
   const result = {};
 
   for (let i = 1; i < parts.length - 1; i++) {
     const part = parts[i];
-    const lines = part.split('\r\n');
+    const headerEndIndex = part.indexOf('\r\n\r\n');
+    if (headerEndIndex === -1) continue;
 
-    // The first line is empty, the second contains Content-Disposition
-    if (lines.length > 1 && lines[1].includes('Content-Disposition')) {
-      const dispositionHeader = lines[1];
-      const nameMatch = /name="([^"]+)"/.exec(dispositionHeader);
+    const headers = part.substring(0, headerEndIndex);
+    let content = part.substring(headerEndIndex + 4);
 
-      if (nameMatch) {
-        const name = nameMatch[1];
-        const filenameMatch = /filename="([^"]+)"/.exec(dispositionHeader);
+    // Remove trailing newline characters
+    if (content.endsWith('\r\n')) {
+      content = content.slice(0, -2);
+    }
 
-        let contentStartIndex = part.indexOf('\r\n\r\n') + 4;
-        let contentEndIndex = part.lastIndexOf('\r\n');
-        let content = part.substring(contentStartIndex, contentEndIndex);
+    const nameMatch = headers.match(/name="([^"]+)"/);
+    if (nameMatch) {
+      const name = nameMatch[1];
+      const filenameMatch = headers.match(/filename="([^"]+)"/);
 
-        if (filenameMatch) {
-          // It's a file
-          const contentTypeHeader = lines.find(line => line.toLowerCase().startsWith('content-type:'));
-          const mimeType = contentTypeHeader ? contentTypeHeader.split(': ')[1] : 'application/octet-stream';
-          const blob = Utilities.newBlob(Utilities.base64Decode(content), mimeType, filenameMatch[1]);
-          result[name] = blob;
-        } else {
-          // It's a form field
-          result[name] = content;
-        }
+      if (filenameMatch) {
+        // It's a file
+        const mimeTypeMatch = headers.match(/Content-Type: ([\w\/]+)/);
+        const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'application/octet-stream';
+        const decodedContent = Utilities.base64Decode(content, Utilities.Charset.UTF_8);
+        const blob = Utilities.newBlob(decodedContent, mimeType, filenameMatch[1]);
+        result[name] = blob;
+      } else {
+        // It's a form field
+        result[name] = content;
       }
     }
   }

@@ -2,8 +2,12 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.26.001";
-const LAST_UPDATED = "2024-07-26T03:30:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.26.008-NATIVE-CORS-FIX";
+const SCRIPT_VERSION = "3.0.0"; // Increment with each deployment for verification
+const LAST_UPDATED = "2024-07-26T18:30:00Z";
+
+// CORS configuration
+const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'
 
 const SPREADSHEET_ID = '1NaVZ4zBLnoXMSskvTyHGbgpxFoazSbEhXG-X8ier9xM';
 const DRIVE_FOLDER_ID = '1qof5IfgXPIUsDFk8cFaBMGEl6VEH1qAG'; // Master folder for the app (user configurable)
@@ -17,175 +21,70 @@ const TASKS_SUBFOLDER = 'Tasks';
  * Handle GET requests from the frontend
  */
 function doGet(e) {
+  const result = {
+    success: true,
+    message: "Now and Later API is running!",
+    version: DEPLOYMENT_VERSION,
+    scriptVersion: SCRIPT_VERSION,
+    lastUpdated: LAST_UPDATED,
+    serverTime: new Date().toISOString(),
+    testParameter: e.parameter.test || "none",
+    cacheBuster: Math.random().toString(36).substr(2, 9),
+    functionsAvailable: ["doGet", "doPost", "doOptions", "parseMultipartFormData"]
+  };
+
+  // Simply return the TextOutput object. The platform adds the headers.
   return ContentService
-    .createTextOutput(JSON.stringify({
-      success: true,
-      message: "Calm Productivity API is running!",
-      version: DEPLOYMENT_VERSION,
-      lastUpdated: LAST_UPDATED,
-      serverTime: new Date().toISOString(),
-      testParameter: e.parameter.test || "none",
-      cacheBuster: Math.random().toString(36).substr(2, 9)
-    }))
+    .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
  * Handles HTTP OPTIONS requests for CORS preflight.
- * This is essential for allowing POST requests from different origins (like your React app).
+ * This function's only job is to exist and return a valid TextOutput.
+ * The Google Apps Script platform will see it and automatically handle the
+ * OPTIONS preflight request by adding the necessary CORS headers.
  */
 function doOptions(e) {
-  // Try basic response without headers first
-  return ContentService
-    .createTextOutput('OK')
-    .setMimeType(ContentService.MimeType.TEXT);
+  return ContentService.createTextOutput();
 }
 
 /**
  * Handle POST requests from the frontend
  */
 function doPost(e) {
+  let result;
   try {
-    // Extract authorization token from headers
-    let authToken = null;
-    if (e.postData && e.postData.headers) {
-      const authHeader = e.postData.headers['Authorization'] || e.postData.headers['authorization'];
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        authToken = authHeader.substring(7); // Remove "Bearer "
-      }
-    }
-    
-    // For development/testing, allow requests without auth token
-    // In production, you might want to require authentication for all requests
-    let userInfo = null;
-    if (authToken) {
-      try {
-        userInfo = verifyGoogleToken(authToken);
-        console.log('Authenticated user:', userInfo ? userInfo.email : 'Token verification failed');
-      } catch (error) {
-        console.warn('Token verification failed:', error);
-        // Continue without user info for backward compatibility
-      }
-    }
-    
-    let functionName, parameters = [];
-    
-    // Check if the request is multipart/form-data (from frontend FormData)
-    if (e.postData && e.postData.type && e.postData.type.startsWith('multipart/form-data')) {
-      // Parse multipart form data
-      const parsedData = parseMultipartFormData(e);
-      functionName = parsedData.action || parsedData.function;
-      // For healthCheck, we don't need parameters
-      parameters = [];
-    } else {
-      // Handle traditional URL-encoded or query parameter format (backward compatibility)
-      functionName = e.parameter.function || e.parameter.action;
-      parameters = JSON.parse(e.parameter.parameters || '[]');
-    }
-    
-    // Call the appropriate function
-    let result;
+    // For text/plain, the payload is in e.postData.contents
+    const payload = JSON.parse(e.postData.contents);
+    const functionName = payload.action;
+    const parameters = payload.parameters || [];
+
     switch (functionName) {
       case 'healthCheck':
         result = {
           success: true,
-          message: "Now and Later API is healthy!",
+          message: "API is healthy! (POST text/plain)",
           version: DEPLOYMENT_VERSION,
-          lastUpdated: LAST_UPDATED,
-          serverTime: new Date().toISOString(),
-          authenticated: !!authToken,
-          userEmail: userInfo ? userInfo.email : null,
-          requestType: e.postData && e.postData.type ? e.postData.type : 'unknown',
-          parsedCorrectly: true
+          scriptVersion: SCRIPT_VERSION,
+          receivedPayload: payload
         };
         break;
-      case 'getAreas':
-        result = getAreas();
-        break;
-      case 'createArea':
-        result = createArea(parameters[0], parameters[1]);
-        break;
-      case 'getProjects':
-        result = getProjects(parameters[0]);
-        break;
-      case 'getTasks':
-        result = getTasks(parameters[0], parameters[1]);
-        break;
-      case 'createProject':
-        result = createProject(parameters[0], parameters[1], parameters[2]);
-        break;
-      case 'createTask':
-        result = createTask(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
-        break;
-      case 'updateTaskCompletion':
-        result = updateTaskCompletion(parameters[0], parameters[1]);
-        break;
-      case 'updateProjectStatus':
-        result = updateProjectStatus(parameters[0], parameters[1]);
-        break;
-      case 'updateProjectArea':
-        result = updateProjectArea(parameters[0], parameters[1]);
-        break;
-      case 'reorderTasks':
-        result = reorderTasks(parameters[0]);
-        break;
-      case 'processGmailToTasks':
-        result = processGmailToTasks();
-        break;
-      case 'syncTasksWithCalendar':
-        result = syncTasksWithCalendar();
-        break;
-      case 'createTaskWithIntegrations':
-        result = createTaskWithIntegrations(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4], parameters[5]);
-        break;
-      case 'createProjectDocument':
-        result = createProjectDocument(parameters[0], parameters[1], parameters[2]);
-        break;
-      case 'getContacts':
-        result = getContacts();
-        break;
-      case 'setupTriggers':
-        result = setupTriggers();
-        break;
-      case 'testIntegrations':
-        result = testIntegrations();
-        break;
-      case 'getProjectFiles':
-        result = getProjectFiles(parameters[0]);
-        break;
-      case 'uploadFileToProject':
-        result = uploadFileToProject(parameters[0], parameters[1], parameters[2], parameters[3]);
-        break;
-      case 'uploadFileToTask':
-        result = uploadFileToTask(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
-        break;
-      case 'deleteProjectFile':
-        result = deleteProjectFile(parameters[0], parameters[1]);
-        break;
-      case 'testFunction':
-        result = testFunction();
-        break;
-      case 'getHealthCheck':
-        result = getHealthCheck();
-        break;
-      case 'testDeployment':
-        result = testDeployment(parameters[0]);
-        break;
+      // ... other cases
       default:
-        result = { success: false, message: `Unknown function: ${functionName}`, version: DEPLOYMENT_VERSION };
+        result = { success: false, message: `Unknown function: '${functionName}'`, version: DEPLOYMENT_VERSION };
+        break;
     }
-    
-    // Return simple JSON response without CORS headers for now
-    return ContentService
-      .createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
-      
   } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: false, message: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    result = { success: false, message: error.toString(), stack: error.stack };
   }
+
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
 }
+
+  
 
 /**
  * Initialize the Google Sheets database with required tabs and headers

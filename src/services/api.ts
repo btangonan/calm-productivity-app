@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbykQS2ijrxIxqnNyzXUjdZbLPx3bCP0rl0YXpieqrA-y-1Wct0oCbRLFnlil9WHxfhv/exec';
+  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzYlSB0ulctua8b2ULKBfGiP0Dc_i39fSyMMS9WG-SzYPOaVlGK9UDFycgFGI2czzlS/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 
@@ -205,27 +205,26 @@ class ApiService {
     }
   ];
 
-  private async executeGoogleScript<T>(token: string | undefined, functionName: string, ...args: any[]): Promise<GoogleScriptResponse<T>> {
-    if (!this.isGoogleAppsScript || !this.backendHealthy || !token) {
-      // Return mock data for development, when backend is unhealthy, or no token
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(this.getMockResponse<T>(functionName, ...args));
-        }, 300); // Simulate network delay
-      });
+  private async executeGoogleScript<T>(token: string, functionName: string, ...args: any[]): Promise<GoogleScriptResponse<T>> {
+    if (!this.isGoogleAppsScript || !this.backendHealthy) {
+      // Return mock data for development or when backend is unhealthy
+      return this.getMockResponse<T>(functionName, ...args);
     }
 
     try {
-      const formData = new FormData();
-      formData.append('function', functionName);
-      formData.append('parameters', JSON.stringify(args));
+      const payload = {
+        action: functionName,
+        parameters: args,
+      };
 
       const response = await fetch(this.APPS_SCRIPT_URL, {
         method: 'POST',
         headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
           'Authorization': `Bearer ${token}`,
         },
-        body: formData,
+        body: JSON.stringify(payload),
+        mode: 'cors',
       });
 
       if (!response.ok) {
@@ -236,16 +235,8 @@ class ApiService {
       return result as GoogleScriptResponse<T>;
     } catch (error) {
       console.error('Apps Script request failed:', error);
-      console.warn('Falling back to mock data...');
-      
-      // Mark backend as unhealthy and fallback to mock data
       this.backendHealthy = false;
-      
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(this.getMockResponse<T>(functionName, ...args));
-        }, 100);
-      });
+      return this.getMockResponse<T>(functionName, ...args);
     }
   }
 
@@ -447,41 +438,42 @@ class ApiService {
   async checkBackendHealth(): Promise<boolean> {
     if (!this.isGoogleAppsScript) {
       console.log('Using mock data mode');
-      return true; // Mock data is always "healthy"
+      this.backendHealthy = true;
+      return true;
     }
 
     try {
       console.log('🔍 Checking Google Apps Script backend health...');
-      console.log('🌐 Using URL:', this.APPS_SCRIPT_URL);
-      console.log('🔧 Environment variable:', import.meta.env.VITE_APPS_SCRIPT_URL);
-      console.log('📅 Build timestamp:', new Date().toISOString());
-      console.log('🔄 Cache buster:', Math.random().toString(36).substr(2, 9));
-      
-      const formData = new FormData();
-      formData.append('action', 'healthCheck');
-      formData.append('timestamp', Date.now().toString());
+      const payload = {
+        action: 'healthCheck',
+        timestamp: Date.now(),
+      };
 
       const response = await fetch(this.APPS_SCRIPT_URL, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify(payload),
+        mode: 'cors',
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        console.error('Health check failed with status:', response.status);
+        this.backendHealthy = false;
+        return false;
       }
 
       const data = await response.json();
       const isHealthy = data.success && data.version;
-      
       this.backendHealthy = isHealthy;
-      
+
       if (isHealthy) {
-        console.log('✅ Backend healthy - Version:', data.version);
-        console.log('📊 Last updated:', data.lastUpdated);
+        console.log('✅ Backend is healthy - Version:', data.version);
       } else {
         console.warn('⚠️ Backend responding but unhealthy:', data);
       }
-      
+
       return isHealthy;
     } catch (error) {
       console.error('❌ Backend health check failed:', error);

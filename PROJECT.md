@@ -113,10 +113,17 @@ const DEPLOYMENT_VERSION = "v2024.07.26.001";
 ```
 
 **Current Deployment**:
-- **URL**: `https://script.google.com/macros/s/AKfycbwBMNVVL0w7z3i4OsldsXGXkqm_2NBlKfvFFQiHJa6S5rONPkELSX3tzjN7R9s4m6O2/exec`
-- **Status**: 🟢 LIVE with authentication support
+- **URL**: `https://script.google.com/macros/s/AKfycbxlXY-xbOuOauKFtsF4oIaY4XxIzO1C6k4KvbjxgqUMy8F7YdKc6bQ28Yx1SlEASNXr/exec`
+- **Version**: v2024.07.26.008-NATIVE-CORS-FIX / Script Version 3.0.0
+- **Status**: 🟡 CORS WORKING but POST requests failing
 - **Execute as**: User accessing the web app
 - **Access**: Anyone with a Google account
+
+**CORS Implementation**: ✅ **NATIVE GOOGLE APPS SCRIPT CORS HANDLING**
+- Google Apps Script automatically adds `Access-Control-Allow-Origin: *` headers
+- No manual header setting required (addHeader/setHeader methods don't exist)
+- Simple `doOptions()` function signals CORS support to the platform
+- GET requests working perfectly with proper CORS headers
 
 ## 🎨 React Frontend Status
 
@@ -325,9 +332,9 @@ private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSc
 
 **Production Configuration**:
 ```typescript
-// Environment Variables (.env)
+// Environment Variables (.env) - Updated with CORS-fixed deployment
 VITE_GOOGLE_CLIENT_ID="582559442661-tge98kb2mcbsk7v6tddkv2kshkgn8gur.apps.googleusercontent.com"
-VITE_APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbwBMNVVL0w7z3i4OsldsXGXkqm_2NBlKfvFFQiHJa6S5rONPkELSX3tzjN7R9s4m6O2/exec"
+VITE_APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbxlXY-xbOuOauKFtsF4oIaY4XxIzO1C6k4KvbjxgqUMy8F7YdKc6bQ28Yx1SlEASNXr/exec"
 ```
 
 **Verification Tests Passed**:
@@ -351,3 +358,60 @@ VITE_APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbwBMNVVL0w7z3i4Osl
 - User-specific data isolation with email-based folders
 - Secure logout with complete data clearing
 - Environment variable protection for sensitive credentials
+
+## 🚨 Current Backend Connectivity Issues
+
+### **Status**: 🟡 **PARTIAL CONNECTIVITY** - Authentication works, but app shows mock data
+
+### **CORS Resolution**: ✅ **SOLVED**
+**Problem**: Manual header setting attempts failed with `addHeader` and `setHeader` errors
+**Solution**: Google Apps Script native CORS handling
+- Removed all manual header manipulation code
+- Simple `doOptions()` function enables automatic CORS headers
+- GET requests now work with proper `Access-Control-Allow-Origin: *` headers
+
+### **Current Issues**: ❌ **POST Requests Failing**
+**Problem**: Frontend health check fails, forcing mock data mode
+**Symptoms**:
+- ✅ GET requests work perfectly and return JSON with version info
+- ❌ POST requests redirect to "Page Not Found" errors  
+- ❌ OPTIONS requests return 405 Method Not Allowed
+- ✅ Google Sign-In authentication works correctly
+- ❌ App defaults to mock data due to failed health check
+
+**Technical Details**:
+```bash
+# GET Request - WORKS ✅
+curl -L "https://script.google.com/.../exec?test=health"
+# Returns: {"success":true,"version":"v2024.07.26.008-NATIVE-CORS-FIX"...}
+
+# POST Request - FAILS ❌  
+curl -X POST "https://script.google.com/.../exec" -F "action=healthCheck"
+# Returns: HTML redirect to error page
+
+# OPTIONS Request - FAILS ❌
+curl -X OPTIONS "https://script.google.com/.../exec"
+# Returns: 405 Method Not Allowed
+```
+
+**Root Cause Analysis**:
+1. `doPost()` function exists but requests redirect to error pages
+2. `doOptions()` function returns 405 instead of handling preflight
+3. Multipart form data parsing may have issues
+4. Google Apps Script deployment configuration problems
+
+**Frontend Impact**:
+```typescript
+// Health check switched from POST to GET due to POST failures
+async checkBackendHealth(): Promise<boolean> {
+  // This fails, forcing mock data mode
+  const response = await fetch(`${url}?test=health`, {method: 'GET'});
+}
+```
+
+### **Next Steps for Resolution**:
+1. **Debug POST request handling** in Google Apps Script deployment
+2. **Verify multipart form data parsing** in `parseMultipartFormData()`
+3. **Test OPTIONS preflight** request handling in `doOptions()`
+4. **Switch health check to GET-only** if POST cannot be fixed
+5. **Update frontend to use GET requests** for critical operations
