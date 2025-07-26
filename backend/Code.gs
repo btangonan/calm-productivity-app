@@ -2,8 +2,8 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.25.001";
-const LAST_UPDATED = "2024-07-25T20:00:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.26.001";
+const LAST_UPDATED = "2024-07-26T03:30:00Z";
 
 const SPREADSHEET_ID = '1NaVZ4zBLnoXMSskvTyHGbgpxFoazSbEhXG-X8ier9xM';
 const DRIVE_FOLDER_ID = '1qof5IfgXPIUsDFk8cFaBMGEl6VEH1qAG'; // Master folder for the app (user configurable)
@@ -35,6 +35,28 @@ function doGet(e) {
  */
 function doPost(e) {
   try {
+    // Extract authorization token from headers
+    let authToken = null;
+    if (e.postData && e.postData.headers) {
+      const authHeader = e.postData.headers['Authorization'] || e.postData.headers['authorization'];
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        authToken = authHeader.substring(7); // Remove "Bearer "
+      }
+    }
+    
+    // For development/testing, allow requests without auth token
+    // In production, you might want to require authentication for all requests
+    let userInfo = null;
+    if (authToken) {
+      try {
+        userInfo = verifyGoogleToken(authToken);
+        console.log('Authenticated user:', userInfo ? userInfo.email : 'Token verification failed');
+      } catch (error) {
+        console.warn('Token verification failed:', error);
+        // Continue without user info for backward compatibility
+      }
+    }
+    
     const functionName = e.parameter.function;
     const parameters = JSON.parse(e.parameter.parameters || '[]');
     
@@ -1370,4 +1392,82 @@ function testDeployment(testData) {
       processed: testData ? `Processed: ${testData}` : "No input to process"
     }
   };
+}
+
+/**
+ * Verify Google ID token and extract user information
+ */
+function verifyGoogleToken(idToken) {
+  try {
+    // In Google Apps Script, we can use the built-in OAuth to verify tokens
+    // This is a simplified approach - for production, you might want more robust verification
+    
+    // Use Google's tokeninfo endpoint to verify the token
+    const response = UrlFetchApp.fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`,
+      {
+        method: 'GET',
+        muteHttpExceptions: true
+      }
+    );
+    
+    if (response.getResponseCode() !== 200) {
+      console.error('Token verification failed:', response.getContentText());
+      return null;
+    }
+    
+    const tokenInfo = JSON.parse(response.getContentText());
+    
+    // Verify the token is for our app (optional - add your client ID check here)
+    // if (tokenInfo.aud !== 'YOUR_CLIENT_ID') {
+    //   console.error('Token audience mismatch');
+    //   return null;
+    // }
+    
+    return {
+      id: tokenInfo.sub,
+      email: tokenInfo.email,
+      name: tokenInfo.name,
+      picture: tokenInfo.picture,
+      verified: true
+    };
+    
+  } catch (error) {
+    console.error('Error verifying Google token:', error);
+    return null;
+  }
+}
+
+/**
+ * Get user-specific folder or create if doesn't exist
+ */
+function getUserFolder(userEmail) {
+  try {
+    // Create a folder structure: Master > Users > [user-email]
+    const masterFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    
+    // Look for Users folder
+    let usersFolder;
+    const usersFolders = masterFolder.getFoldersByName('Users');
+    if (usersFolders.hasNext()) {
+      usersFolder = usersFolders.next();
+    } else {
+      usersFolder = masterFolder.createFolder('Users');
+    }
+    
+    // Look for user-specific folder
+    const userFolderName = userEmail.replace('@', '_at_').replace(/[^a-zA-Z0-9_]/g, '_');
+    let userFolder;
+    const userFolders = usersFolder.getFoldersByName(userFolderName);
+    if (userFolders.hasNext()) {
+      userFolder = userFolders.next();
+    } else {
+      userFolder = usersFolder.createFolder(userFolderName);
+    }
+    
+    return userFolder;
+  } catch (error) {
+    console.error('Error getting user folder:', error);
+    return DriveApp.getFolderById(DRIVE_FOLDER_ID); // Fallback to master folder
+  }
 }
