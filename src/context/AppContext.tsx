@@ -110,6 +110,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'REORDER_TASKS':
       return { ...state, tasks: action.payload };
     case 'LOGIN_SUCCESS':
+      console.log('✅ LOGIN_SUCCESS action dispatched:', action.payload);
       return { ...state, isAuthenticated: true, userProfile: action.payload };
     case 'LOGOUT':
       return { 

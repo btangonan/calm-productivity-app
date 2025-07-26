@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzhpfokKXaNBJ82WAoK39lN-qQ1iREWti6OmroYyw-18aYyNQRNwpsyeaYN-4BMpcUM/exec';
+  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwBMNVVL0w7z3i4OsldsXGXkqm_2NBlKfvFFQiHJa6S5rONPkELSX3tzjN7R9s4m6O2/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 
@@ -452,12 +452,16 @@ class ApiService {
 
     try {
       console.log('🔍 Checking Google Apps Script backend health...');
+      console.log('🌐 Using URL:', this.APPS_SCRIPT_URL);
+      console.log('🔧 Environment variable:', import.meta.env.VITE_APPS_SCRIPT_URL);
       
-      const response = await fetch(`${this.APPS_SCRIPT_URL}?healthCheck=${Date.now()}`, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
+      const formData = new FormData();
+      formData.append('action', 'healthCheck');
+      formData.append('timestamp', Date.now().toString());
+
+      const response = await fetch(this.APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: formData,
       });
 
       if (!response.ok) {

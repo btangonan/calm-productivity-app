@@ -141,12 +141,21 @@ function AppContent() {
 function AppRouter() {
   const { state } = useApp();
 
+  // Debug logging to see authentication state
+  console.log('🔍 AppRouter - Authentication state:', {
+    isAuthenticated: state.isAuthenticated,
+    userProfile: state.userProfile ? 'Present' : 'Null',
+    loading: state.loading
+  });
+
   // Show login screen if not authenticated
   if (!state.isAuthenticated) {
+    console.log('🔐 Showing LoginScreen - user not authenticated');
     return <LoginScreen />;
   }
 
   // Show main app if authenticated
+  console.log('✅ Showing AppContent - user authenticated');
   return <AppContent />;
 }
 
