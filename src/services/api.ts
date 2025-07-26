@@ -455,6 +455,7 @@ class ApiService {
       console.log('🌐 Using URL:', this.APPS_SCRIPT_URL);
       console.log('🔧 Environment variable:', import.meta.env.VITE_APPS_SCRIPT_URL);
       console.log('📅 Build timestamp:', new Date().toISOString());
+      console.log('🔄 Cache buster:', Math.random().toString(36).substr(2, 9));
       
       const formData = new FormData();
       formData.append('action', 'healthCheck');
