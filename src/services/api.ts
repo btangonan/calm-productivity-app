@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzahjHvRuCCmqrhtWFRpDV0tStvlGOUqT2oeFXC3SxEWuXm_u7OrKm8_N4exZMeYPgE/exec';
+  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzoJ0QpehNcu-Rfq743ta_JJc5_TL8wA-D5aewjczRO6K05AaAYQiURiS58EDPwimML/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 
@@ -454,6 +454,7 @@ class ApiService {
       console.log('🔍 Checking Google Apps Script backend health...');
       console.log('🌐 Using URL:', this.APPS_SCRIPT_URL);
       console.log('🔧 Environment variable:', import.meta.env.VITE_APPS_SCRIPT_URL);
+      console.log('📅 Build timestamp:', new Date().toISOString());
       
       const formData = new FormData();
       formData.append('action', 'healthCheck');
