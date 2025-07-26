@@ -63,6 +63,17 @@ function doPost(e) {
     // Call the appropriate function
     let result;
     switch (functionName) {
+      case 'healthCheck':
+        result = {
+          success: true,
+          message: "Now and Later API is healthy!",
+          version: DEPLOYMENT_VERSION,
+          lastUpdated: LAST_UPDATED,
+          serverTime: new Date().toISOString(),
+          authenticated: !!authToken,
+          userEmail: userInfo ? userInfo.email : null
+        };
+        break;
       case 'getAreas':
         result = getAreas();
         break;
