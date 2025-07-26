@@ -57,7 +57,8 @@ function doPost(e) {
       }
     }
     
-    const functionName = e.parameter.function;
+    // Handle both 'function' parameter (for regular API calls) and 'action' parameter (for healthCheck)
+    const functionName = e.parameter.function || e.parameter.action;
     const parameters = JSON.parse(e.parameter.parameters || '[]');
     
     // Call the appropriate function
