@@ -33,16 +33,16 @@ class ApiService {
       id: '1', 
       name: 'Personal', 
       description: 'Personal tasks and projects', 
-      driveFolderId: 'area_folder_1',
-      driveFolderUrl: 'https://drive.google.com/drive/folders/area_folder_1',
+      driveFolderId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms', // Example Google Drive folder ID
+      driveFolderUrl: 'https://drive.google.com/drive/folders/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
       createdAt: new Date().toISOString() 
     },
     { 
       id: '2', 
       name: 'Work', 
       description: 'Work-related items',
-      driveFolderId: 'area_folder_2', 
-      driveFolderUrl: 'https://drive.google.com/drive/folders/area_folder_2',
+      driveFolderId: '1UpxCxGI0Oo_cL4XuN0QGod4p3lwLBYEF', // Example Google Drive folder ID
+      driveFolderUrl: 'https://drive.google.com/drive/folders/1UpxCxGI0Oo_cL4XuN0QGod4p3lwLBYEF',
       createdAt: new Date().toISOString() 
     }
   ];
@@ -90,8 +90,8 @@ class ApiService {
       description: 'Kitchen and bathroom updates',
       areaId: '1',
       status: 'Active',
-      driveFolderId: 'project_folder_1',
-      driveFolderUrl: 'https://drive.google.com/drive/folders/project_folder_1',
+      driveFolderId: '1SmWFnzcqKuiKX3-r_9PPaH0TMTMDThBy', // Example Google Drive folder ID
+      driveFolderUrl: 'https://drive.google.com/drive/folders/1SmWFnzcqKuiKX3-r_9PPaH0TMTMDThBy',
       createdAt: new Date().toISOString()
     },
     {
@@ -100,8 +100,8 @@ class ApiService {
       description: 'Strategic planning for Q4',
       areaId: '2',
       status: 'Active',
-      driveFolderId: 'project_folder_2',
-      driveFolderUrl: 'https://drive.google.com/drive/folders/project_folder_2',
+      driveFolderId: '1mwSF0YOX6kTjZxFy9Bg2MHI5Q9uX8JzD', // Example Google Drive folder ID  
+      driveFolderUrl: 'https://drive.google.com/drive/folders/1mwSF0YOX6kTjZxFy9Bg2MHI5Q9uX8JzD',
       createdAt: new Date().toISOString()
     }
   ];

@@ -121,20 +121,22 @@ const Header = () => {
         </div>
         
         <div className="flex items-center space-x-3">
-          {/* Backend Status Indicator */}
-          <div className="flex items-center space-x-2">
-            {backendStatus.usingMockData ? (
-              <div className="flex items-center px-2 py-1 bg-yellow-100 border border-yellow-300 rounded-md">
-                <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
-                <span className="text-xs font-medium text-yellow-800">Mock Data</span>
-              </div>
-            ) : (
-              <div className="flex items-center px-2 py-1 bg-green-100 border border-green-300 rounded-md">
-                <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                <span className="text-xs font-medium text-green-800">Live Data</span>
-              </div>
-            )}
-          </div>
+          {/* Backend Status Indicator - Only show in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="flex items-center space-x-2">
+              {backendStatus.usingMockData ? (
+                <div className="flex items-center px-2 py-1 bg-yellow-100 border border-yellow-300 rounded-md">
+                  <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
+                  <span className="text-xs font-medium text-yellow-800">Mock Data</span>
+                </div>
+              ) : (
+                <div className="flex items-center px-2 py-1 bg-green-100 border border-green-300 rounded-md">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                  <span className="text-xs font-medium text-green-800">Live Data</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {selectedProject && selectedProject.driveFolderUrl && (
             <a
@@ -142,9 +144,13 @@ const Header = () => {
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              title={backendStatus.usingMockData ? "Connect Google Apps Script backend to create real Drive folders" : "Open project folder in Google Drive"}
             >
               <span className="mr-2">📂</span>
               Open Drive Folder
+              {backendStatus.usingMockData && (
+                <span className="ml-2 text-xs text-gray-500">(Demo)</span>
+              )}
             </a>
           )}
         </div>
