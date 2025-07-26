@@ -8,6 +8,13 @@ interface TaskDescriptionProps {
   isExpanded?: boolean;
   maxLength?: number;
   className?: string;
+  isEditing?: boolean;
+  editingDescription?: string;
+  onDescriptionChange?: (value: string) => void;
+  onDescriptionSave?: () => void;
+  onDescriptionKeyDown?: (e: React.KeyboardEvent) => void;
+  onDescriptionClick?: (e: React.MouseEvent) => void;
+  isSelected?: boolean;
 }
 
 const TaskDescription: React.FC<TaskDescriptionProps> = ({ 
@@ -15,7 +22,14 @@ const TaskDescription: React.FC<TaskDescriptionProps> = ({
   task,
   isExpanded = false,
   maxLength = 80, 
-  className = "text-sm text-gray-600 mt-1" 
+  className = "text-sm text-gray-600 mt-1",
+  isEditing = false,
+  editingDescription = '',
+  onDescriptionChange,
+  onDescriptionSave,
+  onDescriptionKeyDown,
+  onDescriptionClick,
+  isSelected = false
 }) => {
   const { dispatch } = useApp();
 
@@ -44,15 +58,40 @@ const TaskDescription: React.FC<TaskDescriptionProps> = ({
     <>
       {/* Description text */}
       <div className={className}>
-        {isExpanded ? (
-          // Expanded: full description with proper formatting
-          <div className="whitespace-pre-wrap break-words">
-            {description}
-          </div>
+        {isEditing ? (
+          // Editing mode: textarea for multiline editing
+          <textarea
+            value={editingDescription}
+            onChange={(e) => onDescriptionChange?.(e.target.value)}
+            onBlur={onDescriptionSave}
+            onKeyDown={onDescriptionKeyDown}
+            className="w-full text-sm bg-white border border-primary-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+            rows={3}
+            placeholder="Add description..."
+            autoFocus
+            onClick={(e) => e.stopPropagation()}
+          />
         ) : (
-          // Collapsed: single line only, truncated
-          <div className="text-sm text-gray-600 truncate">
-            {previewDescription}
+          <div 
+            className={`cursor-pointer rounded px-2 py-1 ${
+              isSelected 
+                ? 'bg-primary-50 border border-primary-200' 
+                : 'hover:bg-gray-100'
+            }`}
+            onClick={onDescriptionClick}
+            title={isSelected ? "Click again to edit description" : "Click to select task"}
+          >
+            {isExpanded ? (
+              // Expanded: full description with proper formatting
+              <div className="whitespace-pre-wrap break-words text-sm text-gray-600">
+                {description || "No description"}
+              </div>
+            ) : (
+              // Collapsed: single line only, truncated
+              <div className="text-sm text-gray-600 truncate">
+                {previewDescription || "No description"}
+              </div>
+            )}
           </div>
         )}
       </div>

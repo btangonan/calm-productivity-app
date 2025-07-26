@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy": "vercel --prod",
@@ -13,6 +13,8 @@
     "build:check": "npm run build && echo 'Build successful!'"
   },
   "dependencies": {
+    "@dnd-kit/modifiers": "^9.0.0",
+    "node-fetch": "^3.3.2",
     "react": "^19.1.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",

@@ -16,11 +16,13 @@ type AppAction =
   | { type: 'SET_SELECTED_PROJECT'; payload: string | null }
   | { type: 'ADD_AREA'; payload: Area }
   | { type: 'UPDATE_AREA'; payload: Area }
+  | { type: 'DELETE_AREA'; payload: string }
   | { type: 'ADD_TASK'; payload: Task }
   | { type: 'UPDATE_TASK'; payload: Task }
   | { type: 'DELETE_TASK'; payload: string }
   | { type: 'ADD_PROJECT'; payload: Project }
   | { type: 'UPDATE_PROJECT'; payload: Project }
+  | { type: 'DELETE_PROJECT'; payload: string }
   | { type: 'REORDER_TASKS'; payload: Task[] };
 
 const initialState: AppState = {
@@ -76,6 +78,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
           area.id === action.payload.id ? action.payload : area
         ),
       };
+    case 'DELETE_AREA':
+      return {
+        ...state,
+        areas: state.areas.filter(area => area.id !== action.payload),
+      };
     case 'ADD_PROJECT':
       // Prevent duplicates
       if (state.projects.find(project => project.id === action.payload.id)) {
@@ -88,6 +95,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
         projects: state.projects.map(project =>
           project.id === action.payload.id ? action.payload : project
         ),
+      };
+    case 'DELETE_PROJECT':
+      return {
+        ...state,
+        projects: state.projects.filter(project => project.id !== action.payload),
+        selectedProjectId: state.selectedProjectId === action.payload ? null : state.selectedProjectId,
+        currentView: state.selectedProjectId === action.payload ? 'inbox' : state.currentView,
       };
     case 'REORDER_TASKS':
       return { ...state, tasks: action.payload };

@@ -140,17 +140,8 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ projectId, onFilesUploaded 
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
         <h3 className="text-lg font-medium text-gray-900">Files</h3>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-        >
-          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Files
-        </button>
       </div>
 
       {/* Hidden file input */}

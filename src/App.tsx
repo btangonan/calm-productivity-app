@@ -14,6 +14,16 @@ function AppContent() {
     const loadInitialData = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
+        // Check backend health first
+        console.log('🚀 Starting application...');
+        await apiService.checkBackendHealth();
+        const status = apiService.getBackendStatus();
+        
+        console.log('📊 Backend Status:', status);
+        if (status.usingMockData) {
+          console.warn('⚠️ Using mock data - check Google Apps Script deployment');
+        }
+
         const [areas, projects, tasks] = await Promise.all([
           apiService.getAreas(),
           apiService.getProjects(),
@@ -23,6 +33,11 @@ function AppContent() {
         dispatch({ type: 'SET_AREAS', payload: areas });
         dispatch({ type: 'SET_PROJECTS', payload: projects });
         dispatch({ type: 'SET_TASKS', payload: tasks });
+        
+        console.log('✅ Application loaded successfully');
+        if (status.usingMockData) {
+          console.log('💡 Tip: Open /test-deployment.html to debug Google Apps Script connection');
+        }
       } catch (error) {
         console.error('Failed to load initial data:', error);
         dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
@@ -100,7 +115,7 @@ function AppContent() {
     <div className="h-screen flex bg-gray-50">
       <div 
         ref={sidebarRef}
-        className="relative flex-shrink-0 bg-white border-r border-gray-200"
+        className="relative flex-shrink-0 bg-white border-r border-gray-200 h-full"
         style={{ width: `${sidebarWidth}px` }}
       >
         <Sidebar />

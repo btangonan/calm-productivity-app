@@ -1,8 +1,13 @@
 import { useApp } from '../context/AppContext';
+import { apiService } from '../services/api';
+import { useState, useEffect } from 'react';
 
 const Header = () => {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const { currentView, selectedProjectId, projects } = state;
+  const [backendStatus, setBackendStatus] = useState(apiService.getBackendStatus());
+  const [isEditingProjectTitle, setIsEditingProjectTitle] = useState(false);
+  const [editingProjectTitle, setEditingProjectTitle] = useState('');
 
   const getViewTitle = () => {
     switch (currentView) {
@@ -47,13 +52,68 @@ const Header = () => {
     ? projects.find(p => p.id === selectedProjectId) 
     : null;
 
+  const handleProjectTitleClick = () => {
+    if (selectedProject) {
+      setIsEditingProjectTitle(true);
+      setEditingProjectTitle(selectedProject.name);
+    }
+  };
+
+  const handleProjectTitleSave = () => {
+    if (editingProjectTitle.trim() && editingProjectTitle !== selectedProject?.name && selectedProject) {
+      const updatedProject = { ...selectedProject, name: editingProjectTitle.trim() };
+      dispatch({ type: 'UPDATE_PROJECT', payload: updatedProject });
+    }
+    setIsEditingProjectTitle(false);
+  };
+
+  const handleProjectTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleProjectTitleSave();
+    } else if (e.key === 'Escape') {
+      setIsEditingProjectTitle(false);
+      setEditingProjectTitle(selectedProject?.name || '');
+    }
+  };
+
+  useEffect(() => {
+    // Update status periodically
+    const interval = setInterval(() => {
+      setBackendStatus(apiService.getBackendStatus());
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <span className="text-2xl mr-3">{getViewIcon()}</span>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{getViewTitle()}</h1>
+            {currentView === 'project' && selectedProject ? (
+              isEditingProjectTitle ? (
+                <input
+                  type="text"
+                  value={editingProjectTitle}
+                  onChange={(e) => setEditingProjectTitle(e.target.value)}
+                  onBlur={handleProjectTitleSave}
+                  onKeyDown={handleProjectTitleKeyDown}
+                  className="text-2xl font-semibold bg-white border border-primary-300 rounded px-3 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  autoFocus
+                />
+              ) : (
+                <h1 
+                  className="text-2xl font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 px-3 py-1 rounded"
+                  onClick={handleProjectTitleClick}
+                  title="Click to edit project name"
+                >
+                  {selectedProject.name}
+                </h1>
+              )
+            ) : (
+              <h1 className="text-2xl font-semibold text-gray-900">{getViewTitle()}</h1>
+            )}
             {selectedProject && selectedProject.description && (
               <p className="text-sm text-gray-600 mt-1">{selectedProject.description}</p>
             )}
@@ -61,6 +121,21 @@ const Header = () => {
         </div>
         
         <div className="flex items-center space-x-3">
+          {/* Backend Status Indicator */}
+          <div className="flex items-center space-x-2">
+            {backendStatus.usingMockData ? (
+              <div className="flex items-center px-2 py-1 bg-yellow-100 border border-yellow-300 rounded-md">
+                <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
+                <span className="text-xs font-medium text-yellow-800">Mock Data</span>
+              </div>
+            ) : (
+              <div className="flex items-center px-2 py-1 bg-green-100 border border-green-300 rounded-md">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                <span className="text-xs font-medium text-green-800">Live Data</span>
+              </div>
+            )}
+          </div>
+
           {selectedProject && selectedProject.driveFolderUrl && (
             <a
               href={selectedProject.driveFolderUrl}

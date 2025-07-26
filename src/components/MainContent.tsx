@@ -66,54 +66,45 @@ const MainContent = () => {
         <DraggableTaskList />
       </div>
       
-      {/* Add Task button positioned at the divider */}
-      <div 
-        className="absolute top-4 z-10"
-        style={{ right: `${rightSidebarWidth + 16}px` }}
-      >
-        <button 
-          onClick={() => setShowTaskForm(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-lg"
-        >
-          <span className="mr-2">+</span>
-          Add Task
-        </button>
-      </div>
       
       {/* Right sidebar with integrations and project features */}
       <div 
-        className="border-l border-gray-200 bg-gray-50 flex flex-col relative flex-shrink-0"
+        className="border-l border-gray-200 bg-gray-50 relative flex-shrink-0 h-screen overflow-y-auto"
         style={{ width: `${rightSidebarWidth}px` }}
       >
         {/* Resize handle */}
         <div
-          className="absolute top-0 left-0 w-2 h-full cursor-col-resize hover:bg-blue-400 bg-gray-200 border-l border-gray-300"
+          className="absolute top-0 left-0 w-2 h-full cursor-col-resize hover:bg-blue-400 bg-gray-200 border-l border-gray-300 z-10"
           onMouseDown={handleRightMouseDown}
           style={{ left: '-1px' }}
         />
-        {/* Project features section */}
-        {showProjectFeatures && (
-          <div className="p-4 space-y-4 border-b border-gray-200">
-            <FileDropzone 
-              projectId={selectedProjectId!} 
-              onFilesUploaded={handleFilesUploaded}
-            />
-            <ProjectFileList 
-              projectId={selectedProjectId!}
-              refreshTrigger={fileRefreshTrigger}
-            />
-            <div className="bg-white rounded-lg">
-              <AISuggestions />
-            </div>
-          </div>
-        )}
         
-        {/* Google integrations - always visible, spans full height */}
-        {showGoogleIntegrations && (
-          <div className="flex-1 overflow-y-auto">
-            <GoogleIntegrations />
-          </div>
-        )}
+        {/* All content in a single scrollable container */}
+        <div className="p-4 space-y-4">
+          {/* Project features section */}
+          {showProjectFeatures && (
+            <>
+              <FileDropzone 
+                projectId={selectedProjectId!} 
+                onFilesUploaded={handleFilesUploaded}
+              />
+              <ProjectFileList 
+                projectId={selectedProjectId!}
+                refreshTrigger={fileRefreshTrigger}
+              />
+              <div className="bg-white rounded-lg">
+                <AISuggestions />
+              </div>
+            </>
+          )}
+          
+          {/* Google integrations - always visible */}
+          {showGoogleIntegrations && (
+            <div className={showProjectFeatures ? "border-t border-gray-200 pt-4" : ""}>
+              <GoogleIntegrations />
+            </div>
+          )}
+        </div>
       </div>
       
       {/* Task form modal */}

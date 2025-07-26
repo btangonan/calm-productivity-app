@@ -16,6 +16,8 @@ const Sidebar = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showOptionsDropdown, setShowOptionsDropdown] = useState<string | null>(null);
+  const optionsDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -23,11 +25,19 @@ const Sidebar = () => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowCreateDropdown(false);
       }
+      if (optionsDropdownRef.current && !optionsDropdownRef.current.contains(event.target as Node)) {
+        setShowOptionsDropdown(null);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Close options dropdown when switching between different items
+  const handleOptionsDropdownToggle = (itemId: string) => {
+    setShowOptionsDropdown(showOptionsDropdown === itemId ? null : itemId);
+  };
 
   const handleViewChange = (view: ViewType) => {
     dispatch({ type: 'SET_CURRENT_VIEW', payload: view });
@@ -180,6 +190,46 @@ const Sidebar = () => {
     }
   };
 
+  const handleDeleteProject = async (projectId: string, projectName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete the project "${projectName}"?`)) {
+      try {
+        dispatch({ type: 'DELETE_PROJECT', payload: projectId });
+        setShowOptionsDropdown(null);
+      } catch (error) {
+        console.error('Failed to delete project:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to delete project' });
+      }
+    }
+  };
+
+  const handleDeleteArea = async (areaId: string, areaName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const areaProjects = getProjectsForArea(areaId);
+    if (areaProjects.length > 0) {
+      if (!window.confirm(`The area "${areaName}" contains ${areaProjects.length} project(s). Deleting this area will move its projects to "Unorganized Projects". Continue?`)) {
+        return;
+      }
+    } else {
+      if (!window.confirm(`Are you sure you want to delete the area "${areaName}"?`)) {
+        return;
+      }
+    }
+    
+    try {
+      // Move projects to unorganized (null areaId)
+      areaProjects.forEach(project => {
+        dispatch({ type: 'UPDATE_PROJECT', payload: { ...project, areaId: null } });
+      });
+      
+      dispatch({ type: 'DELETE_AREA', payload: areaId });
+      setShowOptionsDropdown(null);
+    } catch (error) {
+      console.error('Failed to delete area:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to delete area' });
+    }
+  };
+
   // Draggable Project Component
   const DraggableProject = ({ project }: { project: any }) => {
     const [{ isDragging }, drag] = useDrag({
@@ -238,9 +288,53 @@ const Sidebar = () => {
               </span>
             )}
           </div>
-          {getProjectTaskCount(project.id) > 0 && (
-            <span className="text-sm text-gray-500 flex-shrink-0 ml-1 w-4 text-right">{getProjectTaskCount(project.id)}</span>
-          )}
+          <div className="flex items-center">
+            {getProjectTaskCount(project.id) > 0 && (
+              <span className="text-sm text-gray-500 flex-shrink-0 ml-1 w-4 text-right">{getProjectTaskCount(project.id)}</span>
+            )}
+            {/* Three dots menu for project */}
+            <div className="relative ml-1" ref={showOptionsDropdown === `project-${project.id}` ? optionsDropdownRef : null}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOptionsDropdownToggle(`project-${project.id}`);
+                }}
+                className="opacity-100 p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+                title="Project options"
+              >
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                </svg>
+              </button>
+              
+              {showOptionsDropdown === `project-${project.id}` && (
+                <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[120px]">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingItem({ id: project.id, type: 'project', name: project.name });
+                      setShowOptionsDropdown(null);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 flex items-center"
+                  >
+                    <svg className="w-3 h-3 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
+                    </svg>
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteProject(project.id, project.name, e)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-red-600 hover:bg-red-50 flex items-center"
+                  >
+                    <svg className="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -272,13 +366,17 @@ const Sidebar = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="w-full h-screen overflow-y-auto">
+      <div className="w-full h-full overflow-y-auto">
         <div className="p-4">
         <div className="flex items-center justify-between mb-6 px-3">
           <h1 className="text-xl font-semibold text-gray-900">Now & Later</h1>
-          <span className="text-sm text-gray-500 hover:text-gray-600 cursor-pointer" onClick={() => setShowTaskForm(true)} title="Add Task">
+          <button 
+            onClick={() => setShowTaskForm(true)} 
+            className="inline-flex items-center justify-center w-6 h-6 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded border border-primary-600 transition-colors"
+            title="Add Task"
+          >
             +
-          </span>
+          </button>
         </div>
         
         {/* Standard Views */}
@@ -448,9 +546,53 @@ const Sidebar = () => {
                             </span>
                           )}
                         </div>
-                        {areaProjects.length > 0 && (
-                          <span className="text-sm text-gray-500">{areaProjects.length}</span>
-                        )}
+                        <div className="flex items-center">
+                          {areaProjects.length > 0 && (
+                            <span className="text-sm text-gray-500 mr-1">{areaProjects.length}</span>
+                          )}
+                          {/* Three dots menu for area */}
+                          <div className="relative" ref={showOptionsDropdown === `area-${area.id}` ? optionsDropdownRef : null}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOptionsDropdownToggle(`area-${area.id}`);
+                              }}
+                              className="opacity-100 p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+                              title="Area options"
+                            >
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                              </svg>
+                            </button>
+                            
+                            {showOptionsDropdown === `area-${area.id}` && (
+                              <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[120px]">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingItem({ id: area.id, type: 'area', name: area.name });
+                                    setShowOptionsDropdown(null);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 flex items-center"
+                                >
+                                  <svg className="w-3 h-3 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
+                                  </svg>
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => handleDeleteArea(area.id, area.name, e)}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-red-600 hover:bg-red-50 flex items-center"
+                                >
+                                  <svg className="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
