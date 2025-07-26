@@ -52,6 +52,8 @@ export interface AppState {
   selectedProjectId: string | null;
   loading: boolean;
   error: string | null;
+  isAuthenticated: boolean;
+  userProfile: UserProfile | null;
 }
 
 export interface GoogleScriptResponse<T> {
@@ -112,4 +114,12 @@ export interface DriveStructure {
   masterFolderName?: string;
   areas: Record<string, DriveFolder>;
   projects: Record<string, DriveFolder>;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  picture: string;
+  id_token: string;
 }

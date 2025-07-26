@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import MainContent from './components/MainContent';
+import LoginScreen from './components/LoginScreen';
 import { apiService } from './services/api';
 
 function AppContent() {
@@ -12,6 +13,11 @@ function AppContent() {
 
   useEffect(() => {
     const loadInitialData = async () => {
+      // Only load data if user is authenticated
+      if (!state.isAuthenticated || !state.userProfile) {
+        return;
+      }
+
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
         // Check backend health first
@@ -24,10 +30,11 @@ function AppContent() {
           console.warn('⚠️ Using mock data - check Google Apps Script deployment');
         }
 
+        const token = state.userProfile.id_token;
         const [areas, projects, tasks] = await Promise.all([
-          apiService.getAreas(),
-          apiService.getProjects(),
-          apiService.getTasks(),
+          apiService.getAreas(token),
+          apiService.getProjects(undefined, token),
+          apiService.getTasks(undefined, undefined, token),
         ]);
 
         dispatch({ type: 'SET_AREAS', payload: areas });
@@ -47,7 +54,7 @@ function AppContent() {
     };
 
     loadInitialData();
-  }, [dispatch]);
+  }, [dispatch, state.isAuthenticated, state.userProfile]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -131,10 +138,22 @@ function AppContent() {
   );
 }
 
+function AppRouter() {
+  const { state } = useApp();
+
+  // Show login screen if not authenticated
+  if (!state.isAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  // Show main app if authenticated
+  return <AppContent />;
+}
+
 function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <AppRouter />
     </AppProvider>
   );
 }

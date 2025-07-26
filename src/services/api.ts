@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJ7Bm5MIR-0ey-bLZQqyma-DATBedc6ugr3L5fYph4OXBfRDpCMNgz2MbLfgLJNIQq/exec';
+  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzhpfokKXaNBJ82WAoK39lN-qQ1iREWti6OmroYyw-18aYyNQRNwpsyeaYN-4BMpcUM/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 
@@ -205,9 +205,9 @@ class ApiService {
     }
   ];
 
-  private async executeGoogleScript<T>(functionName: string, ...args: any[]): Promise<GoogleScriptResponse<T>> {
-    if (!this.isGoogleAppsScript || !this.backendHealthy) {
-      // Return mock data for development or when backend is unhealthy
+  private async executeGoogleScript<T>(token: string | undefined, functionName: string, ...args: any[]): Promise<GoogleScriptResponse<T>> {
+    if (!this.isGoogleAppsScript || !this.backendHealthy || !token) {
+      // Return mock data for development, when backend is unhealthy, or no token
       return new Promise((resolve) => {
         setTimeout(() => {
           resolve(this.getMockResponse<T>(functionName, ...args));
@@ -222,6 +222,9 @@ class ApiService {
 
       const response = await fetch(this.APPS_SCRIPT_URL, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formData,
       });
 
@@ -505,39 +508,39 @@ class ApiService {
   }
 
   // API Methods
-  async getAreas(): Promise<Area[]> {
-    const response = await this.executeGoogleScript<Area[]>('getAreas');
+  async getAreas(token?: string): Promise<Area[]> {
+    const response = await this.executeGoogleScript<Area[]>(token, 'getAreas');
     return response.data || [];
   }
 
-  async createArea(name: string, description: string): Promise<Area> {
-    const response = await this.executeGoogleScript<Area>('createArea', name, description);
+  async createArea(name: string, description: string, token?: string): Promise<Area> {
+    const response = await this.executeGoogleScript<Area>(token, 'createArea', name, description);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create area');
     }
     return response.data;
   }
 
-  async getProjects(areaId?: string): Promise<Project[]> {
-    const response = await this.executeGoogleScript<Project[]>('getProjects', areaId);
+  async getProjects(areaId?: string, token?: string): Promise<Project[]> {
+    const response = await this.executeGoogleScript<Project[]>(token, 'getProjects', areaId);
     return response.data || [];
   }
 
-  async getTasks(projectId?: string, view?: string): Promise<Task[]> {
-    const response = await this.executeGoogleScript<Task[]>('getTasks', projectId, view);
+  async getTasks(projectId?: string, view?: string, token?: string): Promise<Task[]> {
+    const response = await this.executeGoogleScript<Task[]>(token, 'getTasks', projectId, view);
     return response.data || [];
   }
 
-  async createProject(name: string, description: string, areaId?: string): Promise<Project> {
-    const response = await this.executeGoogleScript<Project>('createProject', name, description, areaId);
+  async createProject(name: string, description: string, areaId?: string, token?: string): Promise<Project> {
+    const response = await this.executeGoogleScript<Project>(token, 'createProject', name, description, areaId);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create project');
     }
     return response.data;
   }
 
-  async createTask(title: string, description: string, projectId?: string, context?: string, dueDate?: string, attachments?: TaskAttachment[]): Promise<Task> {
-    const response = await this.executeGoogleScript<Task>('createTask', title, description, projectId, context, dueDate, attachments);
+  async createTask(title: string, description: string, projectId?: string, context?: string, dueDate?: string, attachments?: TaskAttachment[], token?: string): Promise<Task> {
+    const response = await this.executeGoogleScript<Task>(token, 'createTask', title, description, projectId, context, dueDate, attachments);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create task');
     }

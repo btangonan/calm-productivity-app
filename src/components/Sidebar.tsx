@@ -4,12 +4,13 @@ import type { ViewType } from '../types';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useDrag, useDrop } from 'react-dnd';
+import { googleLogout } from '@react-oauth/google';
 import { apiService } from '../services/api';
 import TaskForm from './TaskForm';
 
 const Sidebar = () => {
   const { state, dispatch } = useApp();
-  const { currentView, selectedProjectId, areas, projects, tasks } = state;
+  const { currentView, selectedProjectId, areas, projects, tasks, userProfile } = state;
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [showCreateDropdown, setShowCreateDropdown] = useState(false);
   const [editingItem, setEditingItem] = useState<{ id: string; type: 'area' | 'project'; name: string } | null>(null);
@@ -45,6 +46,13 @@ const Sidebar = () => {
 
   const handleProjectSelect = (projectId: string) => {
     dispatch({ type: 'SET_SELECTED_PROJECT', payload: projectId });
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to sign out?')) {
+      googleLogout();
+      dispatch({ type: 'LOGOUT' });
+    }
   };
 
   const getTaskCountForView = (view: ViewType): number => {
@@ -368,15 +376,48 @@ const Sidebar = () => {
     <DndProvider backend={HTML5Backend}>
       <div className="w-full h-full overflow-y-auto">
         <div className="p-4">
-        <div className="flex items-center justify-between mb-6 px-3">
-          <h1 className="text-xl font-semibold text-gray-900">Now & Later</h1>
-          <button 
-            onClick={() => setShowTaskForm(true)} 
-            className="inline-flex items-center justify-center w-6 h-6 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded border border-primary-600 transition-colors"
-            title="Add Task"
-          >
-            +
-          </button>
+        <div className="mb-6 px-3">
+          {/* Header with app name and quick task button */}
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-xl font-semibold text-gray-900">Now & Later</h1>
+            <button 
+              onClick={() => setShowTaskForm(true)} 
+              className="inline-flex items-center justify-center w-6 h-6 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded border border-primary-600 transition-colors"
+              title="Add Task"
+            >
+              +
+            </button>
+          </div>
+          
+          {/* User profile section with logout */}
+          {userProfile && (
+            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+              <div className="flex items-center min-w-0 flex-1">
+                <img 
+                  src={userProfile.picture} 
+                  alt={userProfile.name}
+                  className="w-6 h-6 rounded-full mr-2 flex-shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {userProfile.name}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {userProfile.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors"
+                title="Sign out"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
         
         {/* Standard Views */}

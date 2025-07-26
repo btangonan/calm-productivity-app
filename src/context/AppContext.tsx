@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react';
-import type { AppState, Area, Project, Task, ViewType } from '../types';
+import type { AppState, Area, Project, Task, ViewType, UserProfile } from '../types';
 
 interface AppContextType {
   state: AppState;
@@ -23,7 +23,9 @@ type AppAction =
   | { type: 'ADD_PROJECT'; payload: Project }
   | { type: 'UPDATE_PROJECT'; payload: Project }
   | { type: 'DELETE_PROJECT'; payload: string }
-  | { type: 'REORDER_TASKS'; payload: Task[] };
+  | { type: 'REORDER_TASKS'; payload: Task[] }
+  | { type: 'LOGIN_SUCCESS'; payload: UserProfile }
+  | { type: 'LOGOUT' };
 
 const initialState: AppState = {
   areas: [],
@@ -33,6 +35,8 @@ const initialState: AppState = {
   selectedProjectId: null,
   loading: false,
   error: null,
+  isAuthenticated: false,
+  userProfile: null,
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -105,6 +109,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     case 'REORDER_TASKS':
       return { ...state, tasks: action.payload };
+    case 'LOGIN_SUCCESS':
+      return { ...state, isAuthenticated: true, userProfile: action.payload };
+    case 'LOGOUT':
+      return { 
+        ...state, 
+        isAuthenticated: false, 
+        userProfile: null, 
+        areas: [], 
+        projects: [], 
+        tasks: [],
+        currentView: 'inbox',
+        selectedProjectId: null
+      };
     default:
       return state;
   }
