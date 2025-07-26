@@ -57,9 +57,20 @@ function doPost(e) {
       }
     }
     
-    // Handle both 'function' parameter (for regular API calls) and 'action' parameter (for healthCheck)
-    const functionName = e.parameter.function || e.parameter.action;
-    const parameters = JSON.parse(e.parameter.parameters || '[]');
+    let functionName, parameters = [];
+    
+    // Check if the request is multipart/form-data (from frontend FormData)
+    if (e.postData && e.postData.type && e.postData.type.startsWith('multipart/form-data')) {
+      // Parse multipart form data
+      const parsedData = parseMultipartFormData(e);
+      functionName = parsedData.action || parsedData.function;
+      // For healthCheck, we don't need parameters
+      parameters = [];
+    } else {
+      // Handle traditional URL-encoded or query parameter format (backward compatibility)
+      functionName = e.parameter.function || e.parameter.action;
+      parameters = JSON.parse(e.parameter.parameters || '[]');
+    }
     
     // Call the appropriate function
     let result;
@@ -72,7 +83,9 @@ function doPost(e) {
           lastUpdated: LAST_UPDATED,
           serverTime: new Date().toISOString(),
           authenticated: !!authToken,
-          userEmail: userInfo ? userInfo.email : null
+          userEmail: userInfo ? userInfo.email : null,
+          requestType: e.postData && e.postData.type ? e.postData.type : 'unknown',
+          parsedCorrectly: true
         };
         break;
       case 'getAreas':
