@@ -55,10 +55,20 @@ function doOptions(e) {
 function doPost(e) {
   let result;
   try {
-    // For text/plain, the payload is in e.postData.contents
     const payload = JSON.parse(e.postData.contents);
     const functionName = payload.action;
     const parameters = payload.parameters || [];
+    const authToken = payload.token; // Retrieve token from payload
+
+    let userInfo = null;
+    if (authToken) {
+      try {
+        userInfo = verifyGoogleToken(authToken);
+        console.log('Authenticated user:', userInfo ? userInfo.email : 'Token verification failed');
+      } catch (error) {
+        console.warn('Token verification failed:', error);
+      }
+    }
 
     switch (functionName) {
       case 'healthCheck':
@@ -67,10 +77,83 @@ function doPost(e) {
           message: "API is healthy! (POST text/plain)",
           version: DEPLOYMENT_VERSION,
           scriptVersion: SCRIPT_VERSION,
-          receivedPayload: payload
+          receivedPayload: payload,
+          authenticated: !!authToken,
+          userEmail: userInfo ? userInfo.email : null,
         };
         break;
-      // ... other cases
+      case 'getAreas':
+        result = getAreas();
+        break;
+      case 'createArea':
+        result = createArea(parameters[0], parameters[1]);
+        break;
+      case 'getProjects':
+        result = getProjects(parameters[0]);
+        break;
+      case 'getTasks':
+        result = getTasks(parameters[0], parameters[1]);
+        break;
+      case 'createProject':
+        result = createProject(parameters[0], parameters[1], parameters[2]);
+        break;
+      case 'createTask':
+        result = createTask(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
+        break;
+      case 'updateTaskCompletion':
+        result = updateTaskCompletion(parameters[0], parameters[1]);
+        break;
+      case 'updateProjectStatus':
+        result = updateProjectStatus(parameters[0], parameters[1]);
+        break;
+      case 'updateProjectArea':
+        result = updateProjectArea(parameters[0], parameters[1]);
+        break;
+      case 'reorderTasks':
+        result = reorderTasks(parameters[0]);
+        break;
+      case 'processGmailToTasks':
+        result = processGmailToTasks();
+        break;
+      case 'syncTasksWithCalendar':
+        result = syncTasksWithCalendar();
+        break;
+      case 'createTaskWithIntegrations':
+        result = createTaskWithIntegrations(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4], parameters[5]);
+        break;
+      case 'createProjectDocument':
+        result = createProjectDocument(parameters[0], parameters[1], parameters[2]);
+        break;
+      case 'getContacts':
+        result = getContacts();
+        break;
+      case 'setupTriggers':
+        result = setupTriggers();
+        break;
+      case 'testIntegrations':
+        result = testIntegrations();
+        break;
+      case 'getProjectFiles':
+        result = getProjectFiles(parameters[0]);
+        break;
+      case 'uploadFileToProject':
+        result = uploadFileToProject(parameters[0], parameters[1], parameters[2], parameters[3]);
+        break;
+      case 'uploadFileToTask':
+        result = uploadFileToTask(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
+        break;
+      case 'deleteProjectFile':
+        result = deleteProjectFile(parameters[0], parameters[1]);
+        break;
+      case 'testFunction':
+        result = testFunction();
+        break;
+      case 'getHealthCheck':
+        result = getHealthCheck();
+        break;
+      case 'testDeployment':
+        result = testDeployment(parameters[0]);
+        break;
       default:
         result = { success: false, message: `Unknown function: '${functionName}'`, version: DEPLOYMENT_VERSION };
         break;

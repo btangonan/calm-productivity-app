@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzYlSB0ulctua8b2ULKBfGiP0Dc_i39fSyMMS9WG-SzYPOaVlGK9UDFycgFGI2czzlS/exec';
+  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx5It7CT4JqtxxnCDCrhiPlgLve4sXqKjosYfVKO0f8JfrjHxydVQZ6Q62Q5kQGjAhq/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 
@@ -215,13 +215,13 @@ class ApiService {
       const payload = {
         action: functionName,
         parameters: args,
+        token: token, // Pass token in payload
       };
 
       const response = await fetch(this.APPS_SCRIPT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
         mode: 'cors',
