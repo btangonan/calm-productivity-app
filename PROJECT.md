@@ -113,9 +113,9 @@ const DEPLOYMENT_VERSION = "v2024.07.26.001";
 ```
 
 **Current Deployment**:
-- **URL**: `https://script.google.com/macros/s/AKfycbxlXY-xbOuOauKFtsF4oIaY4XxIzO1C6k4KvbjxgqUMy8F7YdKc6bQ28Yx1SlEASNXr/exec`
-- **Version**: v2024.07.26.008-NATIVE-CORS-FIX / Script Version 3.0.0
-- **Status**: 🟡 CORS WORKING but POST requests failing
+- **URL**: `https://script.google.com/macros/s/AKfycbx5It7CT4JqtxxnCDCrhiPlgLve4sXqKjosYfVKO0f8JfrjHxydVQZ6Q62Q5kQGjAhq/exec`
+- **Version**: v2024.07.26.014-TOKEN-IN-PAYLOAD / Script Version 3.0.5
+- **Status**: ✅ **FULLY OPERATIONAL**
 - **Execute as**: User accessing the web app
 - **Access**: Anyone with a Google account
 
@@ -143,7 +143,7 @@ const DEPLOYMENT_VERSION = "v2024.07.26.001";
 - ✅ `GoogleOAuthProvider` - **NEW**: OAuth provider wrapper in main.tsx
 - ✅ `AppRouter` - **NEW**: Conditional rendering based on authentication state
 - ✅ **Authentication Wall**: Main app inaccessible without Google login
-- ✅ **Secure API Calls**: All requests include Bearer token authorization
+- ✅ **Secure API Calls**: All requests include token in payload for authorization
 - ✅ **User Profile Management**: Avatar, name, email display in sidebar
 - ✅ **Session Management**: Logout with confirmation and data clearing
 
@@ -174,7 +174,7 @@ const DEPLOYMENT_VERSION = "v2024.07.26.001";
 
 **API Integration**:
 - ✅ `api.ts` - **ENHANCED**: Complete service layer with Google authentication
-- ✅ **NEW**: Bearer token authorization for all API calls
+- ✅ **NEW**: Token passed in payload for all API calls (replaces Authorization header)
 - ✅ **NEW**: Environment variable configuration (Client ID, Apps Script URL)
 - ✅ **NEW**: Authentication-aware API methods with token parameters
 - ✅ **NEW**: Google Drive folder structure management
@@ -327,20 +327,20 @@ private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSc
 
 **Live Application**: 
 - **Frontend**: https://nowandlater.vercel.app (Vercel deployment with automatic GitHub integration)
-- **Backend**: https://script.google.com/macros/s/AKfycbwBMNVVL0w7z3i4OsldsXGXkqm_2NBlKfvFFQiHJa6S5rONPkELSX3tzjN7R9s4m6O2/exec
+- **Backend**: https://script.google.com/macros/s/AKfycbx5It7CT4JqtxxnCDCrhiPlgLve4sXqKjosYfVKO0f8JfrjHxydVQZ6Q62Q5kQGjAhq/exec
 - **Authentication**: Google OAuth 2.0 with Client ID: 582559442661-tge98kb2mcbsk7v6tddkv2kshkgn8gur.apps.googleusercontent.com
 
 **Production Configuration**:
 ```typescript
 // Environment Variables (.env) - Updated with CORS-fixed deployment
 VITE_GOOGLE_CLIENT_ID="582559442661-tge98kb2mcbsk7v6tddkv2kshkgn8gur.apps.googleusercontent.com"
-VITE_APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbxlXY-xbOuOauKFtsF4oIaY4XxIzO1C6k4KvbjxgqUMy8F7YdKc6bQ28Yx1SlEASNXr/exec"
+VITE_APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbx5It7CT4JqtxxnCDCrhiPlgLve4sXqKjosYfVKO0f8JfrjHxydVQZ6Q62Q5kQGjAhq/exec"
 ```
 
 **Verification Tests Passed**:
 - ✅ Google Sign-In authentication flow
 - ✅ JWT token verification and user profile extraction
-- ✅ Secure API calls with Bearer token authorization
+- ✅ Secure API calls with token in payload
 - ✅ User-specific Google Drive folder creation
 - ✅ Complete CRUD operations for Areas, Projects, and Tasks
 - ✅ Google Services integrations (Drive, Calendar, Gmail, Docs)
@@ -361,7 +361,7 @@ VITE_APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbxlXY-xbOuOauKFtsF
 
 ## 🚨 Current Backend Connectivity Issues
 
-### **Status**: 🟡 **PARTIAL CONNECTIVITY** - Authentication works, but app shows mock data
+### **Status**: ✅ **RESOLVED** - Frontend now fully connected to backend
 
 ### **CORS Resolution**: ✅ **SOLVED**
 **Problem**: Manual header setting attempts failed with `addHeader` and `setHeader` errors
@@ -370,48 +370,29 @@ VITE_APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbxlXY-xbOuOauKFtsF
 - Simple `doOptions()` function enables automatic CORS headers
 - GET requests now work with proper `Access-Control-Allow-Origin: *` headers
 
-### **Current Issues**: ❌ **POST Requests Failing**
-**Problem**: Frontend health check fails, forcing mock data mode
+### **POST Requests**: ✅ **RESOLVED**
+**Problem**: Frontend health check and other POST requests were failing, forcing mock data mode
 **Symptoms**:
 - ✅ GET requests work perfectly and return JSON with version info
-- ❌ POST requests redirect to "Page Not Found" errors  
-- ❌ OPTIONS requests return 405 Method Not Allowed
+- ✅ POST requests now successfully reach `doPost()` and return JSON
+- ✅ OPTIONS requests are no longer an issue (avoided by simple POST)
 - ✅ Google Sign-In authentication works correctly
-- ❌ App defaults to mock data due to failed health check
-
-**Technical Details**:
-```bash
-# GET Request - WORKS ✅
-curl -L "https://script.google.com/.../exec?test=health"
-# Returns: {"success":true,"version":"v2024.07.26.008-NATIVE-CORS-FIX"...}
-
-# POST Request - FAILS ❌  
-curl -X POST "https://script.google.com/.../exec" -F "action=healthCheck"
-# Returns: HTML redirect to error page
-
-# OPTIONS Request - FAILS ❌
-curl -X OPTIONS "https://script.google.com/.../exec"
-# Returns: 405 Method Not Allowed
-```
+- ✅ App now uses real backend data
 
 **Root Cause Analysis**:
-1. `doPost()` function exists but requests redirect to error pages
-2. `doOptions()` function returns 405 instead of handling preflight
-3. Multipart form data parsing may have issues
-4. Google Apps Script deployment configuration problems
+1. Initial POST failures due to Google's rejection of anonymous POST requests.
+2. CORS preflight issues with `Authorization` header.
+
+**Solution**:
+- **Authenticated POST requests**: Token is now passed in the JSON payload, avoiding the `Authorization` header that triggers complex CORS preflights.
+- **`Content-Type: text/plain`**: Used for POST requests to ensure they are "simple" and bypass preflight.
 
 **Frontend Impact**:
-```typescript
-// Health check switched from POST to GET due to POST failures
-async checkBackendHealth(): Promise<boolean> {
-  // This fails, forcing mock data mode
-  const response = await fetch(`${url}?test=health`, {method: 'GET'});
-}
-```
+- Health check now successfully connects to the backend.
+- All API calls are now routed to the real backend.
 
 ### **Next Steps for Resolution**:
-1. **Debug POST request handling** in Google Apps Script deployment
-2. **Verify multipart form data parsing** in `parseMultipartFormData()`
-3. **Test OPTIONS preflight** request handling in `doOptions()`
-4. **Switch health check to GET-only** if POST cannot be fixed
-5. **Update frontend to use GET requests** for critical operations
+- All major backend connectivity issues are resolved.
+- Continue with feature development and refinement.
+- Monitor application performance and error logs.
+- Consider implementing a more robust error reporting system.
