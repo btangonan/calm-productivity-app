@@ -31,6 +31,17 @@ function doGet(e) {
 }
 
 /**
+ * Handles HTTP OPTIONS requests for CORS preflight.
+ * This is essential for allowing POST requests from different origins (like your React app).
+ */
+function doOptions(e) {
+  // Try basic response without headers first
+  return ContentService
+    .createTextOutput('OK')
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+/**
  * Handle POST requests from the frontend
  */
 function doPost(e) {
@@ -164,6 +175,7 @@ function doPost(e) {
         result = { success: false, message: `Unknown function: ${functionName}`, version: DEPLOYMENT_VERSION };
     }
     
+    // Return simple JSON response without CORS headers for now
     return ContentService
       .createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON);
