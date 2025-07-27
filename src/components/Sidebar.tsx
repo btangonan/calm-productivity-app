@@ -448,13 +448,11 @@ const Sidebar = () => {
               className={`sidebar-item ${currentView === 'inbox' ? 'active' : ''}`}
               onClick={() => handleViewChange('inbox')}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center">
-                  <span className="text-lg mr-3">📥</span>
-                  <span>Inbox</span>
-                </div>
+              <div className="flex items-center w-full">
+                <span className="text-lg mr-3">📥</span>
+                <span>Inbox</span>
                 {getTaskCountForView('inbox') > 0 && (
-                  <span className="text-sm text-gray-500">{getTaskCountForView('inbox')}</span>
+                  <span className="text-sm text-gray-500 ml-auto">{getTaskCountForView('inbox')}</span>
                 )}
               </div>
             </div>
@@ -463,13 +461,11 @@ const Sidebar = () => {
               className={`sidebar-item ${currentView === 'today' ? 'active' : ''}`}
               onClick={() => handleViewChange('today')}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center">
-                  <span className="text-lg mr-3">📅</span>
-                  <span>Today</span>
-                </div>
+              <div className="flex items-center w-full">
+                <span className="text-lg mr-3">📅</span>
+                <span>Today</span>
                 {getTaskCountForView('today') > 0 && (
-                  <span className="text-sm text-gray-500">{getTaskCountForView('today')}</span>
+                  <span className="text-sm text-gray-500 ml-auto">{getTaskCountForView('today')}</span>
                 )}
               </div>
             </div>
@@ -478,13 +474,11 @@ const Sidebar = () => {
               className={`sidebar-item ${currentView === 'upcoming' ? 'active' : ''}`}
               onClick={() => handleViewChange('upcoming')}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center">
-                  <span className="text-lg mr-3">📆</span>
-                  <span>Upcoming</span>
-                </div>
+              <div className="flex items-center w-full">
+                <span className="text-lg mr-3">📆</span>
+                <span>Upcoming</span>
                 {getTaskCountForView('upcoming') > 0 && (
-                  <span className="text-sm text-gray-500">{getTaskCountForView('upcoming')}</span>
+                  <span className="text-sm text-gray-500 ml-auto">{getTaskCountForView('upcoming')}</span>
                 )}
               </div>
             </div>
@@ -493,13 +487,11 @@ const Sidebar = () => {
               className={`sidebar-item ${currentView === 'anytime' ? 'active' : ''}`}
               onClick={() => handleViewChange('anytime')}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center">
-                  <span className="text-lg mr-3">⭐</span>
-                  <span>Anytime</span>
-                </div>
+              <div className="flex items-center w-full">
+                <span className="text-lg mr-3">⭐</span>
+                <span>Anytime</span>
                 {getTaskCountForView('anytime') > 0 && (
-                  <span className="text-sm text-gray-500">{getTaskCountForView('anytime')}</span>
+                  <span className="text-sm text-gray-500 ml-auto">{getTaskCountForView('anytime')}</span>
                 )}
               </div>
             </div>
@@ -508,13 +500,11 @@ const Sidebar = () => {
               className={`sidebar-item ${currentView === 'logbook' ? 'active' : ''}`}
               onClick={() => handleViewChange('logbook')}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center">
-                  <span className="text-lg mr-3">✅</span>
-                  <span>Logbook</span>
-                </div>
+              <div className="flex items-center w-full">
+                <span className="text-lg mr-3">✅</span>
+                <span>Logbook</span>
                 {getTaskCountForView('logbook') > 0 && (
-                  <span className="text-sm text-gray-500">{getTaskCountForView('logbook')}</span>
+                  <span className="text-sm text-gray-500 ml-auto">{getTaskCountForView('logbook')}</span>
                 )}
               </div>
             </div>
@@ -593,12 +583,11 @@ const Sidebar = () => {
                       className="sidebar-item cursor-pointer group"
                       onClick={() => toggleAreaExpansion(area.id)}
                     >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center">
-                          <span className={`mr-2 text-xs transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                            ▶
-                          </span>
-                          <span className="text-lg mr-3">🏷️</span>
+                      <div className="flex items-center w-full">
+                        <span className={`mr-2 text-xs transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                          ▶
+                        </span>
+                        <span className="text-lg mr-3">🏷️</span>
                           {editingItem?.id === area.id && editingItem?.type === 'area' ? (
                             <input
                               type="text"
@@ -627,11 +616,9 @@ const Sidebar = () => {
                               {area.name}
                             </span>
                           )}
-                        </div>
-                        <div className="flex items-center">
-                          {areaProjects.length > 0 && (
-                            <span className="text-sm text-gray-500 mr-1">{areaProjects.length}</span>
-                          )}
+                        {areaProjects.length > 0 && (
+                          <span className="text-sm text-gray-500 mr-1 ml-auto">{areaProjects.length}</span>
+                        )}
                           {/* Three dots menu for area */}
                           <div className="relative" ref={showOptionsDropdown === `area-${area.id}` ? optionsDropdownRef : null}>
                             <button
