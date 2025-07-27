@@ -359,40 +359,74 @@ VITE_APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbx5It7CT4JqtxxnCDC
 - Secure logout with complete data clearing
 - Environment variable protection for sensitive credentials
 
-## 🚨 Current Backend Connectivity Issues
+## 🚨 Backend Deployment & Updates Process
 
-### **Status**: ✅ **RESOLVED** - Frontend now fully connected to backend
+### **Current Status**: ✅ **OPERATIONAL** with proper deployment workflow
+
+### **CRITICAL DEPLOYMENT WORKFLOW**:
+
+#### 1. **Update Google Apps Script Backend with Clasp**
+```bash
+# Navigate to backend directory
+cd /Users/bradleytangonan/google_productivity_app/backend
+
+# Update version numbers in Code.gs first:
+# - DEPLOYMENT_VERSION = "v2024.07.27.XXX-DESCRIPTION"
+# - SCRIPT_VERSION = "X.X.X" (increment)
+# - LAST_UPDATED = current timestamp
+
+# Push code changes to Google Apps Script
+clasp push --force
+
+# Create NEW web app deployment (don't reuse old deployments)
+# Go to https://script.google.com/d/1wv3epbgEsHV0bIQ22I5_XFIh_DIGsXt6BQIY_2NODH2ojlBmfp0JZ3JJ/edit
+# Click "Deploy" → "New deployment"
+# Type: "Web app"
+# Execute as: "Me" 
+# Who has access: "Anyone"
+# Description: "v2024.07.27.XXX-DESCRIPTION"
+# Deploy and copy the new URL
+```
+
+#### 2. **Update Frontend Hardcoded URL**
+```bash
+# Edit the API service file
+# File: /Users/bradleytangonan/google_productivity_app/src/services/api.ts
+# Line: 26
+# Change: private readonly APPS_SCRIPT_URL = 'NEW_DEPLOYMENT_URL';
+
+# Example:
+private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXXXXX/exec';
+```
+
+#### 3. **Deploy to Correct Vercel Project**
+```bash
+# Navigate to root directory
+cd /Users/bradleytangonan/google_productivity_app
+
+# Build with new URL
+npm run build
+
+# Deploy to the correct Vercel project
+vercel --prod --yes
+
+# This should deploy to: tangos-projects-22f6129f/now-and-later
+# Which maps to: nowandlater.vercel.app (or similar domain)
+```
+
+### **IMPORTANT NOTES**:
+- ⚠️ **Always create NEW Google Apps Script deployments** - don't try to update existing ones
+- ⚠️ **Test the new deployment URL with curl before updating frontend**
+- ⚠️ **Update version numbers in Code.gs before pushing**
+- ⚠️ **Deploy to `now-and-later` project, NOT `google_productivity_app`**
+
+### **Troubleshooting**:
+- If deployment URL returns "Page Not Found": Create a new deployment, don't reuse
+- If wrong Vercel project: Run `vercel --prod --yes` from the root directory
+- If CORS issues: Ensure `doOptions()` function exists in Code.gs
 
 ### **CORS Resolution**: ✅ **SOLVED**
-**Problem**: Manual header setting attempts failed with `addHeader` and `setHeader` errors
 **Solution**: Google Apps Script native CORS handling
-- Removed all manual header manipulation code
 - Simple `doOptions()` function enables automatic CORS headers
-- GET requests now work with proper `Access-Control-Allow-Origin: *` headers
-
-### **POST Requests**: ✅ **RESOLVED**
-**Problem**: Frontend health check and other POST requests were failing, forcing mock data mode
-**Symptoms**:
-- ✅ GET requests work perfectly and return JSON with version info
-- ✅ POST requests now successfully reach `doPost()` and return JSON
-- ✅ OPTIONS requests are no longer an issue (avoided by simple POST)
-- ✅ Google Sign-In authentication works correctly
-- ✅ App now uses real backend data
-
-**Root Cause Analysis**:
-1. Initial POST failures due to Google's rejection of anonymous POST requests.
-2. CORS preflight issues with `Authorization` header.
-
-**Solution**:
-- **Authenticated POST requests**: Token is now passed in the JSON payload, avoiding the `Authorization` header that triggers complex CORS preflights.
-- **`Content-Type: text/plain`**: Used for POST requests to ensure they are "simple" and bypass preflight.
-
-**Frontend Impact**:
-- Health check now successfully connects to the backend.
-- All API calls are now routed to the real backend.
-
-### **Next Steps for Resolution**:
-- All major backend connectivity issues are resolved.
-- Continue with feature development and refinement.
-- Monitor application performance and error logs.
-- Consider implementing a more robust error reporting system.
+- Content-Type: text/plain for POST requests to avoid preflight
+- Token passed in JSON payload, not Authorization header
