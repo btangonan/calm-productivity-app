@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwsBcOw1dyI5ucJwrjmjIkJIgMWsNA8bttovtOiuvmK638vZuEreWWrQwoJCtHTNYj/exec';
+  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxcHBsNf_t5ejw_cs1j0HXHUcuVQ9bgL0IlIL6G2AKedPqjzXUN5CBSePly_zBJLoVd/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 
@@ -456,6 +456,8 @@ class ApiService {
 
     try {
       console.log('🔍 Checking Google Apps Script backend health...');
+      console.log('📍 Testing URL:', this.APPS_SCRIPT_URL);
+      
       const payload = {
         action: 'healthCheck',
         timestamp: Date.now(),
@@ -470,8 +472,13 @@ class ApiService {
         mode: 'cors',
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        console.error('Health check failed with status:', response.status);
+        const responseText = await response.text();
+        console.error('❌ Health check failed with status:', response.status);
+        console.error('❌ Response body:', responseText.substring(0, 500));
         this.backendHealthy = false;
         return false;
       }
@@ -745,6 +752,12 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
       throw new Error(response.message || 'Failed to set master folder');
     }
     return response.data;
+  }
+
+  // Google Drive Browser Methods
+  async listDriveFiles(folderId: string = 'root', token: string): Promise<any[]> {
+    const response = await this.executeGoogleScript<any[]>(token, 'listDriveFiles', [folderId], 'GET');
+    return response.data || [];
   }
 }
 

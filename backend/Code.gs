@@ -2,9 +2,9 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.26.016-REVERT-NATIVE-CORS";
-const SCRIPT_VERSION = "3.0.7"; // Increment with each deployment for verification
-const LAST_UPDATED = "2024-07-26T19:00:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.26.018-DRIVE-MIME-FIX";
+const SCRIPT_VERSION = "3.0.9"; // Increment with each deployment for verification
+const LAST_UPDATED = "2024-07-26T22:00:00Z";
 
 // CORS configuration
 const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'
@@ -58,6 +58,9 @@ function doGet(e) {
         break;
       case 'getFolderFiles':
         result = getFolderFiles(parameters[0]);
+        break;
+      case 'listDriveFiles':
+        result = listDriveFiles(parameters[0]);
         break;
       case 'healthCheck':
         result = {
@@ -187,6 +190,9 @@ function doPost(e) {
         break;
       case 'deleteProjectFile':
         result = deleteProjectFile(parameters[0], parameters[1]);
+        break;
+      case 'listDriveFiles':
+        result = listDriveFiles(parameters[0]);
         break;
       case 'testFunction':
         result = testFunction();
@@ -1531,5 +1537,77 @@ function getUserFolder(userEmail) {
   } catch (error) {
     console.error('Error getting user folder:', error);
     return DriveApp.getFolderById(DRIVE_FOLDER_ID); // Fallback to master folder
+  }
+}
+
+/**
+ * List files and folders in Google Drive
+ */
+function listDriveFiles(folderId = 'root') {
+  try {
+    let folder;
+    
+    if (folderId === 'root') {
+      folder = DriveApp.getRootFolder();
+    } else {
+      folder = DriveApp.getFolderById(folderId);
+    }
+    
+    const files = [];
+    
+    // Get folders
+    const folders = folder.getFolders();
+    while (folders.hasNext()) {
+      const driveFolder = folders.next();
+      files.push({
+        id: driveFolder.getId(),
+        name: driveFolder.getName(),
+        mimeType: 'application/vnd.google-apps.folder',
+        modifiedTime: driveFolder.getLastUpdated().toISOString(),
+        webViewLink: driveFolder.getUrl(),
+        isFolder: true,
+        parents: [folderId === 'root' ? 'root' : folderId]
+      });
+    }
+    
+    // Get files
+    const driveFiles = folder.getFiles();
+    while (driveFiles.hasNext()) {
+      const file = driveFiles.next();
+      
+      // Safely get mime type - some files (like Google Apps Script) can't be converted to blob
+      let mimeType;
+      try {
+        mimeType = file.getBlob().getContentType();
+      } catch (e) {
+        // For Google Apps Script files and other special files, use a generic type
+        mimeType = 'application/vnd.google-apps.script';
+      }
+      
+      files.push({
+        id: file.getId(),
+        name: file.getName(),
+        mimeType: mimeType,
+        size: file.getSize(),
+        modifiedTime: file.getLastUpdated().toISOString(),
+        webViewLink: file.getUrl(),
+        thumbnailLink: mimeType.startsWith('image/') ? 
+          `https://drive.google.com/thumbnail?id=${file.getId()}` : undefined,
+        isFolder: false,
+        parents: [folderId === 'root' ? 'root' : folderId]
+      });
+    }
+    
+    // Sort: folders first, then files, both alphabetically
+    files.sort((a, b) => {
+      if (a.isFolder && !b.isFolder) return -1;
+      if (!a.isFolder && b.isFolder) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+    return { success: true, data: files };
+  } catch (error) {
+    console.error('Error listing Drive files:', error);
+    return { success: false, message: error.toString() };
   }
 }

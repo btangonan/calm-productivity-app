@@ -5,6 +5,7 @@ import GoogleIntegrations from './GoogleIntegrations';
 import FileDropzone from './FileDropzone';
 import ProjectFileList from './ProjectFileList';
 import TaskForm from './TaskForm';
+import DriveBrowser from './DriveBrowser';
 import { useApp } from '../context/AppContext';
 import { useState, useEffect } from 'react';
 
@@ -63,7 +64,11 @@ const MainContent = () => {
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-h-0">
         <Header />
-        <DraggableTaskList />
+        {currentView === 'drive' ? (
+          <DriveBrowser className="flex-1 overflow-y-auto" />
+        ) : (
+          <DraggableTaskList />
+        )}
       </div>
       
       

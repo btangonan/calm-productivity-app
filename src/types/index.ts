@@ -42,7 +42,7 @@ export interface Task {
   attachments?: TaskAttachment[];
 }
 
-export type ViewType = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'logbook' | 'project';
+export type ViewType = 'inbox' | 'today' | 'upcoming' | 'anytime' | 'logbook' | 'project' | 'drive';
 
 export interface AppState {
   areas: Area[];
