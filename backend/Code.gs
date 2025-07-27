@@ -218,6 +218,9 @@ function doPost(e) {
       case 'listDriveFiles':
         result = listDriveFiles(parameters[0]);
         break;
+      case 'searchDriveFiles':
+        result = searchDriveFiles(parameters[0]);
+        break;
       case 'testFunction':
         result = testFunction();
         break;
@@ -1757,5 +1760,70 @@ function moveProjectsToUnorganized(areaId) {
     }
   } catch (error) {
     console.error('Error moving projects to unorganized:', error);
+  }
+}
+
+/**
+ * Search files across all of Google Drive
+ */
+function searchDriveFiles(query) {
+  try {
+    if (!query || query.trim().length < 2) {
+      return { success: false, message: 'Search query must be at least 2 characters long' };
+    }
+    
+    // Use Google Drive's search functionality
+    // Search in file names and content (for text files)
+    const searchQuery = `name contains '${query}' or fullText contains '${query}'`;
+    
+    console.log('🔍 Searching Google Drive with query:', searchQuery);
+    
+    const files = [];
+    let pageToken = null;
+    let totalResults = 0;
+    const maxResults = 100; // Limit to prevent too many results
+    
+    do {
+      const searchOptions = {
+        q: searchQuery,
+        pageSize: Math.min(50, maxResults - totalResults),
+        fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, webViewLink, thumbnailLink, parents)',
+        orderBy: 'modifiedTime desc'
+      };
+      
+      if (pageToken) {
+        searchOptions.pageToken = pageToken;
+      }
+      
+      const response = Drive.Files.list(searchOptions);
+      
+      if (response.files && response.files.length > 0) {
+        response.files.forEach(file => {
+          files.push({
+            id: file.id,
+            name: file.name,
+            mimeType: file.mimeType || 'application/octet-stream',
+            size: file.size || 0,
+            modifiedTime: file.modifiedTime,
+            webViewLink: file.webViewLink,
+            thumbnailLink: file.thumbnailLink,
+            isFolder: file.mimeType === 'application/vnd.google-apps.folder',
+            parents: file.parents || []
+          });
+        });
+        
+        totalResults += response.files.length;
+      }
+      
+      pageToken = response.nextPageToken;
+      
+    } while (pageToken && totalResults < maxResults);
+    
+    console.log(`🔍 Found ${files.length} files matching query: ${query}`);
+    
+    return { success: true, data: files };
+  } catch (error) {
+    console.error('Error searching Drive files:', error);
+    return { success: false, message: `Search failed: ${error.toString()}` };
   }
 }

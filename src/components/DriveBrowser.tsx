@@ -27,6 +27,34 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [globalSearchResults, setGlobalSearchResults] = useState<DriveFile[]>([]);
+  const [isGlobalSearch, setIsGlobalSearch] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const getFileTypeLabel = (mimeType: string): string => {
+    // Google Workspace files
+    if (mimeType === 'application/vnd.google-apps.document') return 'Google Doc';
+    if (mimeType === 'application/vnd.google-apps.spreadsheet') return 'Google Sheets';
+    if (mimeType === 'application/vnd.google-apps.presentation') return 'Google Slides';
+    if (mimeType === 'application/vnd.google-apps.form') return 'Google Form';
+    if (mimeType === 'application/vnd.google-apps.drawing') return 'Google Drawing';
+    if (mimeType === 'application/vnd.google-apps.script') return 'Apps Script';
+    
+    // Regular file types
+    if (mimeType === 'application/pdf') return 'PDF';
+    if (mimeType.startsWith('image/')) return 'Image';
+    if (mimeType.startsWith('video/')) return 'Video';
+    if (mimeType.startsWith('audio/')) return 'Audio';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'Document';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'Spreadsheet';
+    if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'Presentation';
+    if (mimeType.includes('zip') || mimeType.includes('compressed')) return 'Archive';
+    if (mimeType.includes('text/')) return 'Text';
+    
+    // Fallback to file extension or generic
+    const parts = mimeType.split('/');
+    return parts.length > 1 ? parts[1].toUpperCase() : 'File';
+  };
 
   useEffect(() => {
     loadDriveFiles(currentFolderId);
@@ -130,20 +158,71 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
   const getFileIcon = (file: DriveFile): string => {
     if (file.isFolder) return '📁';
     
+    // Google Workspace files (specific MIME types)
+    if (file.mimeType === 'application/vnd.google-apps.document') return '📝'; // Google Docs
+    if (file.mimeType === 'application/vnd.google-apps.spreadsheet') return '📊'; // Google Sheets
+    if (file.mimeType === 'application/vnd.google-apps.presentation') return '📈'; // Google Slides
+    if (file.mimeType === 'application/vnd.google-apps.form') return '📋'; // Google Forms
+    if (file.mimeType === 'application/vnd.google-apps.drawing') return '🎨'; // Google Drawings
+    if (file.mimeType === 'application/vnd.google-apps.script') return '⚙️'; // Apps Script
+    
+    // Regular file types
+    if (file.mimeType === 'application/pdf') return '📕'; // PDF files
     if (file.mimeType.startsWith('image/')) return '🖼️';
-    if (file.mimeType.includes('document')) return '📄';
-    if (file.mimeType.includes('spreadsheet')) return '📊';
-    if (file.mimeType.includes('presentation')) return '📽️';
-    if (file.mimeType.includes('pdf')) return '📕';
-    if (file.mimeType.includes('video')) return '🎥';
-    if (file.mimeType.includes('audio')) return '🎵';
+    if (file.mimeType.startsWith('video/')) return '🎥';
+    if (file.mimeType.startsWith('audio/')) return '🎵';
+    if (file.mimeType.includes('word') || file.mimeType.includes('document')) return '📄';
+    if (file.mimeType.includes('excel') || file.mimeType.includes('spreadsheet')) return '📊';
+    if (file.mimeType.includes('powerpoint') || file.mimeType.includes('presentation')) return '📽️';
+    if (file.mimeType.includes('zip') || file.mimeType.includes('compressed')) return '🗜️';
+    if (file.mimeType.includes('text/')) return '📃';
     
     return '📄';
   };
 
-  const filteredFiles = files.filter(file => 
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setIsGlobalSearch(false);
+      setGlobalSearchResults([]);
+      return;
+    }
+
+    if (query.length >= 3) { // Start global search after 3+ characters
+      setSearchLoading(true);
+      setIsGlobalSearch(true);
+      
+      try {
+        if (userProfile?.id_token) {
+          const searchResults = await apiService.searchDriveFiles(query, userProfile.id_token);
+          const convertedResults: DriveFile[] = searchResults.map((file: any) => ({
+            id: file.id,
+            name: file.name,
+            mimeType: file.mimeType,
+            size: file.size,
+            modifiedTime: file.modifiedTime,
+            webViewLink: file.webViewLink,
+            thumbnailLink: file.thumbnailLink,
+            isFolder: file.isFolder,
+            parents: file.parents,
+          }));
+          setGlobalSearchResults(convertedResults);
+        }
+      } catch (error) {
+        console.error('Global search failed:', error);
+        setError('Search failed. Please try again.');
+      } finally {
+        setSearchLoading(false);
+      }
+    }
+  };
+
+  const filteredFiles = isGlobalSearch 
+    ? globalSearchResults
+    : files.filter(file => 
+        file.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
   console.log('🔍 Files state:', files.length, 'files');
   console.log('🔍 Filtered files:', filteredFiles.length, 'files');
@@ -215,12 +294,38 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
           </div>
           <input
             type="text"
-            placeholder="Search files and folders..."
+            placeholder={isGlobalSearch ? "Searching all of Google Drive..." : "Search files and folders..."}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            onChange={(e) => handleSearch(e.target.value)}
+            className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           />
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+            {searchLoading && (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+            )}
+            {searchQuery && (
+              <button
+                onClick={() => handleSearch('')}
+                className="text-gray-400 hover:text-gray-600"
+                title="Clear search"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
+        
+        {/* Search status */}
+        {isGlobalSearch && (
+          <div className="text-sm text-gray-600 mt-2">
+            {searchLoading ? 
+              'Searching all of Google Drive...' : 
+              `Found ${filteredFiles.length} result${filteredFiles.length !== 1 ? 's' : ''} for "${searchQuery}"`
+            }
+          </div>
+        )}
       </div>
 
       {/* Error State */}
@@ -275,7 +380,7 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
                       {file.name}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {file.isFolder ? 'Folder' : file.mimeType.split('/')[1].toUpperCase()}
+                      {file.isFolder ? 'Folder' : getFileTypeLabel(file.mimeType)}
                       {file.size && ` • ${formatFileSize(file.size)}`}
                     </p>
                   </div>
