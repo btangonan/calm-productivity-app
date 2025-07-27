@@ -795,7 +795,7 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
   }
 
   async searchDriveFiles(query: string, token: string): Promise<any[]> {
-    const response = await this.executeGoogleScript<any[]>(token, 'searchDriveFiles', [query]);
+    const response = await this.executeGoogleScript<any[]>(token, 'searchDriveFiles', [query], 'GET');
     return response.data || [];
   }
 }

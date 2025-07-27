@@ -77,6 +77,9 @@ function doGet(e) {
       case 'listDriveFiles':
         result = listDriveFiles(parameters[0]);
         break;
+      case 'searchDriveFiles':
+        result = searchDriveFiles(parameters[0]);
+        break;
       case 'healthCheck':
         result = {
           success: true,
