@@ -23,8 +23,23 @@ const TASKS_SUBFOLDER = 'Tasks';
 function doGet(e) {
   let result;
   try {
-    const functionName = e.parameter.function;
-    const parameters = JSON.parse(e.parameter.parameters || '[]');
+    // Robustly get functionName and parameters from e.parameter or e.parameters
+    const functionName = e.parameter.function || (e.parameters.function && e.parameters.function[0]);
+    let parameters = [];
+    if (e.parameter.parameters) {
+      try {
+        parameters = JSON.parse(e.parameter.parameters);
+      } catch (err) {
+        console.warn("Could not parse parameters from query string (e.parameter.parameters):", e.parameter.parameters, err);
+      }
+    } else if (e.parameters.parameters && e.parameters.parameters[0]) {
+      try {
+        parameters = JSON.parse(e.parameters.parameters[0]);
+      } catch (err) {
+        console.warn("Could not parse parameters from query string array (e.parameters.parameters[0]):", e.parameters.parameters[0], err);
+      }
+    }
+
     const authToken = e.parameter.token; // Retrieve token from query parameter
 
     let userInfo = null;
