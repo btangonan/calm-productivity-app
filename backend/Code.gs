@@ -80,6 +80,9 @@ function doGet(e) {
       case 'searchDriveFiles':
         result = searchDriveFiles(parameters[0]);
         break;
+      case 'getFilePath':
+        result = getFilePath(parameters[0]);
+        break;
       case 'healthCheck':
         result = {
           success: true,
@@ -223,6 +226,9 @@ function doPost(e) {
         break;
       case 'searchDriveFiles':
         result = searchDriveFiles(parameters[0]);
+        break;
+      case 'getFilePath':
+        result = getFilePath(parameters[0]);
         break;
       case 'testFunction':
         result = testFunction();
@@ -1828,5 +1834,49 @@ function searchDriveFiles(query) {
   } catch (error) {
     console.error('Error searching Drive files:', error);
     return { success: false, message: `Search failed: ${error.toString()}` };
+  }
+}
+
+/**
+ * Get the full path of a file in Google Drive
+ */
+function getFilePath(fileId) {
+  try {
+    if (!fileId || fileId === 'root') {
+      return { success: true, data: [{ id: 'root', name: 'My Drive' }] };
+    }
+    
+    const file = DriveApp.getFileById(fileId);
+    const parents = file.getParents();
+    
+    if (!parents.hasNext()) {
+      return { success: true, data: [{ id: 'root', name: 'My Drive' }] };
+    }
+    
+    const pathParts = [];
+    let currentFolder = parents.next();
+    
+    // Build path by walking up the hierarchy
+    while (currentFolder && currentFolder.getId() !== 'root') {
+      pathParts.unshift({
+        id: currentFolder.getId(),
+        name: currentFolder.getName()
+      });
+      
+      const parentFolders = currentFolder.getParents();
+      if (parentFolders.hasNext()) {
+        currentFolder = parentFolders.next();
+      } else {
+        break;
+      }
+    }
+    
+    // Add My Drive at the beginning
+    pathParts.unshift({ id: 'root', name: 'My Drive' });
+    
+    return { success: true, data: pathParts };
+  } catch (error) {
+    console.error('Error getting file path:', error);
+    return { success: false, message: error.toString() };
   }
 }
