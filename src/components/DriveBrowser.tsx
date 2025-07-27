@@ -361,7 +361,7 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
                 </svg>
               </div>
               <p className="text-gray-500">
-                {searchQuery ? 'No files match your search' : 'This folder is empty'}
+                {searchLoading ? 'Searching...' : searchQuery ? 'No files match your search' : 'This folder is empty'}
               </p>
             </div>
           ) : (
