@@ -32,6 +32,7 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
+  const [selectedFilePath, setSelectedFilePath] = useState<string>('');
 
   const getFileTypeLabel = (mimeType: string): string => {
     // Google Workspace files
@@ -122,6 +123,7 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
     setIsGlobalSearch(false);
     setGlobalSearchResults([]);
     setSelectedFileId(null);
+    setSelectedFilePath('');
     setCurrentFolderId(folderId);
     
     if (folderId === 'root') {
@@ -161,7 +163,7 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
     }
   };
 
-  const handleFileClick = (file: DriveFile) => {
+  const handleFileClick = async (file: DriveFile) => {
     console.log('📂 File clicked:', file.name, 'isFolder:', file.isFolder, 'id:', file.id);
     
     // Clear any existing timer
@@ -170,12 +172,23 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
       setClickTimer(null);
     }
     
-    // Single click - select the file
+    // Single click - select the file and get its path
     if (selectedFileId === file.id) {
       // If already selected, this might be a double-click
       handleFileDoubleClick(file);
     } else {
       setSelectedFileId(file.id);
+      
+      // Get file path for search results
+      if (isGlobalSearch && userProfile?.id_token) {
+        try {
+          const pathData = await apiService.getFilePath(file.id, userProfile.id_token);
+          const pathString = pathData.map(p => p.name).join(' > ');
+          setSelectedFilePath(pathString);
+        } catch (error) {
+          setSelectedFilePath('My Drive > ...');
+        }
+      }
       
       // Set timer to clear selection behavior for double-click detection
       const timer = setTimeout(() => {
@@ -194,6 +207,7 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
       setIsGlobalSearch(false);
       setGlobalSearchResults([]);
       setSelectedFileId(null);
+      setSelectedFilePath('');
       navigateToFolder(file.id, file.name);
     } else {
       // Open file in new tab
@@ -248,6 +262,7 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
     setSelectedFileId(null); // Clear selection when searching
+    setSelectedFilePath(''); // Clear path when searching
     
     if (!query.trim()) {
       setIsGlobalSearch(false);
@@ -383,6 +398,13 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
           </div>
         </div>
         
+        {/* Selected File Path - only show for search results */}
+        {selectedFileId && isGlobalSearch && selectedFilePath && (
+          <div className="text-sm text-gray-600 mt-2 mb-2">
+            <span className="font-medium">Path:</span> {selectedFilePath}
+          </div>
+        )}
+
         {/* Search status */}
         {isGlobalSearch && (
           <div className="text-sm text-gray-600 mt-2">
@@ -390,57 +412,6 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
               'Searching all of Google Drive...' : 
               `Found ${filteredFiles.length} result${filteredFiles.length !== 1 ? 's' : ''} for "${searchQuery}"`
             }
-          </div>
-        )}
-
-        {/* Selected File Details */}
-        {selectedFileId && (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="text-sm font-medium text-blue-900 mb-1">Selected File</h4>
-                {(() => {
-                  const selectedFile = filteredFiles.find(f => f.id === selectedFileId);
-                  if (!selectedFile) return null;
-                  
-                  return (
-                    <div className="space-y-1">
-                      <p className="text-sm text-blue-800">
-                        <span className="font-medium">Name:</span> {selectedFile.name}
-                      </p>
-                      <p className="text-sm text-blue-700">
-                        <span className="font-medium">Type:</span> {getFileTypeLabel(selectedFile.mimeType)}
-                      </p>
-                      {selectedFile.size && (
-                        <p className="text-sm text-blue-700">
-                          <span className="font-medium">Size:</span> {formatFileSize(selectedFile.size)}
-                        </p>
-                      )}
-                      <p className="text-sm text-blue-700">
-                        <span className="font-medium">Modified:</span> {formatDate(selectedFile.modifiedTime)}
-                      </p>
-                      {isGlobalSearch && (
-                        <p className="text-sm text-blue-700">
-                          <span className="font-medium">Path:</span> {selectedFile.parents && selectedFile.parents[0] !== 'root' ? 'My Drive > ...' : 'My Drive'}
-                        </p>
-                      )}
-                      <p className="text-xs text-blue-600 mt-2">
-                        💡 Double-click to {selectedFile.isFolder ? 'open folder' : 'open file'}
-                      </p>
-                    </div>
-                  );
-                })()}
-              </div>
-              <button
-                onClick={() => setSelectedFileId(null)}
-                className="ml-4 text-blue-400 hover:text-blue-600"
-                title="Clear selection"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
           </div>
         )}
       </div>

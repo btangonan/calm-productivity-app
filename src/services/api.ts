@@ -798,6 +798,11 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     const response = await this.executeGoogleScript<any[]>(token, 'searchDriveFiles', [query], 'GET');
     return response.data || [];
   }
+
+  async getFilePath(fileId: string, token: string): Promise<any[]> {
+    const response = await this.executeGoogleScript<any[]>(token, 'getFilePath', [fileId], 'GET');
+    return response.data || [];
+  }
 }
 
 export const apiService = new ApiService();
