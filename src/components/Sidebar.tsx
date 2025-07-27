@@ -396,14 +396,14 @@ const Sidebar = () => {
         <div className="p-4">
         <div className="mb-6 px-3">
           {/* Header with app name and quick task button */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center mb-4">
             <svg width="120" height="32" viewBox="0 0 937.41 591.4" className="fill-gray-900">
               <path d="M254.22,298.5c-13.17-39.02-24.99-77.71-43.12-114.03-3.81-7.63-8-14.98-13.88-21.19-12.19-12.88-29.42-9.17-35.46,7.7-2.53,7.08-3.29,14.49-3.29,22.09.09,127.25.05,254.51.03,381.76,0,9.86-5,14.79-15.01,14.79-43.07,0-86.14-.27-129.21.22-9.63.11-12-3.02-11.98-12.25.28-143.57-.37-287.14.64-430.7.3-42.19,13.18-81.03,45.92-110.58,18.72-16.89,41.19-26.16,65.77-30.15C159.87-1.19,204.85-.89,248.93,13.28c44.46,14.29,76.19,43.85,99.53,83.56,25,42.54,39.93,89.09,54.76,135.68,24.4,76.64,47.11,153.84,75.28,229.23,6.84,18.3,14.32,36.4,24.1,53.46,16.86,29.42,40.11,51.95,70.52,67.06,2.46,1.22,5.74,1.79,6.12,5.72-3.31,2.99-7.39,1.61-11.05,1.62-47.31.09-94.63.24-141.94-.06-38.41-.24-67.53-18.05-87.73-49.92-18.33-28.91-27.55-61.84-37.97-94.06-15.74-48.66-30.74-97.56-46.33-147.07h0Z"/>
               <path d="M547.09,518.86c-30.72-38.05-46.99-81.5-55.12-128.51-3.41-19.7-3.9-39.49-3.88-59.39.12-103.74.05-207.48.06-311.21,0-12.98.05-13.02,12.75-13.02,46.65-.02,93.3-.01,139.95,0,12.97,0,13.04.05,13.04,12.96.02,117.77.05,235.53-.01,353.3-.01,24.99,8.2,45.98,28.84,61.06,11.17,8.17,23.95,11.43,37.7,11.42,66.88-.04,133.75.16,200.62-.22,9.7-.06,13.09,2.48,12.97,12.56-.5,40.45-.37,80.9-.05,121.35.06,8.16-2.76,10.65-10.75,10.62-79.92-.24-159.87.97-239.76-.62-51.8-1.03-94.41-24.77-129.4-62.47-2.22-2.39-4.36-4.85-6.96-7.84h0Z"/>
             </svg>
             <button 
               onClick={() => setShowTaskForm(true)} 
-              className="inline-flex items-center justify-center px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded border border-primary-600 transition-colors whitespace-nowrap"
+              className="inline-flex items-center justify-center px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded border border-primary-600 transition-colors whitespace-nowrap ml-auto"
               title="Add Task"
             >
               Add Task +
@@ -412,7 +412,7 @@ const Sidebar = () => {
           
           {/* User profile section with logout */}
           {userProfile && (
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+            <div className="flex items-center p-2 bg-gray-50 rounded-lg w-full">
               <div className="flex items-center min-w-0 flex-1">
                 <img 
                   src={userProfile.picture} 
