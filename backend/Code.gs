@@ -164,6 +164,9 @@ function doPost(e) {
       case 'updateTaskCompletion':
         result = updateTaskCompletion(parameters[0], parameters[1]);
         break;
+      case 'deleteTask':
+        result = deleteTask(parameters[0]);
+        break;
       case 'updateProjectStatus':
         result = updateProjectStatus(parameters[0], parameters[1]);
         break;
@@ -541,6 +544,29 @@ function updateTaskCompletion(taskId, isCompleted) {
     
     return { success: false, message: 'Task not found' };
   } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function deleteTask(taskId) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('Tasks');
+    const data = sheet.getDataRange().getValues();
+    
+    // Find the task row to delete
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === taskId) {
+        // Delete the row (i+1 because sheet rows are 1-indexed)
+        sheet.deleteRow(i + 1);
+        console.log(`Deleted task ${taskId} from row ${i + 1}`);
+        return { success: true, message: 'Task deleted successfully' };
+      }
+    }
+    
+    return { success: false, message: 'Task not found' };
+  } catch (error) {
+    console.error('Error deleting task:', error);
     return { success: false, message: error.toString() };
   }
 }

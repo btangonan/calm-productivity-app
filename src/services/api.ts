@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzFlSDPj-nLfgtXvlWNCEwSakVrKZr8OUKSQUM0cBAEJNhJBKWDpy_l9l5VTf_aG1cF/exec';
+  private readonly APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJOdTzNyZubD-ygHgGvlIV0_POpVXnSnrC0rDobGaH7O1-1B6_ywKa-JVu28UgfKMy/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 
@@ -581,6 +581,13 @@ class ApiService {
     const response = await this.executeGoogleScript<void>(token, 'updateTaskCompletion', [taskId, isCompleted]);
     if (!response.success) {
       throw new Error(response.message || 'Failed to update task');
+    }
+  }
+
+  async deleteTask(taskId: string, token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'deleteTask', [taskId]);
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete task');
     }
   }
 

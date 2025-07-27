@@ -79,9 +79,21 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this task?')) {
       try {
-        // For now, just remove from state. TODO: Add API call when backend supports it
+        const token = state.userProfile?.id_token;
+        if (!token) {
+          throw new Error('User not authenticated');
+        }
+
+        console.log(`🗑️ Deleting task: ${task.id} - "${task.title}"`);
+        
+        // Call backend API to delete task
+        await apiService.deleteTask(task.id, token);
+        
+        // Remove from frontend state after successful backend deletion
         dispatch({ type: 'DELETE_TASK', payload: task.id });
         setShowDropdown(false);
+        
+        console.log(`✅ Task deleted successfully: ${task.id}`);
       } catch (error) {
         console.error('Failed to delete task:', error);
         dispatch({ type: 'SET_ERROR', payload: 'Failed to delete task' });
