@@ -167,6 +167,12 @@ function doPost(e) {
       case 'deleteTask':
         result = deleteTask(parameters[0]);
         break;
+      case 'deleteProject':
+        result = deleteProject(parameters[0]);
+        break;
+      case 'deleteArea':
+        result = deleteArea(parameters[0]);
+        break;
       case 'updateProjectStatus':
         result = updateProjectStatus(parameters[0], parameters[1]);
         break;
@@ -1650,5 +1656,106 @@ function listDriveFiles(folderId = 'root') {
   } catch (error) {
     console.error('Error listing Drive files:', error);
     return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Delete a project from the database
+ */
+function deleteProject(projectId) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('Projects');
+    const data = sheet.getDataRange().getValues();
+    
+    // Find the project row to delete
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === projectId) {
+        // Delete the row (i+1 because sheet rows are 1-indexed)
+        sheet.deleteRow(i + 1);
+        console.log(`Deleted project ${projectId} from row ${i + 1}`);
+        
+        // Also delete all tasks associated with this project
+        deleteTasksByProject(projectId);
+        
+        return { success: true, message: 'Project deleted successfully' };
+      }
+    }
+    
+    return { success: false, message: 'Project not found' };
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Delete an area from the database
+ */
+function deleteArea(areaId) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('Areas');
+    const data = sheet.getDataRange().getValues();
+    
+    // Find the area row to delete
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === areaId) {
+        // Delete the row (i+1 because sheet rows are 1-indexed)
+        sheet.deleteRow(i + 1);
+        console.log(`Deleted area ${areaId} from row ${i + 1}`);
+        
+        // Move all projects in this area to unorganized (set areaId to null)
+        moveProjectsToUnorganized(areaId);
+        
+        return { success: true, message: 'Area deleted successfully' };
+      }
+    }
+    
+    return { success: false, message: 'Area not found' };
+  } catch (error) {
+    console.error('Error deleting area:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Helper function to delete all tasks for a project
+ */
+function deleteTasksByProject(projectId) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('Tasks');
+    const data = sheet.getDataRange().getValues();
+    
+    // Delete rows from bottom to top to avoid index shifting
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (data[i][3] === projectId) { // Column 3 is ProjectID
+        sheet.deleteRow(i + 1);
+        console.log(`Deleted task in project ${projectId} from row ${i + 1}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting tasks for project:', error);
+  }
+}
+
+/**
+ * Helper function to move projects to unorganized when area is deleted
+ */
+function moveProjectsToUnorganized(areaId) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('Projects');
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][3] === areaId) { // Column 3 is AreaID
+        sheet.getRange(i + 1, 4).setValue(''); // Set AreaID to empty
+        console.log(`Moved project ${data[i][0]} to unorganized`);
+      }
+    }
+  } catch (error) {
+    console.error('Error moving projects to unorganized:', error);
   }
 }

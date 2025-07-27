@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, type ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
 import type { AppState, Area, Project, Task, ViewType, UserProfile } from '../types';
 
 interface AppContextType {
@@ -113,6 +113,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       console.log('✅ LOGIN_SUCCESS action dispatched:', action.payload);
       return { ...state, isAuthenticated: true, userProfile: action.payload };
     case 'LOGOUT':
+      localStorage.removeItem('google-auth-state');
       return { 
         ...state, 
         isAuthenticated: false, 
@@ -132,6 +133,45 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Restore authentication state from localStorage on app start
+  useEffect(() => {
+    const restoreAuthState = () => {
+      try {
+        const savedAuth = localStorage.getItem('google-auth-state');
+        if (savedAuth) {
+          const authData = JSON.parse(savedAuth);
+          
+          // Check if token is still valid (not expired)
+          const tokenPayload = JSON.parse(atob(authData.id_token.split('.')[1]));
+          const isExpired = tokenPayload.exp * 1000 < Date.now();
+          
+          if (!isExpired) {
+            console.log('🔄 Restoring authentication for:', authData.email);
+            dispatch({
+              type: 'LOGIN_SUCCESS',
+              payload: authData
+            });
+          } else {
+            console.log('🔐 Token expired, clearing saved auth');
+            localStorage.removeItem('google-auth-state');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to restore auth state:', error);
+        localStorage.removeItem('google-auth-state');
+      }
+    };
+    
+    restoreAuthState();
+  }, []);
+
+  // Save authentication state to localStorage when user logs in
+  useEffect(() => {
+    if (state.isAuthenticated && state.userProfile) {
+      localStorage.setItem('google-auth-state', JSON.stringify(state.userProfile));
+    }
+  }, [state.isAuthenticated, state.userProfile]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

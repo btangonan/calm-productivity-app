@@ -591,6 +591,20 @@ class ApiService {
     }
   }
 
+  async deleteProject(projectId: string, token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'deleteProject', [projectId]);
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete project');
+    }
+  }
+
+  async deleteArea(areaId: string, token: string): Promise<void> {
+    const response = await this.executeGoogleScript<void>(token, 'deleteArea', [areaId]);
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete area');
+    }
+  }
+
   async updateProjectStatus(projectId: string, status: Project['status'], token: string): Promise<void> {
     const response = await this.executeGoogleScript<void>(token, 'updateProjectStatus', [projectId, status]);
     if (!response.success) {

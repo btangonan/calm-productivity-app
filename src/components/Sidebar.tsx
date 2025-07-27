@@ -202,6 +202,15 @@ const Sidebar = () => {
     e.stopPropagation();
     if (window.confirm(`Are you sure you want to delete the project "${projectName}"?`)) {
       try {
+        const userProfile = state.userProfile;
+        if (!userProfile) {
+          throw new Error('Not authenticated');
+        }
+
+        // Call backend API to delete project
+        await apiService.deleteProject(projectId, userProfile.id_token);
+        
+        // Update local state after successful backend deletion
         dispatch({ type: 'DELETE_PROJECT', payload: projectId });
         setShowOptionsDropdown(null);
       } catch (error) {
@@ -225,6 +234,15 @@ const Sidebar = () => {
     }
     
     try {
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call backend API to delete area (this also moves projects to unorganized)
+      await apiService.deleteArea(areaId, userProfile.id_token);
+      
+      // Update local state after successful backend deletion
       // Move projects to unorganized (null areaId)
       areaProjects.forEach(project => {
         dispatch({ type: 'UPDATE_PROJECT', payload: { ...project, areaId: null } });
