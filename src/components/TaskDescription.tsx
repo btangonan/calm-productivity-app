@@ -43,58 +43,43 @@ const TaskDescription: React.FC<TaskDescriptionProps> = ({
     }
   };
 
-  // For the main task list, show only the first line of the description
-  const lines = description.split('\n');
-  const firstLine = lines[0] || '';
-  const previewLength = 60; // Max characters for first line preview
-  const needsPreview = firstLine.length > previewLength || lines.length > 1;
-  const previewDescription = needsPreview 
-    ? (firstLine.length > previewLength 
-        ? firstLine.substring(0, previewLength).trim() + '...'
-        : firstLine + (lines.length > 1 ? '...' : ''))
-    : firstLine;
 
   return (
     <>
-      {/* Description text */}
-      <div className={className}>
-        {isEditing ? (
-          // Editing mode: textarea for multiline editing
-          <textarea
-            value={editingDescription}
-            onChange={(e) => onDescriptionChange?.(e.target.value)}
-            onBlur={onDescriptionSave}
-            onKeyDown={onDescriptionKeyDown}
-            className="w-full text-sm bg-white border border-primary-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-            rows={3}
-            placeholder="Add description..."
-            autoFocus
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <div 
-            className={`cursor-pointer rounded px-2 py-1 ${
-              isSelected 
-                ? 'bg-primary-50 border border-primary-200' 
-                : 'hover:bg-gray-100'
-            }`}
-            onClick={onDescriptionClick}
-            title={isSelected ? "Click again to edit description" : "Click to select task"}
-          >
-            {isExpanded ? (
-              // Expanded: full description with proper formatting
+      {/* Description text - only show when expanded or editing */}
+      {(isExpanded || isEditing) && (
+        <div className={className}>
+          {isEditing ? (
+            // Editing mode: textarea for multiline editing
+            <textarea
+              value={editingDescription}
+              onChange={(e) => onDescriptionChange?.(e.target.value)}
+              onBlur={onDescriptionSave}
+              onKeyDown={onDescriptionKeyDown}
+              className="w-full text-sm bg-white border border-primary-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+              rows={3}
+              placeholder="Add description..."
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <div 
+              className={`cursor-pointer rounded px-2 py-1 ${
+                isSelected 
+                  ? 'bg-primary-50 border border-primary-200' 
+                  : 'hover:bg-gray-100'
+              }`}
+              onClick={onDescriptionClick}
+              title={isSelected ? "Click again to edit description" : "Click to select task"}
+            >
+              {/* Expanded: full description with proper formatting */}
               <div className="whitespace-pre-wrap break-words text-sm text-gray-600">
                 {description || "No description"}
               </div>
-            ) : (
-              // Collapsed: single line only, truncated
-              <div className="text-sm text-gray-600 truncate">
-                {previewDescription || "No description"}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Full expandable content area when expanded */}
       {isExpanded && (

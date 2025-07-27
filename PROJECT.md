@@ -477,10 +477,136 @@ function doGet(e) {
 
 **Fixed URLs**:
 - Previous (broken): `https://script.google.com/macros/s/AKfycbxwD3kpSNMp5STaSrX-KkYKEYkiYq1t7lUrckJjf3jSMKZhw03Nijuh0q-UE3JD8s3W/exec`
-- Current (working): `https://script.google.com/macros/s/AKfycbzFlSDPj-nLfgtXvlWNCEwSakVrKZr8OUKSQUM0cBAEJNhJBKWDpy_l9l5VTf_aG1cF/exec`
+- Current (working): `https://script.google.com/macros/s/AKfycbw91WnE1iXhpO5wlNTPU7t2TpsW5CpZh6EbNaCeZB0pV6JtQfn_lkk5D5XHjJKy3eLV/exec`
 
-**Deployment**: v2024.07.27.003-GET-FIX
+**Deployment**: v2024.07.27.007-SEARCH-FIX
 - ✅ State persistence now working across page reloads
 - ✅ GET requests parsing parameters correctly  
 - ✅ Health check returning proper responses
 - ✅ App no longer falling back to mock data
+
+## 🔧 Recent Major Updates (July 27, 2024)
+
+### ✅ Authentication Persistence Fix
+**Problem**: Users had to sign in every time they loaded the page
+**Solution**: Implemented localStorage-based authentication persistence
+- JWT token validation on app startup
+- Automatic restoration of authentication state
+- Secure token expiration checking
+- Clean logout with localStorage cleanup
+
+### ✅ Data Persistence Critical Fix  
+**Problem**: Projects and areas were being deleted but reappeared after page reload
+**Solution**: Added missing backend delete functions and proper API integration
+- `deleteProject()` function in Google Apps Script backend
+- `deleteArea()` function with proper area management
+- `deleteTasksByProject()` helper function for cleanup
+- `moveProjectsToUnorganized()` for area deletion handling
+- Frontend now calls backend APIs before updating local state
+
+### ✅ Google Drive Integration Enhancement
+**Problem**: 
+1. File type detection was incorrect (Google Docs showing as PDFs)
+2. Search was limited to current folder only
+
+**Solution**: Enhanced Google Drive browser functionality
+- **File Type Detection**: Proper MIME type handling for Google Workspace files
+  - `application/vnd.google-apps.document` → "Google Doc"
+  - `application/vnd.google-apps.spreadsheet` → "Google Sheets"  
+  - `application/vnd.google-apps.presentation` → "Google Slides"
+- **Global Search**: Implemented `searchDriveFiles()` backend function
+  - Uses Google Drive API search across entire drive
+  - Added to both GET and POST handlers
+  - Loading states and result counts in frontend
+  - Clear search functionality
+
+### ✅ UI/UX Improvements
+**Click/Double-Click System for Google Drive**:
+- Single click: Selects file with blue highlight
+- Double-click: Opens file or navigates to folder
+- Simple path display for selected search results
+- Clean, minimal interface without large blue info boxes
+
+**Favicon Implementation**:
+- Custom "Now & Later" logo as favicon
+- Multiple formats (SVG, PNG, ICO) for broad browser support
+- White background version for better visibility
+- Apple Touch Icon support
+
+**Header Branding**:
+- Replaced "Now & Later" text with actual SVG logo (120x32px)
+- Expanded "Add Task" button with proper "Add Task +" text
+- Improved button usability and visual prominence
+
+**Sidebar Left-Justification**:
+- Fixed all navigation elements to be properly left-aligned
+- Removed `justify-between` from navigation items
+- Used `ml-auto` for task counts to stay right while content stays left
+- Updated CSS with explicit `justify-start` for consistent alignment
+- Fixed header logo and user profile to be left-aligned
+
+### 🚀 Current Deployment Status
+
+**Latest Backend Deployment**: 
+- URL: `https://script.google.com/macros/s/AKfycbw91WnE1iXhpO5wlNTPU7t2TpsW5CpZh6EbNaCeZB0pV6JtQfn_lkk5D5XHjJKy3eLV/exec`
+- Version: v2024.07.27.007-SEARCH-FIX
+- Features: Full CRUD operations, Google Drive search, authentication persistence
+
+**Frontend Features**:
+- ✅ Authentication persistence across sessions
+- ✅ Complete data persistence (no more phantom deletions)
+- ✅ Enhanced Google Drive integration with global search
+- ✅ Professional branding with custom logo and favicon
+- ✅ Clean, left-aligned sidebar navigation
+- ✅ Click/double-click Google Drive interaction
+- ✅ Proper file type detection for Google Workspace files
+
+### 🎯 System Architecture Updates
+
+**Authentication Flow**:
+```typescript
+// localStorage persistence with token validation
+useEffect(() => {
+  const restoreAuthState = () => {
+    try {
+      const savedAuth = localStorage.getItem('google-auth-state');
+      if (savedAuth) {
+        const authData = JSON.parse(savedAuth);
+        const tokenPayload = JSON.parse(atob(authData.id_token.split('.')[1]));
+        const isExpired = tokenPayload.exp * 1000 < Date.now();
+        if (!isExpired) {
+          dispatch({ type: 'LOGIN_SUCCESS', payload: authData });
+        }
+      }
+    } catch (error) {
+      localStorage.removeItem('google-auth-state');
+    }
+  };
+  restoreAuthState();
+}, []);
+```
+
+**Backend Delete Functions**:
+```javascript
+function deleteProject(projectId) {
+  // Find and delete project row
+  // Delete all associated tasks
+  // Clean up project folder references
+}
+
+function deleteArea(areaId) {
+  // Find and delete area row  
+  // Move all projects to unorganized
+  // Maintain data integrity
+}
+```
+
+**Google Drive Search**:
+```javascript
+function searchDriveFiles(query) {
+  // Global search using Drive API
+  // Support for both name and content search
+  // Pagination and result limiting
+  // Proper error handling
+}
+```
