@@ -430,3 +430,57 @@ vercel --prod --yes
 - Simple `doOptions()` function enables automatic CORS headers
 - Content-Type: text/plain for POST requests to avoid preflight
 - Token passed in JSON payload, not Authorization header
+
+### **GET Request Parameter Parsing Fix**: ✅ **SOLVED**
+**Problem**: State persistence was failing because GET requests weren't parsing parameters correctly
+- Areas, projects, and tasks were reverting to mock data on page reload
+- Health check was failing, causing app to use mock data fallback
+
+**Root Cause**: Google Apps Script's `doGet(e)` function has inconsistent parameter handling
+- Sometimes parameters are in `e.parameter`
+- Sometimes parameters are in `e.parameters` (as arrays)
+- Frontend was sending parameters correctly, but backend couldn't parse them
+
+**Solution**: Robust parameter parsing in `doGet` function
+```javascript
+function doGet(e) {
+  try {
+    // Robustly get functionName from either parameter format
+    const functionName = e.parameter.function || (e.parameters.function && e.parameters.function[0]);
+    
+    // Robustly parse parameters from either format
+    let parameters = [];
+    if (e.parameter.parameters) {
+      try {
+        parameters = JSON.parse(e.parameter.parameters);
+      } catch (err) {
+        console.warn("Could not parse parameters from e.parameter.parameters:", err);
+      }
+    } else if (e.parameters.parameters && e.parameters.parameters[0]) {
+      try {
+        parameters = JSON.parse(e.parameters.parameters[0]);
+      } catch (err) {
+        console.warn("Could not parse parameters from e.parameters.parameters[0]:", err);
+      }
+    }
+    
+    // Continue with function execution...
+  } catch (error) {
+    console.error('doGet error:', error);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Request processing failed: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+```
+
+**Fixed URLs**:
+- Previous (broken): `https://script.google.com/macros/s/AKfycbxwD3kpSNMp5STaSrX-KkYKEYkiYq1t7lUrckJjf3jSMKZhw03Nijuh0q-UE3JD8s3W/exec`
+- Current (working): `https://script.google.com/macros/s/AKfycbzFlSDPj-nLfgtXvlWNCEwSakVrKZr8OUKSQUM0cBAEJNhJBKWDpy_l9l5VTf_aG1cF/exec`
+
+**Deployment**: v2024.07.27.003-GET-FIX
+- ✅ State persistence now working across page reloads
+- ✅ GET requests parsing parameters correctly  
+- ✅ Health check returning proper responses
+- ✅ App no longer falling back to mock data
