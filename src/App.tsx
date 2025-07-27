@@ -31,11 +31,19 @@ function AppContent() {
         }
 
         const token = state.userProfile.id_token;
+        console.log('🔑 Using token for API calls:', token ? 'Present' : 'Missing');
+        
+        console.log('📡 Loading areas, projects, and tasks...');
         const [areas, projects, tasks] = await Promise.all([
           apiService.getAreas(token),
           apiService.getProjects(undefined, token),
           apiService.getTasks(undefined, undefined, token),
         ]);
+
+        console.log('📊 Loaded data:');
+        console.log('   Areas:', areas.length, 'items');
+        console.log('   Projects:', projects.length, 'items');
+        console.log('   Tasks:', tasks.length, 'items');
 
         dispatch({ type: 'SET_AREAS', payload: areas });
         dispatch({ type: 'SET_PROJECTS', payload: projects });

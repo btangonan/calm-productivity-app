@@ -206,8 +206,11 @@ class ApiService {
   ];
 
   private async executeGoogleScript<T>(token: string, functionName: string, args: any[] = [], httpMethod: 'GET' | 'POST' = 'POST'): Promise<GoogleScriptResponse<T>> {
+    console.log(`🔄 executeGoogleScript called: ${functionName} (${httpMethod})`);
+    console.log(`📊 Backend status: isGoogleAppsScript=${this.isGoogleAppsScript}, backendHealthy=${this.backendHealthy}`);
+    
     if (!this.isGoogleAppsScript || !this.backendHealthy) {
-      // Return mock data for development or when backend is unhealthy
+      console.log(`⚠️ Using mock data for ${functionName} - backend unhealthy or disabled`);
       return this.getMockResponse<T>(functionName, ...args);
     }
 
@@ -230,23 +233,33 @@ class ApiService {
         params.append('parameters', JSON.stringify(args));
         params.append('token', token);
         url = `${this.APPS_SCRIPT_URL}?${params.toString()}`;
+        console.log(`🌐 GET Request URL: ${url}`);
       } else { // POST
         options.headers = {
           'Content-Type': 'text/plain;charset=utf-8',
         };
         options.body = JSON.stringify(payload);
+        console.log(`🌐 POST Request to: ${url}`);
+        console.log(`📝 POST Body: ${JSON.stringify(payload)}`);
       }
 
+      console.log(`📡 Making ${httpMethod} request to backend...`);
       const response = await fetch(url, options);
+      console.log(`📡 Response status: ${response.status}`);
+      console.log(`📡 Response headers:`, Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ HTTP error ${response.status}:`, errorText.substring(0, 500));
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
+      console.log(`✅ ${functionName} response:`, result);
       return result as GoogleScriptResponse<T>;
     } catch (error) {
-      console.error('Apps Script request failed:', error);
+      console.error(`❌ Apps Script request failed for ${functionName}:`, error);
+      console.log(`🔄 Setting backendHealthy to false, switching to mock data`);
       this.backendHealthy = false;
       return this.getMockResponse<T>(functionName, ...args);
     }
