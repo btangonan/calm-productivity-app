@@ -2,7 +2,7 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.27.002-CLASP-CORS-FIX";
+const DEPLOYMENT_VERSION = "v2024.07.27.006-DELETE-ENDPOINTS";
 const SCRIPT_VERSION = "3.1.0"; // Increment with each deployment for verification
 const LAST_UPDATED = "2024-07-27T02:20:00Z";
 
