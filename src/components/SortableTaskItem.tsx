@@ -221,16 +221,43 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
       }`}
     >
       <div className="flex items-start space-x-1">
-        {/* Drag handle */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-0.5 text-gray-400 hover:text-gray-600 mt-0.5 flex-shrink-0"
-          title="Drag to reorder"
-        >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-          </svg>
+        {/* Three dots menu */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDropdown(!showDropdown);
+            }}
+            className="opacity-100 p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 mt-0.5 flex-shrink-0"
+            title="Task options"
+          >
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+          </button>
+          
+          {showDropdown && (
+            <div className="absolute left-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[120px]">
+              <button
+                onClick={handleEditClick}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 flex items-center"
+              >
+                <svg className="w-3 h-3 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
+                </svg>
+                Edit
+              </button>
+              <button
+                onClick={handleDeleteTask}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-red-600 hover:bg-red-50 flex items-center"
+              >
+                <svg className="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Expand arrow */}
@@ -265,7 +292,12 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
           )}
         </div>
         
-        <div className="flex-1 min-w-0">
+        <div 
+          className="flex-1 min-w-0 cursor-grab active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+          title="Drag to reorder task"
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center flex-1 min-w-0">
               {isEditingTitle ? (
@@ -292,44 +324,6 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
                   {task.title}
                 </h3>
               )}
-              {/* Three dots menu */}
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDropdown(!showDropdown);
-                  }}
-                  className="opacity-100 ml-2 p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
-                  title="Task options"
-                >
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                  </svg>
-                </button>
-                
-                {showDropdown && (
-                  <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[120px]">
-                    <button
-                      onClick={handleEditClick}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 flex items-center"
-                    >
-                      <svg className="w-3 h-3 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
-                      </svg>
-                      Edit
-                    </button>
-                    <button
-                      onClick={handleDeleteTask}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-red-600 hover:bg-red-50 flex items-center"
-                    >
-                      <svg className="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
             
             <div className="flex items-center space-x-2">
