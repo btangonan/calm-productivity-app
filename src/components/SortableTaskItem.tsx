@@ -24,6 +24,8 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   const [editingDescription, setEditingDescription] = useState(task.description || '');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, placement: 'bottom' as 'top' | 'bottom' });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -99,30 +101,40 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
     setShowEditForm(false);
   };
 
-  const handleDeleteTask = async (e: React.MouseEvent) => {
+  const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this task?')) {
-      try {
-        const token = state.userProfile?.id_token;
-        if (!token) {
-          throw new Error('User not authenticated');
-        }
+    setShowDeleteModal(true);
+    setShowDropdown(false);
+  };
 
-        console.log(`🗑️ Deleting task: ${task.id} - "${task.title}"`);
-        
-        // Call backend API to delete task
-        await apiService.deleteTask(task.id, token);
-        
-        // Remove from frontend state after successful backend deletion
-        dispatch({ type: 'DELETE_TASK', payload: task.id });
-        setShowDropdown(false);
-        
-        console.log(`✅ Task deleted successfully: ${task.id}`);
-      } catch (error) {
-        console.error('Failed to delete task:', error);
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to delete task' });
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      const token = state.userProfile?.id_token;
+      if (!token) {
+        throw new Error('User not authenticated');
       }
+
+      console.log(`🗑️ Deleting task: ${task.id} - "${task.title}"`);
+      
+      // Call backend API to delete task
+      await apiService.deleteTask(task.id, token);
+      
+      // Remove from frontend state after successful backend deletion
+      dispatch({ type: 'DELETE_TASK', payload: task.id });
+      
+      console.log(`✅ Task deleted successfully: ${task.id}`);
+      setShowDeleteModal(false);
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to delete task' });
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
   };
 
   const handleTitleClick = (e: React.MouseEvent) => {
@@ -390,7 +402,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
             Edit
           </button>
           <button
-            onClick={handleDeleteTask}
+            onClick={handleDeleteClick}
             className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-red-600 hover:bg-red-50 flex items-center"
           >
             <svg className="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,6 +410,51 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
             </svg>
             Delete
           </button>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+            <div className="flex items-start mb-4">
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Task</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Are you sure you want to delete "<strong>{task.title}</strong>"? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Task'
+                )}
+              </button>
+            </div>
+          </div>
         </div>,
         document.body
       )}
