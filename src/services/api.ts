@@ -593,10 +593,58 @@ class ApiService {
   }
 
   async loadAppData(token: string): Promise<{areas: Area[], projects: Project[], tasks: Task[]}> {
+    const startTime = performance.now();
+    
+    try {
+      // Try Edge Functions first if enabled
+      if (this.useEdgeFunctions) {
+        const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/app/load-data`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const duration = performance.now() - startTime;
+          console.log(`⚡ Edge Function loadAppData: ${duration.toFixed(1)}ms`);
+          return result.data;
+        }
+
+        // If Edge Function fails and fallback is enabled
+        if (this.enableFallback) {
+          console.warn('Edge Function failed, falling back to Apps Script');
+          return await this.loadAppDataLegacy(token);
+        }
+
+        throw new Error(`Edge Function failed: ${response.status}`);
+      }
+
+      // Use legacy Apps Script
+      return await this.loadAppDataLegacy(token);
+
+    } catch (error) {
+      console.error('Load app data failed:', error);
+      
+      // Fallback to legacy if enabled
+      if (this.useEdgeFunctions && this.enableFallback) {
+        console.warn('Falling back to Apps Script due to error');
+        return await this.loadAppDataLegacy(token);
+      }
+      
+      throw error;
+    }
+  }
+
+  private async loadAppDataLegacy(token: string): Promise<{areas: Area[], projects: Project[], tasks: Task[]}> {
+    const startTime = performance.now();
     const response = await this.executeGoogleScript<{areas: Area[], projects: Project[], tasks: Task[]}>(token, 'loadAppData', [], 'GET');
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to load app data');
     }
+    const duration = performance.now() - startTime;
+    console.log(`🔄 Legacy loadAppData: ${duration.toFixed(1)}ms`);
     return response.data;
   }
 
@@ -829,7 +877,55 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
 
   // File Management Methods
   async getProjectFiles(projectId: string, token: string): Promise<ProjectFile[]> {
+    const startTime = performance.now();
+    
+    try {
+      // Try Edge Functions first if enabled
+      if (this.useEdgeFunctions) {
+        const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/projects/files?projectId=${encodeURIComponent(projectId)}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const duration = performance.now() - startTime;
+          console.log(`⚡ Edge Function getProjectFiles: ${duration.toFixed(1)}ms`);
+          return result.data || [];
+        }
+
+        // If Edge Function fails and fallback is enabled
+        if (this.enableFallback) {
+          console.warn('Edge Function failed, falling back to Apps Script');
+          return await this.getProjectFilesLegacy(projectId, token);
+        }
+
+        throw new Error(`Edge Function failed: ${response.status}`);
+      }
+
+      // Use legacy Apps Script
+      return await this.getProjectFilesLegacy(projectId, token);
+
+    } catch (error) {
+      console.error('Get project files failed:', error);
+      
+      // Fallback to legacy if enabled
+      if (this.useEdgeFunctions && this.enableFallback) {
+        console.warn('Falling back to Apps Script due to error');
+        return await this.getProjectFilesLegacy(projectId, token);
+      }
+      
+      throw error;
+    }
+  }
+
+  private async getProjectFilesLegacy(projectId: string, token: string): Promise<ProjectFile[]> {
+    const startTime = performance.now();
     const response = await this.executeGoogleScript<ProjectFile[]>(token, 'getProjectFiles', [projectId], 'GET');
+    const duration = performance.now() - startTime;
+    console.log(`🔄 Legacy getProjectFiles: ${duration.toFixed(1)}ms`);
     return response.data || [];
   }
 
