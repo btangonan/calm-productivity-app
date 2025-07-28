@@ -151,7 +151,7 @@ const Header = () => {
             </div>
           )}
 
-          {selectedProject && selectedProject.driveFolderUrl && (
+          {selectedProject && selectedProject.driveFolderUrl && selectedProject.driveFolderUrl.startsWith('http') && (
             <a
               href={selectedProject.driveFolderUrl}
               target="_blank"
@@ -160,21 +160,17 @@ const Header = () => {
               title={backendStatus.usingMockData ? "Connect Google Apps Script backend to create real Drive folders" : "Open project folder in Google Drive"}
               onClick={(e) => {
                 console.log('Drive folder URL:', selectedProject.driveFolderUrl);
-                console.log('Event target:', e.target);
-                console.log('Link element:', e.currentTarget);
                 
-                // Check if URL is properly formatted
-                if (!selectedProject.driveFolderUrl.startsWith('http')) {
-                  console.error('Drive folder URL is not properly formatted:', selectedProject.driveFolderUrl);
+                // Check if URL exists and is properly formatted
+                if (!selectedProject.driveFolderUrl || !selectedProject.driveFolderUrl.startsWith('http')) {
+                  console.error('Drive folder URL is not available:', selectedProject.driveFolderUrl);
                   e.preventDefault();
-                  alert('Invalid drive folder URL format. Please check the project setup.');
+                  alert('Drive folder is not ready yet. The folder may still be creating in the background. Please try again in a few moments.');
                   return;
                 }
                 
-                // Force open in new window as fallback
-                setTimeout(() => {
-                  window.open(selectedProject.driveFolderUrl, '_blank', 'noopener,noreferrer');
-                }, 100);
+                // URL is valid, let the browser handle the navigation normally
+                // Remove the setTimeout fallback as it can cause duplicate tabs
               }}
             >
               <span className="mr-2">📂</span>
