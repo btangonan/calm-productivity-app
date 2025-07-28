@@ -95,6 +95,10 @@ export async function refreshGoogleToken(refreshToken) {
 
 export async function getServiceAccountToken(userEmail = null) {
   try {
+    console.log('🔍 Starting service account token generation...');
+    console.log('🔍 Service account email:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+    console.log('🔍 Private key exists:', !!process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY);
+    
     // For personal Gmail accounts, we can't use domain-wide delegation
     // Use service account without impersonation for shared resources only
     const now = Math.floor(Date.now() / 1000);
@@ -106,10 +110,14 @@ export async function getServiceAccountToken(userEmail = null) {
       iat: now
     };
 
+    console.log('🔍 JWT payload:', jwtPayload);
+
     // Note: Cannot impersonate personal Gmail users without domain-wide delegation
     // This will only work for resources shared with the service account
     
+    console.log('🔍 Creating service account JWT...');
     const jwt = await createServiceAccountJWT(jwtPayload);
+    console.log('✅ JWT created successfully');
 
     // Exchange JWT for access token
     const response = await fetch('https://oauth2.googleapis.com/token', {
