@@ -2,9 +2,9 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.28.004-UPLOAD-FIX-COMPLETE";
-const SCRIPT_VERSION = "3.3.2"; // Increment with each deployment for verification
-const LAST_UPDATED = "2024-07-28T23:45:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.29.001-PROJECT-NAME-SYNC";
+const SCRIPT_VERSION = "3.4.0"; // Increment with each deployment for verification
+const LAST_UPDATED = "2024-07-29T01:00:00Z";
 
 // CORS configuration
 const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'
@@ -187,6 +187,9 @@ function doPost(e) {
         break;
       case 'updateProjectArea':
         result = updateProjectArea(parameters[0], parameters[1]);
+        break;
+      case 'updateProjectName':
+        result = updateProjectName(parameters[0], parameters[1]);
         break;
       case 'reorderTasks':
         result = reorderTasks(parameters[0]);
@@ -1439,7 +1442,7 @@ function getProjectFiles(projectId) {
         mimeType: file.getBlob().getContentType(),
         size: file.getSize(),
         url: file.getUrl(),
-        thumbnailUrl: file.getThumbnail() ? file.getThumbnail().getUrl() : null,
+        thumbnailUrl: file.getThumbnail() ? `https://drive.google.com/thumbnail?id=${file.getId()}` : null,
         createdAt: file.getDateCreated().toISOString(),
         modifiedAt: file.getLastUpdated().toISOString()
       });
@@ -1903,6 +1906,61 @@ function deleteTasksByProject(projectId) {
     }
   } catch (error) {
     console.error('Error deleting tasks for project:', error);
+  }
+}
+
+/**
+ * Update project name and sync with Google Drive folder name
+ */
+function updateProjectName(projectId, newName) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('Projects');
+    const data = sheet.getDataRange().getValues();
+    
+    // Find the project row
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === projectId) { // projectId is in column A
+        const oldName = data[i][1];
+        const driveFolderUrl = data[i][5];
+        
+        // Update project name in spreadsheet
+        sheet.getRange(i + 1, 2).setValue(newName); // Column B (index 1) is name
+        
+        // Update Google Drive folder name if it exists
+        if (driveFolderUrl) {
+          try {
+            const folderId = extractFolderIdFromUrl(driveFolderUrl);
+            const folder = DriveApp.getFolderById(folderId);
+            const newFolderName = `${newName} (${projectId.substring(0, 8)})`;
+            folder.setName(newFolderName);
+            
+            console.log(`Updated project "${oldName}" to "${newName}" and synced Drive folder`);
+          } catch (folderError) {
+            console.error('Error updating Drive folder name:', folderError);
+            // Continue anyway - spreadsheet update succeeded
+          }
+        }
+        
+        return { 
+          success: true, 
+          data: {
+            id: projectId,
+            name: newName,
+            description: data[i][2],
+            areaId: data[i][3],
+            status: data[i][4],
+            driveFolderUrl: data[i][5],
+            createdAt: data[i][6]
+          }
+        };
+      }
+    }
+    
+    return { success: false, message: 'Project not found' };
+  } catch (error) {
+    console.error('Error updating project name:', error);
+    return { success: false, message: error.toString() };
   }
 }
 
