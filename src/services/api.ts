@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwQI_cKhsU3WmgB3iGq0lWxmBh38Jy7eVjc29FWJZlVGs6pleLUK8qjagurMqi2wmeV/exec';
+  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbx-PXKBllGgi8Ai5QtyoYYKFME0a6jB3_nwbBAR3G1gRpEx3txkg6EOz2fRmR4MStPJ/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 
@@ -722,11 +722,32 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
   }
 
   async uploadFileToProject(projectId: string, file: File, token: string): Promise<ProjectFile> {
-    const response = await this.executeGoogleScript<ProjectFile>(token, 'uploadFileToProject', [projectId, file]);
+    // Convert File to base64 for Google Apps Script
+    const fileContent = await this.fileToBase64(file);
+    const response = await this.executeGoogleScript<ProjectFile>(token, 'uploadFileToProject', [
+      projectId, 
+      file.name, 
+      fileContent, 
+      file.type
+    ]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to upload file');
     }
     return response.data;
+  }
+
+  private fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove the data URL prefix (e.g., "data:image/png;base64,")
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+    });
   }
 
   async deleteProjectFile(projectId: string, fileId: string, token: string): Promise<void> {
@@ -768,7 +789,14 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
   }
 
   async uploadFileToFolder(folderId: string, file: File, token: string): Promise<ProjectFile> {
-    const response = await this.executeGoogleScript<ProjectFile>(token, 'uploadFileToFolder', [folderId, file]);
+    // Convert File to base64 for Google Apps Script
+    const fileContent = await this.fileToBase64(file);
+    const response = await this.executeGoogleScript<ProjectFile>(token, 'uploadFileToFolder', [
+      folderId, 
+      file.name, 
+      fileContent, 
+      file.type
+    ]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to upload file to folder');
     }

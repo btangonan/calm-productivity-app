@@ -2,9 +2,9 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.28.002-PROJECT-HUB-INTERACTIVE";
-const SCRIPT_VERSION = "3.3.0"; // Increment with each deployment for verification
-const LAST_UPDATED = "2024-07-28T22:00:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.28.004-UPLOAD-FIX-COMPLETE";
+const SCRIPT_VERSION = "3.3.2"; // Increment with each deployment for verification
+const LAST_UPDATED = "2024-07-28T23:45:00Z";
 
 // CORS configuration
 const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'
@@ -217,6 +217,9 @@ function doPost(e) {
         break;
       case 'uploadFileToProject':
         result = uploadFileToProject(parameters[0], parameters[1], parameters[2], parameters[3]);
+        break;
+      case 'uploadFileToFolder':
+        result = uploadFileToFolder(parameters[0], parameters[1], parameters[2], parameters[3]);
         break;
       case 'uploadFileToTask':
         result = uploadFileToTask(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
@@ -1530,6 +1533,51 @@ function uploadFileToTask(projectId, taskId, fileName, fileContent, mimeType) {
     };
   } catch (error) {
     console.error('Error uploading file to task:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Upload a file directly to a specific folder by folder ID
+ * Note: This function expects file data in a specific format from the frontend
+ */
+function uploadFileToFolder(folderId, fileName, fileContent, mimeType) {
+  try {
+    console.log(`Uploading file to folder: ${folderId}`, { fileName, mimeType });
+    
+    // Validate folder exists
+    const folder = DriveApp.getFolderById(folderId);
+    if (!folder) {
+      return { success: false, message: 'Folder not found' };
+    }
+    
+    // Create blob from base64 content
+    const blob = Utilities.newBlob(
+      Utilities.base64Decode(fileContent),
+      mimeType,
+      fileName
+    );
+    
+    // Upload file to folder
+    const file = folder.createFile(blob);
+    
+    return { 
+      success: true, 
+      data: {
+        id: file.getId(),
+        name: file.getName(),
+        mimeType: file.getBlob().getContentType(),
+        size: file.getSize(),
+        url: file.getUrl(),
+        driveFileId: file.getId(),
+        thumbnailUrl: file.getThumbnail() ? `https://drive.google.com/thumbnail?id=${file.getId()}` : null,
+        createdAt: file.getDateCreated().toISOString(),
+        modifiedAt: file.getLastUpdated().toISOString()
+      }
+    };
+    
+  } catch (error) {
+    console.error('Error uploading file to folder:', error);
     return { success: false, message: error.toString() };
   }
 }
