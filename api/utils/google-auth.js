@@ -10,6 +10,7 @@ export async function validateGoogleToken(authHeader) {
     const response = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
     
     if (!response.ok) {
+      console.error(`Token validation failed: ${response.status} ${response.statusText}`);
       return null;
     }
 
@@ -17,6 +18,7 @@ export async function validateGoogleToken(authHeader) {
     
     // Validate token is for our application
     if (tokenInfo.audience !== process.env.GOOGLE_CLIENT_ID) {
+      console.error(`Token audience mismatch: ${tokenInfo.audience} !== ${process.env.GOOGLE_CLIENT_ID}`);
       return null;
     }
 
