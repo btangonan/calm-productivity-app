@@ -33,17 +33,34 @@ const MasterFolderSetup: React.FC = () => {
       }
       
       // Get current master folder ID
+      let masterFolderId = '';
       try {
         const folderData = await apiService.getMasterFolderId(state.userProfile.id_token);
         console.log('Folder data received:', folderData);
-        setCurrentMasterFolderId(folderData.folderId);
+        masterFolderId = folderData.folderId || '';
       } catch (folderError) {
-        console.error('Failed to load master folder ID:', folderError);
-        setCurrentMasterFolderId('');
+        console.error('Failed to load master folder ID from API:', folderError);
       }
       
-      setMessage('Settings loaded (some features are still being migrated to the new backend)');
-      setMessageType('info');
+      // If no folder ID from API, try localStorage as fallback
+      if (!masterFolderId) {
+        const localStorageKey = `masterFolder_${state.userProfile.email}`;
+        const localFolderId = localStorage.getItem(localStorageKey);
+        if (localFolderId) {
+          console.log('Using master folder ID from localStorage:', localFolderId);
+          masterFolderId = localFolderId;
+        }
+      }
+      
+      setCurrentMasterFolderId(masterFolderId);
+      
+      if (masterFolderId) {
+        setMessage(`Master folder loaded: ${masterFolderId}`);
+        setMessageType('success');
+      } else {
+        setMessage('No master folder configured yet');
+        setMessageType('info');
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
       setMessage('Some settings could not be loaded. Using defaults.');
@@ -89,9 +106,14 @@ const MasterFolderSetup: React.FC = () => {
       const result = await apiService.setMasterFolderId(folderId, state.userProfile.id_token);
       console.log('API result:', result);
       
+      // Store in localStorage as backup
+      const localStorageKey = `masterFolder_${state.userProfile.email}`;
+      localStorage.setItem(localStorageKey, folderId);
+      console.log('Stored master folder in localStorage:', localStorageKey, folderId);
+      
       // Update the UI immediately
       setCurrentMasterFolderId(folderId);
-      setMessage(`Master folder set successfully! Folder ID: ${folderId}. ${result.message}`);
+      setMessage(`Master folder set successfully! Folder ID: ${folderId}. Saved both in memory and locally.`);
       setMessageType('success');
       setNewFolderUrl('');
       

@@ -1,5 +1,9 @@
 import { validateGoogleToken } from '../utils/google-auth.js';
 
+// Temporary in-memory storage for master folder IDs by user email
+// TODO: Replace with proper database storage
+const userMasterFolders = new Map();
+
 export default async function handler(req, res) {
   try {
     // Authenticate user
@@ -12,15 +16,18 @@ export default async function handler(req, res) {
       // Get current master folder configuration
       const serviceAccountEmail = 'nowandlater@solid-study-467023-i3.iam.gserviceaccount.com';
       
-      // For now, return hardcoded values since we don't have a user-specific storage yet
-      // TODO: Implement user-specific master folder storage
+      // Get stored master folder for this user
+      const currentMasterFolderId = userMasterFolders.get(user.email) || null;
+      
       return res.status(200).json({
         success: true,
         data: {
           serviceAccountEmail: serviceAccountEmail,
           message: 'Share your master Drive folder with this email to enable full functionality',
-          currentMasterFolderId: null, // TODO: Get from user storage
-          note: 'Master folder configuration will be implemented in a future update'
+          currentMasterFolderId: currentMasterFolderId,
+          note: currentMasterFolderId 
+            ? 'Master folder is set and stored temporarily (will be persisted in database in future update)'
+            : 'No master folder configured yet'
         }
       });
     }
@@ -36,14 +43,19 @@ export default async function handler(req, res) {
         });
       }
 
-      // TODO: Validate folder exists and is accessible
-      // TODO: Store folder ID for this user
+      console.log(`Setting master folder for user ${user.email}: ${folderId}`);
+      
+      // Store folder ID for this user (temporary in-memory storage)
+      userMasterFolders.set(user.email, folderId);
+      
+      console.log(`Master folder stored. Current storage:`, Array.from(userMasterFolders.entries()));
       
       return res.status(200).json({
         success: true,
         data: {
           folderId,
-          message: 'Master folder configuration saved (feature in development)'
+          message: 'Master folder configuration saved in memory (will be persisted to database in future update)',
+          userEmail: user.email
         }
       });
     }
