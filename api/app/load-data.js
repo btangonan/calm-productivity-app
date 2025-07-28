@@ -43,7 +43,23 @@ export default async function handler(req, res) {
     if (!batchResponse.ok) {
       const errorText = await batchResponse.text();
       console.error('Sheets batch API error:', batchResponse.status, errorText);
-      throw new Error(`Sheets API error: ${batchResponse.status}`);
+      
+      // Parse the Google API error for detailed info
+      let googleError;
+      try {
+        googleError = JSON.parse(errorText);
+        console.error('Google API Response Body:', googleError);
+      } catch (e) {
+        console.error('Raw Google API Response:', errorText);
+      }
+      
+      return res.status(502).json({
+        success: false,
+        error: 'Google Sheets API request failed',
+        google_api_status: batchResponse.status,
+        google_api_error: googleError || errorText,
+        details: process.env.NODE_ENV === 'development' ? `Google API returned ${batchResponse.status}` : undefined
+      });
     }
 
     const batchResult = await batchResponse.json();
@@ -113,12 +129,32 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Load app data error:', error);
+    console.error('Detailed error from Edge Function:', error);
+    
+    // If the error is from a failed fetch to Google's API
+    if (error.response) {
+      try {
+        const googleError = await error.response.text();
+        console.error('Google API Response Status:', error.response.status);
+        console.error('Google API Response Body:', googleError);
+        
+        return res.status(502).json({
+          success: false,
+          error: 'Google API request failed',
+          google_api_status: error.response.status,
+          google_error: JSON.parse(googleError),
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+      } catch (parseError) {
+        console.error('Could not parse Google API error:', parseError);
+      }
+    }
     
     return res.status(500).json({
       success: false,
       error: 'Failed to load app data',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      error_type: error.constructor.name
     });
   }
 }

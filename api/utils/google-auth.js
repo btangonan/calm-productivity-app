@@ -125,7 +125,18 @@ export async function getServiceAccountToken(userEmail = null) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Service account token failed: ${response.status} ${errorText}`);
+      console.error('Service account token failed:', response.status, errorText);
+      
+      // Try to parse the error for more details
+      let googleError;
+      try {
+        googleError = JSON.parse(errorText);
+        console.error('Google OAuth2 Error Details:', googleError);
+      } catch (e) {
+        console.error('Raw Google OAuth2 Response:', errorText);
+      }
+      
+      throw new Error(`Service account token failed: ${response.status} - ${googleError?.error_description || errorText}`);
     }
 
     const result = await response.json();
@@ -151,8 +162,9 @@ async function createServiceAccountJWT(payload) {
   const message = `${encodedHeader}.${encodedPayload}`;
   const messageBuffer = new TextEncoder().encode(message);
 
-  // Import private key
+  // Import private key - fix common Vercel environment variable formatting issues
   const privateKeyPem = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n');
+  console.log('Private key format check:', privateKeyPem.substring(0, 50) + '...');
   const privateKey = await crypto.subtle.importKey(
     'pkcs8',
     pemToArrayBuffer(privateKeyPem),
