@@ -24,7 +24,7 @@ declare global {
 
 class ApiService {
   private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxoBsxraR0CQMkvpVTcTpQylqRTK7fNuNoQs3bV-I-DKzP5_jWVBlGMJ2TrcN1trpMm/exec';
-  private readonly EDGE_FUNCTIONS_URL = import.meta.env.NODE_ENV === 'production' 
+  private readonly EDGE_FUNCTIONS_URL = import.meta.env.PROD 
     ? 'https://nowandlater.vercel.app/api'
     : 'http://localhost:3000/api';
   
