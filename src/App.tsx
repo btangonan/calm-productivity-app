@@ -36,7 +36,7 @@ function AppContent() {
           console.warn('⚠️ Using mock data - check Google Apps Script deployment');
         }
 
-        const token = state.userProfile.id_token;
+        const token = state.userProfile.access_token || state.userProfile.id_token;
         console.log('🔑 Using token for API calls:', token ? 'Present' : 'Missing');
         
         console.log('📡 Loading all app data in single call...');

@@ -1,15 +1,21 @@
 import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 
+// Load Google API
+declare global {
+  interface Window {
+    gapi: any;
+  }
+}
+
 const LoginScreen = () => {
   const { dispatch } = useApp();
 
   useEffect(() => {
-    // Load Google Identity Services
+    // Load Google API
     const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
+    script.src = 'https://apis.google.com/js/api.js';
+    script.onload = initializeGapi;
     document.head.appendChild(script);
 
     return () => {
@@ -17,63 +23,38 @@ const LoginScreen = () => {
     };
   }, []);
 
-  const handleGoogleLogin = async () => {
-    try {
-      // Initialize Google OAuth2 with proper scopes for API access
-      const client = window.google.accounts.oauth2.initCodeClient({
+  const initializeGapi = () => {
+    window.gapi.load('auth2', () => {
+      window.gapi.auth2.init({
         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-        scope: 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/presentations',
-        ux_mode: 'popup',
-        callback: async (response: any) => {
-          if (response.code) {
-            // Exchange authorization code for access token
-            await exchangeCodeForToken(response.code);
-          }
-        },
+        scope: 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/presentations'
       });
-
-      client.requestCode();
-    } catch (error) {
-      console.error('Google login failed:', error);
-    }
+    });
   };
 
-  const exchangeCodeForToken = async (code: string) => {
+  const handleGoogleLogin = async () => {
     try {
-      // Exchange code for tokens on our backend
-      const response = await fetch('/api/auth/exchange-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to exchange code for token');
-      }
-
-      const tokens = await response.json();
+      const authInstance = window.gapi.auth2.getAuthInstance();
+      const user = await authInstance.signIn();
       
-      // Decode the ID token to get user info
-      const userInfo = JSON.parse(atob(tokens.id_token.split('.')[1]));
+      const profile = user.getBasicProfile();
+      const authResponse = user.getAuthResponse();
 
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: {
-          id: userInfo.sub,
-          name: userInfo.name,
-          email: userInfo.email,
-          picture: userInfo.picture,
-          access_token: tokens.access_token,
-          id_token: tokens.id_token,
-          refresh_token: tokens.refresh_token,
+          id: profile.getId(),
+          name: profile.getName(),
+          email: profile.getEmail(),
+          picture: profile.getImageUrl(),
+          access_token: authResponse.access_token,
+          id_token: authResponse.id_token,
         },
       });
 
-      console.log('Login successful for:', userInfo.email);
+      console.log('Login successful with access token:', authResponse.access_token.substring(0, 20) + '...');
     } catch (error) {
-      console.error('Token exchange failed:', error);
+      console.error('Google login failed:', error);
     }
   };
 
