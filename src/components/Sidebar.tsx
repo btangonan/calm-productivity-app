@@ -771,13 +771,22 @@ const Sidebar = () => {
 
       {/* Master Folder Setup Modal */}
       {showMasterFolderSetup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Close modal when clicking outside
+            if (e.target === e.currentTarget) {
+              setShowMasterFolderSetup(false);
+            }
+          }}
+        >
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Master Folder Settings</h2>
               <button
                 onClick={() => setShowMasterFolderSetup(false)}
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Close"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -786,6 +795,14 @@ const Sidebar = () => {
             </div>
             <div className="p-4">
               <MasterFolderSetup />
+            </div>
+            <div className="flex justify-end p-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowMasterFolderSetup(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

@@ -77,6 +77,9 @@ const MasterFolderSetup: React.FC = () => {
       return;
     }
 
+    console.log('Setting master folder with ID:', folderId);
+    console.log('Original URL:', newFolderUrl);
+
     try {
       setLoading(true);
       setMessage('Setting master folder...');
@@ -84,13 +87,18 @@ const MasterFolderSetup: React.FC = () => {
 
       // Set the new master folder
       const result = await apiService.setMasterFolderId(folderId, state.userProfile.id_token);
+      console.log('API result:', result);
+      
+      // Update the UI immediately
       setCurrentMasterFolderId(folderId);
-      setMessage(result.message);
+      setMessage(`Master folder set successfully! Folder ID: ${folderId}. ${result.message}`);
       setMessageType('success');
       setNewFolderUrl('');
+      
+      console.log('Master folder updated to:', folderId);
     } catch (error) {
       console.error('Failed to set master folder:', error);
-      setMessage('Failed to set master folder. Make sure the folder exists and is accessible.');
+      setMessage(`Failed to set master folder: ${error.message}`);
       setMessageType('error');
     } finally {
       setLoading(false);
