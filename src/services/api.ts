@@ -568,13 +568,7 @@ class ApiService {
     }
   }
 
-  getBackendStatus(): {isEnabled: boolean, isHealthy: boolean, usingMockData: boolean} {
-    return {
-      isEnabled: this.isGoogleAppsScript,
-      isHealthy: this.backendHealthy,
-      usingMockData: !this.isGoogleAppsScript || !this.backendHealthy
-    };
-  }
+  
 
   // API Methods
   async getAreas(token: string): Promise<Area[]> {
