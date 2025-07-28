@@ -619,6 +619,14 @@ class ApiService {
     }
   }
 
+  async updateProjectName(projectId: string, newName: string, token: string): Promise<Project> {
+    const response = await this.executeGoogleScript<Project>(token, 'updateProjectName', [projectId, newName]);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to update project name');
+    }
+    return response.data;
+  }
+
   async reorderTasks(taskIds: string[], token: string): Promise<void> {
     const response = await this.executeGoogleScript<void>(token, 'reorderTasks', [taskIds]);
     if (!response.success) {

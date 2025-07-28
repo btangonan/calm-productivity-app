@@ -161,6 +161,11 @@ const Sidebar = () => {
     if (!newName.trim()) return;
     
     try {
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        throw new Error('User not authenticated');
+      }
+
       if (type === 'area') {
         const area = areas.find(a => a.id === id);
         if (area) {
@@ -170,13 +175,26 @@ const Sidebar = () => {
       } else {
         const project = projects.find(p => p.id === id);
         if (project) {
+          // Optimistically update UI
           const updatedProject = { ...project, name: newName.trim() };
           dispatch({ type: 'UPDATE_PROJECT', payload: updatedProject });
+          
+          // Sync with backend and Google Drive
+          try {
+            await apiService.updateProjectName(id, newName.trim(), userProfile.id_token);
+            console.log(`✅ Updated project name and synced Google Drive folder: "${newName.trim()}"`);
+          } catch (apiError) {
+            console.error('Failed to sync project name with backend:', apiError);
+            // Revert optimistic update on error
+            dispatch({ type: 'UPDATE_PROJECT', payload: project });
+            dispatch({ type: 'SET_ERROR', payload: 'Failed to update project name' });
+          }
         }
       }
       setEditingItem(null);
     } catch (error) {
       console.error('Failed to save item name:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to save changes' });
     }
   };
 
