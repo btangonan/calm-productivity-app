@@ -606,6 +606,7 @@ class ApiService {
     try {
       // Try Edge Functions first if enabled
       if (this.useEdgeFunctions) {
+        console.log(`🔑 Calling Edge Function with token: ${token.substring(0, 20)}...`);
         const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/app/load-data`, {
           method: 'GET',
           headers: {
@@ -619,6 +620,10 @@ class ApiService {
           console.log(`⚡ Edge Function loadAppData: ${duration.toFixed(1)}ms`);
           return result.data;
         }
+
+        // Log the error details
+        const errorText = await response.text();
+        console.error(`Edge Function failed: ${response.status} ${response.statusText}`, errorText);
 
         // If Edge Function fails and fallback is enabled
         if (this.enableFallback) {
@@ -890,6 +895,7 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     try {
       // Try Edge Functions first if enabled
       if (this.useEdgeFunctions) {
+        console.log(`🔑 Calling Edge Function getProjectFiles with token: ${token.substring(0, 20)}...`);
         const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/projects/files?projectId=${encodeURIComponent(projectId)}`, {
           method: 'GET',
           headers: {
@@ -903,6 +909,10 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
           console.log(`⚡ Edge Function getProjectFiles: ${duration.toFixed(1)}ms`);
           return result.data || [];
         }
+
+        // Log the error details
+        const errorText = await response.text();
+        console.error(`Edge Function getProjectFiles failed: ${response.status} ${response.statusText}`, errorText);
 
         // If Edge Function fails and fallback is enabled
         if (this.enableFallback) {
