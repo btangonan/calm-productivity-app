@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     const { GoogleAuth } = await import('google-auth-library');
     
     const auth = new GoogleAuth({
-      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON),
+      credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
