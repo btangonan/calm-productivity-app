@@ -29,7 +29,7 @@ class ApiService {
     : 'http://localhost:3000/api';
   
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
-  private useEdgeFunctions = false; // Feature flag for Edge Functions
+  private useEdgeFunctions = import.meta.env.VITE_USE_EDGE_FUNCTIONS === 'true' || false; // Feature flag for Edge Functions
   private enableFallback = true; // Fallback to Apps Script if Edge Functions fail
   private backendHealthy = true; // Track backend health status
 
@@ -45,12 +45,20 @@ class ApiService {
   }
 
   getBackendStatus() {
-    return {
+    const status = {
       useEdgeFunctions: this.useEdgeFunctions,
       enableFallback: this.enableFallback,
       edgeFunctionsUrl: this.EDGE_FUNCTIONS_URL,
-      appsScriptUrl: this.APPS_SCRIPT_URL
+      appsScriptUrl: this.APPS_SCRIPT_URL,
+      viteEnvVar: import.meta.env.VITE_USE_EDGE_FUNCTIONS
     };
+    console.log('📊 Backend Status:', status);
+    return status;
+  }
+
+  // Log status on initialization
+  constructor() {
+    console.log(`🏗️ ApiService initialized - Edge Functions: ${this.useEdgeFunctions ? 'ENABLED' : 'DISABLED'}`);
   }
 
   // Mock data for development
