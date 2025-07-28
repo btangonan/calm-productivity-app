@@ -70,6 +70,10 @@ const MainContent = () => {
         <Header />
         {currentView === 'drive' ? (
           <DriveBrowser className="flex-1 overflow-y-auto" />
+        ) : currentView === 'project' && selectedProjectId && useEnhancedProjectView ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <ProjectTabs projectId={selectedProjectId} />
+          </div>
         ) : (
           <DraggableTaskList />
         )}
@@ -109,9 +113,8 @@ const MainContent = () => {
                 </label>
               </div>
 
-              {useEnhancedProjectView ? (
-                <ProjectTabs projectId={selectedProjectId!} />
-              ) : (
+              {/* Show legacy sidebar content when not using enhanced view */}
+              {!useEnhancedProjectView && (
                 <>
                   <FileDropzone 
                     projectId={selectedProjectId!} 
