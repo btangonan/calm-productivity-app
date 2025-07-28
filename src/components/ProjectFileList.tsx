@@ -52,10 +52,21 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
     }
 
     try {
-      await apiService.deleteProjectFile(projectId, fileId);
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Optimistically remove from UI
       setFiles(files.filter(file => file.id !== fileId));
+      
+      // Delete from backend
+      await apiService.deleteProjectFile(projectId, fileId, userProfile.id_token);
+      
     } catch (error) {
       console.error('Failed to delete file:', error);
+      // Restore the file list on error
+      await fetchProjectFiles();
       dispatch({ 
         type: 'SET_ERROR', 
         payload: 'Failed to delete file' 
@@ -337,9 +348,11 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
             <div
               key={file.id}
               className={`
-                group rounded-lg border border-gray-200 hover:border-gray-300 transition-colors
+                group rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer
                 ${viewMode === 'grid' ? 'p-3' : 'p-3'}
               `}
+              onDoubleClick={() => window.open(file.url, '_blank')}
+              title="Double-click to open file"
             >
               {viewMode === 'list' ? (
                 <div className="flex items-center justify-between">
