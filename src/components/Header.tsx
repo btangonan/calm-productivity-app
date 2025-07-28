@@ -151,34 +151,34 @@ const Header = () => {
             </div>
           )}
 
-          {selectedProject && selectedProject.driveFolderUrl && selectedProject.driveFolderUrl.startsWith('http') && (
-            <a
-              href={selectedProject.driveFolderUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-              title={backendStatus.usingMockData ? "Connect Google Apps Script backend to create real Drive folders" : "Open project folder in Google Drive"}
-              onClick={(e) => {
+          {selectedProject && (
+            <button
+              onClick={() => {
                 console.log('Drive folder URL:', selectedProject.driveFolderUrl);
                 
                 // Check if URL exists and is properly formatted
                 if (!selectedProject.driveFolderUrl || !selectedProject.driveFolderUrl.startsWith('http')) {
-                  console.error('Drive folder URL is not available:', selectedProject.driveFolderUrl);
-                  e.preventDefault();
-                  alert('Drive folder is not ready yet. The folder may still be creating in the background. Please try again in a few moments.');
+                  alert('Drive folder is not ready yet. The project may need to be recreated or the folder configured manually. Please check the master folder settings in your user menu.');
                   return;
                 }
                 
-                // URL is valid, let the browser handle the navigation normally
-                // Remove the setTimeout fallback as it can cause duplicate tabs
+                // URL is valid, open it
+                window.open(selectedProject.driveFolderUrl, '_blank', 'noopener,noreferrer');
               }}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              title={selectedProject.driveFolderUrl && selectedProject.driveFolderUrl.startsWith('http') 
+                ? "Open project folder in Google Drive" 
+                : "Drive folder not configured - check master folder settings"}
             >
               <span className="mr-2">📂</span>
               Open Drive Folder
+              {!selectedProject.driveFolderUrl && (
+                <span className="ml-2 text-xs text-orange-600">(Not Ready)</span>
+              )}
               {backendStatus.usingMockData && (
                 <span className="ml-2 text-xs text-gray-500">(Demo)</span>
               )}
-            </a>
+            </button>
           )}
         </div>
       </div>
