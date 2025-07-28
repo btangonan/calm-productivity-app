@@ -23,7 +23,7 @@ export default function ProjectTabs({ projectId }: ProjectTabsProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
+    <div className="flex-1 flex flex-col bg-white">
       {/* Tab Navigation */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8 px-6">
@@ -67,19 +67,23 @@ export default function ProjectTabs({ projectId }: ProjectTabsProps) {
       )}
 
       {/* Tab Content */}
-      <div className="p-6">
+      <div className="flex-1 overflow-y-auto">
         {activeTab === 'tasks' && <DraggableTaskList />}
         {activeTab === 'files' && (
-          <ProjectFileList 
-            projectId={projectId}
-            refreshTrigger={0}
-          />
+          <div className="p-6">
+            <ProjectFileList 
+              projectId={projectId}
+              refreshTrigger={0}
+            />
+          </div>
         )}
         {activeTab === 'documents' && (
-          <div className="text-center py-12 text-gray-500">
-            <div className="text-4xl mb-4">📝</div>
-            <div className="text-lg font-medium mb-2">Documents Coming Soon</div>
-            <div className="text-sm">Google Docs, Sheets, and Slides integration will be available here.</div>
+          <div className="flex-1 flex items-center justify-center text-gray-500">
+            <div className="text-center">
+              <div className="text-4xl mb-4">📝</div>
+              <div className="text-lg font-medium mb-2">Documents Coming Soon</div>
+              <div className="text-sm">Google Docs, Sheets, and Slides integration will be available here.</div>
+            </div>
           </div>
         )}
       </div>
