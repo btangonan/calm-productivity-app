@@ -3,6 +3,413 @@
 
 ---
 
+## 🎯 **GETTING STARTED - Manual Setup Instructions**
+
+### **Prerequisites Checklist**
+Before starting the migration, ensure you have:
+- [ ] **Vercel account** (free) - [Sign up here](https://vercel.com/signup)
+- [ ] **Vercel CLI installed** - `npm install -g vercel`
+- [ ] **Current project working** with Google Apps Script
+- [ ] **Google Cloud Console access** for API credentials
+- [ ] **Git repository** already connected to Vercel
+
+### **🔥 CRITICAL SUCCESS PRINCIPLES**
+
+#### **1. Environment Variable Management**
+- **Vercel Dashboard = Single Source of Truth** for all environment variables
+- **Never commit `.env.local`** - update `.gitignore` to exclude it
+- **Always add to Vercel first**, then `vercel env pull .env.local` to sync locally
+- **Use different values** for development, preview, and production environments
+
+#### **2. Google OAuth Flow Integrity**
+- **Frontend handles OAuth** - user logs in with Google, gets `access_token`
+- **Backend validates token** - your Edge Functions receive `Authorization: Bearer <token>`
+- **Verify scopes** - ensure frontend requests: `https://www.googleapis.com/auth/spreadsheets`, `https://www.googleapis.com/auth/drive.file`
+
+#### **3. Batch Operations for Performance**
+- **Read**: Use `spreadsheets.values.batchGet` for multiple ranges
+- **Write**: Use `spreadsheets.values.batchUpdate` for multiple operations
+- **Network calls are expensive** - one batch call vs many individual calls = 10x speed improvement
+
+#### **4. Optimistic UI Pattern**
+- **Update UI immediately** when user takes action (don't wait for API response)
+- **Revert on failure** - if API call fails, undo the optimistic update and show error
+- **Makes app feel instant** - even with 100ms responses, optimistic UI feels 0ms
+
+#### **5. Disciplined Git Workflow**
+- **One feature per commit** - complete, test, deploy, verify, then commit
+- **Test locally first** - `vercel dev` before every deployment
+- **Test deployed endpoint** - `curl` or browser before moving to next step
+- **Clear commit messages** - `feat: add /api/health/status endpoint`
+- **Safe rollback points** - every commit is a working state
+
+### **Step 1: Vercel Project Setup (5 minutes)**
+
+1. **Connect your existing repository to Vercel:**
+   ```bash
+   # In your project directory
+   cd /Users/bradleytangonan/google_productivity_app
+   vercel login
+   vercel --confirm  # Links current directory to Vercel project
+   ```
+
+2. **Verify connection:**
+   ```bash
+   vercel ls  # Should show your project
+   ```
+
+### **Step 2: Environment Variables Setup (10 minutes)**
+
+1. **First, secure your .gitignore:**
+   ```bash
+   # Add to .gitignore if not already there
+   echo ".env.local" >> .gitignore
+   echo ".vercel" >> .gitignore
+   git add .gitignore
+   git commit -m "secure: add .env.local to .gitignore"
+   ```
+
+2. **Go to Vercel Dashboard:**
+   - Visit [vercel.com/dashboard](https://vercel.com/dashboard)
+   - Click on your `calm-productivity-app` project
+   - Go to **Settings** → **Environment Variables**
+
+3. **Add environment variables (in Vercel Dashboard first!):**
+   
+   **For Production Environment:**
+   ```bash
+   GOOGLE_CLIENT_ID=582559442661-your-existing-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-existing-client-secret
+   GOOGLE_SHEETS_ID=your-existing-spreadsheet-id
+   NODE_ENV=production
+   API_BASE_URL=https://your-vercel-app-url.vercel.app/api
+   FRONTEND_URL=https://your-vercel-app-url.vercel.app
+   ENABLE_EDGE_FUNCTIONS=false
+   ENABLE_LEGACY_FALLBACK=true
+   MIGRATION_PHASE=1
+   ```
+   
+   **For Development Environment:**
+   ```bash
+   GOOGLE_CLIENT_ID=582559442661-your-existing-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-existing-client-secret
+   GOOGLE_SHEETS_ID=your-existing-spreadsheet-id
+   NODE_ENV=development
+   API_BASE_URL=http://localhost:3000/api
+   FRONTEND_URL=http://localhost:3000
+   ENABLE_EDGE_FUNCTIONS=false
+   ENABLE_LEGACY_FALLBACK=true
+   MIGRATION_PHASE=1
+   ```
+
+4. **Sync to local environment:**
+   ```bash
+   vercel env pull .env.local
+   # This creates .env.local with your environment variables
+   # Verify it worked:
+   cat .env.local
+   ```
+
+5. **Get your Google Sheets ID:**
+   - Open your current Google Sheets
+   - Copy the ID from URL: `https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit`
+   - **Note**: Your current Google Sheets ID is likely in `src/services/api.ts` or documented in `CLAUDE.md`
+
+### **Step 3: Create Your First Edge Function (15 minutes)**
+
+1. **Create the API directory structure:**
+   ```bash
+   mkdir -p api/health api/tasks api/utils
+   ```
+
+2. **Create health check endpoint:**
+   ```bash
+   # Create api/health/status.js
+   cat > api/health/status.js << 'EOF'
+   export default async function handler(req) {
+     return new Response(JSON.stringify({
+       status: 'healthy',
+       timestamp: new Date().toISOString(),
+       version: '1.0.0'
+     }), {
+       headers: { 'Content-Type': 'application/json' }
+     });
+   }
+   EOF
+   ```
+
+3. **Test locally:**
+   ```bash
+   vercel dev  # Starts local development server
+   # Open http://localhost:3000/api/health/status
+   # Should return: {"status":"healthy","timestamp":"...","version":"1.0.0"}
+   ```
+
+### **Step 4: Deploy Your First Edge Function (5 minutes)**
+
+1. **Commit and deploy:**
+   ```bash
+   git add api/
+   git commit -m "Add first Edge Function - health check"
+   git push origin main
+   ```
+
+2. **Verify deployment:**
+   ```bash
+   # Wait 1-2 minutes for deployment, then test:
+   curl https://your-app.vercel.app/api/health/status
+   ```
+
+### **Step 5: Create Authentication Utility (20 minutes)**
+
+1. **Create the auth utility:**
+   ```bash
+   cat > api/utils/google-auth.js << 'EOF'
+   export async function validateGoogleToken(authHeader) {
+     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+       return null;
+     }
+
+     const token = authHeader.substring(7);
+     
+     try {
+       const response = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
+       
+       if (!response.ok) {
+         return null;
+       }
+
+       const tokenInfo = await response.json();
+       
+       if (tokenInfo.audience !== process.env.GOOGLE_CLIENT_ID) {
+         return null;
+       }
+
+       return {
+         userId: tokenInfo.user_id,
+         email: tokenInfo.email,
+         accessToken: token,
+         expiresAt: new Date(tokenInfo.expires_in * 1000 + Date.now())
+       };
+     } catch (error) {
+       console.error('Token validation error:', error);
+       return null;
+     }
+   }
+   EOF
+   ```
+
+### **Step 6: Create Your First Task Endpoint (30 minutes)**
+
+1. **Create task creation endpoint:**
+   ```bash
+   cat > api/tasks/create.js << 'EOF'
+   import { validateGoogleToken } from '../utils/google-auth.js';
+
+   export default async function handler(req) {
+     if (req.method !== 'POST') {
+       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+         status: 405,
+         headers: { 'Content-Type': 'application/json' }
+       });
+     }
+
+     try {
+       const { title, description, projectId, context, dueDate } = await req.json();
+       
+       if (!title || title.trim().length === 0) {
+         return new Response(JSON.stringify({ error: 'Title is required' }), {
+           status: 400,
+           headers: { 'Content-Type': 'application/json' }
+         });
+       }
+
+       const user = await validateGoogleToken(req.headers.get('authorization'));
+       if (!user) {
+         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+           status: 401,
+           headers: { 'Content-Type': 'application/json' }
+         });
+       }
+
+       const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+       const timestamp = new Date().toISOString();
+
+       const taskData = [
+         taskId,
+         title.trim(),
+         description || '',
+         projectId || '',
+         context || '',
+         dueDate || '',
+         false,
+         0,
+         timestamp,
+         '[]'
+       ];
+
+       const sheetsResponse = await fetch(
+         `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEETS_ID}/values/Tasks!A:J:append?valueInputOption=RAW`,
+         {
+           method: 'POST',
+           headers: {
+             'Authorization': `Bearer ${user.accessToken}`,
+             'Content-Type': 'application/json'
+           },
+           body: JSON.stringify({
+             values: [taskData]
+           })
+         }
+       );
+
+       if (!sheetsResponse.ok) {
+         throw new Error(`Sheets API error: ${sheetsResponse.status}`);
+       }
+
+       const newTask = {
+         id: taskId,
+         title: title.trim(),
+         description: description || '',
+         projectId: projectId || null,
+         context: context || '',
+         dueDate: dueDate || null,
+         isCompleted: false,
+         sortOrder: 0,
+         createdAt: timestamp,
+         attachments: []
+       };
+
+       return new Response(JSON.stringify({
+         success: true,
+         data: newTask
+       }), {
+         status: 201,
+         headers: { 'Content-Type': 'application/json' }
+       });
+
+     } catch (error) {
+       console.error('Task creation error:', error);
+       
+       return new Response(JSON.stringify({
+         success: false,
+         error: 'Failed to create task'
+       }), {
+         status: 500,
+         headers: { 'Content-Type': 'application/json' }
+       });
+     }
+   }
+   EOF
+   ```
+
+### **Step 7: Test Your Edge Function (10 minutes)**
+
+1. **Test locally first:**
+   ```bash
+   vercel dev
+   # Test at: http://localhost:3000/api/tasks/create
+   ```
+
+2. **Deploy and test:**
+   ```bash
+   git add .
+   git commit -m "Add task creation Edge Function"
+   git push origin main
+   
+   # Wait 2 minutes, then test:
+   curl -X POST https://your-app.vercel.app/api/tasks/create \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_GOOGLE_TOKEN" \
+     -d '{"title":"Test from Edge Function","description":"Testing migration"}'
+   ```
+
+### **Step 8: Update Frontend to Test Edge Functions (15 minutes)**
+
+1. **Create a test toggle in your frontend:**
+   ```typescript
+   // Add to src/services/api.ts
+   private readonly EDGE_FUNCTIONS_URL = 'https://your-app.vercel.app/api';
+   private testEdgeFunctions = false; // Toggle for testing
+
+   async createTask(...args) {
+     if (this.testEdgeFunctions) {
+       return await this.createTaskEdge(...args);
+     }
+     return await this.createTaskLegacy(...args);
+   }
+
+   private async createTaskEdge(title, description, projectId, context, dueDate, attachments, token) {
+     const startTime = performance.now();
+     
+     const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/tasks/create`, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         'Authorization': `Bearer ${token}`
+       },
+       body: JSON.stringify({ title, description, projectId, context, dueDate, attachments })
+     });
+
+     if (!response.ok) {
+       throw new Error(`Edge Function failed: ${response.status}`);
+     }
+
+     const result = await response.json();
+     const duration = performance.now() - startTime;
+     console.log(`⚡ Edge Function createTask: ${duration.toFixed(1)}ms`);
+     
+     return result.data;
+   }
+   ```
+
+2. **Test side-by-side:**
+   ```javascript
+   // In browser console, test both:
+   
+   // Test legacy (current)
+   console.time('legacy');
+   await apiService.createTask('Legacy Test', '', null, '', null, [], userToken);
+   console.timeEnd('legacy');
+   
+   // Toggle to Edge Functions
+   apiService.testEdgeFunctions = true;
+   
+   // Test Edge Function
+   console.time('edge');
+   await apiService.createTask('Edge Test', '', null, '', null, [], userToken);
+   console.timeEnd('edge');
+   ```
+
+### **Step 9: Monitor Performance Difference (5 minutes)**
+
+After testing both approaches, you should see:
+- **Legacy (Google Apps Script)**: 2000-4000ms
+- **Edge Functions**: 50-200ms
+- **Performance improvement**: 10-40x faster
+
+### **Step 10: Gradual Migration Plan**
+
+Now that you have proof of concept working:
+
+1. **Week 1**: Create remaining Edge Functions (tasks/list, tasks/update, etc.)
+2. **Week 2**: Add error handling and monitoring
+3. **Week 3**: Implement feature flags for gradual rollout
+4. **Week 4**: Full migration and remove Google Apps Script
+
+### **🚨 Important Notes:**
+
+1. **Don't delete your Google Apps Script yet** - keep as backup during migration
+2. **Test thoroughly** - every Edge Function should be tested before deployment
+3. **Monitor closely** - watch for errors and performance issues
+4. **Have rollback ready** - can instantly switch back to legacy if needed
+
+### **Need Help?**
+- **Vercel docs**: [vercel.com/docs](https://vercel.com/docs)
+- **Google Sheets API**: [developers.google.com/sheets/api](https://developers.google.com/sheets/api)
+- **Test in stages** - don't rush the migration
+
+---
+
 ## 📋 **Executive Summary**
 
 **Current Problem:**
