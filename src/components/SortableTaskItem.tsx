@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../types';
@@ -22,7 +23,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editingDescription, setEditingDescription] = useState(task.description || '');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, placement: 'bottom' as 'top' | 'bottom' });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -43,14 +44,20 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      
+      // Check if click is outside both the button and the dropdown
+      if (
+        buttonRef.current && !buttonRef.current.contains(target) &&
+        (!showDropdown || !document.querySelector('.fixed.bg-white')?.contains(target))
+      ) {
         setShowDropdown(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showDropdown]);
 
   const handleTaskToggle = async (taskId: string, isCompleted: boolean) => {
     const originalTask = tasks.find(task => task.id === taskId);
@@ -230,14 +237,17 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
             onClick={(e) => {
               e.stopPropagation();
               
-              // Calculate if dropdown should appear above or below
-              if (buttonRef.current) {
+              if (!showDropdown && buttonRef.current) {
                 const rect = buttonRef.current.getBoundingClientRect();
                 const spaceBelow = window.innerHeight - rect.bottom;
                 const spaceAbove = rect.top;
                 
-                // If there's less than 100px below, show dropdown above
-                setDropdownPosition(spaceBelow < 100 && spaceAbove > 100 ? 'top' : 'bottom');
+                // Calculate absolute position for portal
+                const placement = spaceBelow < 120 && spaceAbove > 120 ? 'top' : 'bottom';
+                const x = rect.left;
+                const y = placement === 'top' ? rect.top - 120 : rect.bottom + 8;
+                
+                setDropdownPosition({ x, y, placement });
               }
               
               setShowDropdown(!showDropdown);
@@ -250,28 +260,6 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
             </svg>
           </button>
           
-          {showDropdown && (
-            <div className={`absolute left-0 ${dropdownPosition === 'top' ? 'bottom-8' : 'top-8'} bg-white border border-gray-200 rounded-md shadow-xl z-[9999] min-w-[120px]`}>
-              <button
-                onClick={handleEditClick}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 flex items-center"
-              >
-                <svg className="w-3 h-3 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
-                </svg>
-                Edit
-              </button>
-              <button
-                onClick={handleDeleteTask}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-red-600 hover:bg-red-50 flex items-center"
-              >
-                <svg className="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Delete
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Expand arrow */}
@@ -381,6 +369,37 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
           onClose={handleCloseEditForm}
           onSubmit={handleCloseEditForm}
         />
+      )}
+
+      {/* Portal dropdown - renders outside scroll container */}
+      {showDropdown && createPortal(
+        <div 
+          className="fixed bg-white border border-gray-200 rounded-md shadow-xl z-[9999] min-w-[120px]"
+          style={{
+            left: dropdownPosition.x,
+            top: dropdownPosition.y,
+          }}
+        >
+          <button
+            onClick={handleEditClick}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 flex items-center"
+          >
+            <svg className="w-3 h-3 mr-2" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
+            </svg>
+            Edit
+          </button>
+          <button
+            onClick={handleDeleteTask}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-red-600 hover:bg-red-50 flex items-center"
+          >
+            <svg className="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete
+          </button>
+        </div>,
+        document.body
       )}
     </div>
   );
