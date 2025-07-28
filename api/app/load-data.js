@@ -1,4 +1,4 @@
-import { validateGoogleToken, getServiceAccountToken } from '../utils/google-auth.js';
+import { validateGoogleToken } from '../utils/google-auth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -17,28 +17,6 @@ export default async function handler(req, res) {
     }
 
     console.log(`🔐 Loading app data for user: ${user.email}`);
-    console.log('🔍 User object:', JSON.stringify(user, null, 2));
-
-    // Use the user's access token directly (if available) or service account as fallback
-    let apiToken;
-    
-    console.log('🔍 Checking token type...');
-    if (user.isJWT || user.accessToken.startsWith('eyJ')) {
-      // For JWT tokens, use service account (shared spreadsheet access)
-      console.log('🔧 Attempting to get service account token...');
-      try {
-        apiToken = await getServiceAccountToken();
-        console.log('✅ Service account token obtained');
-      } catch (tokenError) {
-        console.error('❌ Service account token failed:', tokenError);
-        throw tokenError;
-      }
-    } else {
-      // For real access tokens, use user's token directly
-      apiToken = user.accessToken;
-      console.log('🎯 Using user access token for API calls');
-      console.log('🔍 Token preview:', apiToken.substring(0, 20) + '...');
-    }
 
     // Use Google Sheets API directly with authentication
     console.log('🔍 Initializing Google Sheets API...');

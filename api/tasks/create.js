@@ -1,4 +1,4 @@
-import { validateGoogleToken, getServiceAccountToken } from '../utils/google-auth.js';
+import { validateGoogleToken } from '../utils/google-auth.js';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -44,32 +44,33 @@ export default async function handler(req, res) {
 
     console.log(`📊 Creating task in Google Sheets: ${taskId}`);
 
-    // Get service account access token with user impersonation  
-    const serviceAccountToken = await getServiceAccountToken(user.email);
+    // Use Google Sheets API directly with service account authentication
+    console.log('🔍 Initializing Google Sheets API...');
+    const { google } = await import('googleapis');
+    const { GoogleAuth } = await import('google-auth-library');
+    
+    const auth = new GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
 
-    // Write to Google Sheets using direct API call (much faster than Apps Script)
-    const sheetsResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEETS_ID}/values/Tasks!A:J:append?valueInputOption=RAW`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${serviceAccountToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          values: [taskData]
-        })
+    const authClient = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: authClient });
+
+    // Write to Google Sheets using googleapis library
+    const sheetsResponse = await sheets.spreadsheets.values.append({
+      spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+      range: 'Tasks!A:J',
+      valueInputOption: 'RAW',
+      resource: {
+        values: [taskData]
       }
-    );
+    });
 
-    if (!sheetsResponse.ok) {
-      const errorText = await sheetsResponse.text();
-      console.error('Sheets API error:', sheetsResponse.status, errorText);
-      throw new Error(`Sheets API error: ${sheetsResponse.status}`);
-    }
-
-    const sheetsResult = await sheetsResponse.json();
-    console.log(`✅ Task written to Google Sheets: ${sheetsResult.updates?.updatedRows || 1} row(s)`);
+    console.log(`✅ Task written to Google Sheets: ${sheetsResponse.data.updates?.updatedRows || 1} row(s)`);
 
     // Create response object (matching your existing Task interface)
     const newTask = {
