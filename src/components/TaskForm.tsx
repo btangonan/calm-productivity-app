@@ -80,10 +80,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
         
         const updatedTask = {
           ...editingTask,
-          title: taskTitle,
+          title: formData.title,
           description: formData.description,
           projectId: newProjectId,
-          context: formData.context,
+          context: taskContext,
           dueDate: formData.dueDate || null,
           attachments: attachments,
         };
@@ -128,24 +128,55 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
         const taskStartTime = performance.now();
         console.log('🆕 Creating task:', formData.title, 'at', new Date().toLocaleTimeString());
         
-        const newTask = await apiService.createTask(
-          formData.title,
-          formData.description,
-          formData.projectId || undefined,
-          taskContext,
-          formData.dueDate || undefined,
-          attachments,
-          userProfile.id_token
-        );
-
-        const taskEndTime = performance.now();
-        console.log(`⚡ Task creation total time: ${(taskEndTime - taskStartTime).toFixed(1)}ms`);
+        // Create optimistic task for instant UI feedback
+        const optimisticTask = {
+          id: `temp-${Date.now()}`, // Temporary ID
+          title: formData.title,
+          description: formData.description,
+          projectId: formData.projectId || null,
+          context: taskContext,
+          dueDate: formData.dueDate || null,
+          isCompleted: false,
+          sortOrder: 0,
+          createdAt: new Date().toISOString(),
+          attachments: attachments || [],
+          isOptimistic: true // Mark as optimistic
+        };
         
-        dispatch({ type: 'ADD_TASK', payload: newTask });
+        // Update UI immediately
+        console.log('⚡ Adding optimistic task to UI');
+        dispatch({ type: 'ADD_TASK', payload: optimisticTask });
+        
+        // Close form immediately for instant UX
+        onSubmit?.();
+        onClose();
+        
+        // Create actual task in background
+        try {
+          const newTask = await apiService.createTask(
+            formData.title,
+            formData.description,
+            formData.projectId || undefined,
+            taskContext,
+            formData.dueDate || undefined,
+            attachments,
+            userProfile.id_token
+          );
+
+          const taskEndTime = performance.now();
+          console.log(`⚡ Task creation backend time: ${(taskEndTime - taskStartTime).toFixed(1)}ms`);
+          
+          // Replace optimistic task with real task
+          dispatch({ type: 'DELETE_TASK', payload: optimisticTask.id });
+          dispatch({ type: 'ADD_TASK', payload: newTask });
+          console.log('✅ Replaced optimistic task with real task:', newTask.id);
+        } catch (error) {
+          console.error('Task creation failed, removing optimistic task:', error);
+          // Remove the optimistic task on failure
+          dispatch({ type: 'DELETE_TASK', payload: optimisticTask.id });
+          dispatch({ type: 'SET_ERROR', payload: 'Failed to create task' });
+        }
       }
-      
-      onSubmit?.();
-      onClose();
     } catch (error) {
       console.error('Failed to save task:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to save task' });

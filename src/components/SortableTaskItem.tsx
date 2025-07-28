@@ -326,7 +326,9 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
                     selectedTaskId === task.id 
                       ? 'bg-primary-50 border border-primary-200' 
                       : 'hover:bg-gray-100'
-                  } ${task.isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}
+                  } ${task.isCompleted ? 'line-through text-gray-500' : 'text-gray-900'} ${
+                    (task as any).isOptimistic ? 'opacity-60' : ''
+                  }`}
                   onClick={handleTitleClick}
                   title={selectedTaskId === task.id ? "Click again to edit title" : "Click to select task"}
                 >
