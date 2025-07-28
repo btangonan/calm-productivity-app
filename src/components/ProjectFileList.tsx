@@ -19,6 +19,11 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Document creation state
+  const [creatingDocument, setCreatingDocument] = useState<string | null>(null);
+  const [showNameInput, setShowNameInput] = useState<string | null>(null);
+  const [fileName, setFileName] = useState('');
 
   useEffect(() => {
     fetchProjectFiles();
@@ -204,6 +209,58 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
     }
   };
 
+  const createDocument = async (type: 'doc' | 'sheet') => {
+    if (!fileName.trim()) {
+      alert('Please enter a file name');
+      return;
+    }
+
+    setCreatingDocument(type);
+    try {
+      const userProfile = state.userProfile;
+      if (!userProfile) throw new Error('Not authenticated');
+
+      let result;
+      if (type === 'doc') {
+        result = await apiService.createGoogleDoc(projectId, fileName, null, userProfile.id_token);
+      } else {
+        result = await apiService.createGoogleSheet(projectId, fileName, null, userProfile.id_token);
+      }
+
+      if (result && result.data && result.data.documentUrl) {
+        console.log('Document created successfully:', result);
+        setFileName('');
+        setShowNameInput(null);
+        
+        // Refresh file list to show new document
+        await fetchProjectFiles();
+        
+        // Open the created document directly in a new tab
+        window.open(result.data.documentUrl, '_blank', 'noopener,noreferrer');
+        
+      } else {
+        console.error('Invalid response from document creation:', result);
+        dispatch({ 
+          type: 'SET_ERROR', 
+          payload: `Failed to create ${type}: Invalid response from server` 
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create document:', error);
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: `Failed to create ${type}: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      });
+    } finally {
+      setCreatingDocument(null);
+    }
+  };
+
+  const handleCreateClick = (type: 'doc' | 'sheet') => {
+    setShowNameInput(type);
+    setFileName(`New ${type === 'doc' ? 'Document' : 'Spreadsheet'}`);
+  };
+
   const getFileIcon = (mimeType: string, fileName: string): string => {
     if (mimeType.startsWith('image/')) return '🖼️';
     if (mimeType.startsWith('video/')) return '🎥';
@@ -283,6 +340,25 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             {isUploading ? 'Uploading...' : 'Upload Files'}
+          </button>
+          
+          {/* Create Document buttons */}
+          <button
+            onClick={() => handleCreateClick('doc')}
+            disabled={creatingDocument === 'doc'}
+            className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+          >
+            <span className="text-base mr-1.5">📝</span>
+            {creatingDocument === 'doc' ? 'Creating...' : 'New Doc'}
+          </button>
+          
+          <button
+            onClick={() => handleCreateClick('sheet')}
+            disabled={creatingDocument === 'sheet'}
+            className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+          >
+            <span className="text-base mr-1.5">📊</span>
+            {creatingDocument === 'sheet' ? 'Creating...' : 'New Sheet'}
           </button>
           
           {files.length > 0 && (
@@ -453,6 +529,44 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* File name input modal */}
+      {showNameInput && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Create New {showNameInput === 'doc' ? 'Document' : 'Spreadsheet'}
+            </h3>
+            <input
+              type="text"
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && createDocument(showNameInput as any)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Enter file name"
+              autoFocus
+            />
+            <div className="flex justify-end space-x-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowNameInput(null);
+                  setFileName('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => createDocument(showNameInput as any)}
+                disabled={!fileName.trim() || creatingDocument}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
+              >
+                {creatingDocument ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
