@@ -2,9 +2,9 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.29.003-TASK-UPDATE-FIX";
-const SCRIPT_VERSION = "3.6.0"; // Increment with each deployment for verification
-const LAST_UPDATED = "2024-07-29T02:30:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.29.004-CONTEXT-TAG-FIX";
+const SCRIPT_VERSION = "3.7.0"; // Increment with each deployment for verification
+const LAST_UPDATED = "2024-07-29T03:00:00Z";
 
 // CORS configuration
 const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'
@@ -2025,15 +2025,15 @@ function updateProjectTagsInTasks(projectId, oldName, newName) {
     
     console.log(`Updating project tags from "${oldTag}" to "${newTag}" for project ${projectId}`);
     
-    // Find all tasks for this project and update their titles
+    // Find all tasks for this project and update their context
     for (let i = 1; i < tasksData.length; i++) {
       const taskProjectId = tasksData[i][3]; // Column D (index 3) is projectId
-      const taskTitle = tasksData[i][1]; // Column B (index 1) is title
+      const taskContext = tasksData[i][4]; // Column E (index 4) is context
       
-      if (taskProjectId === projectId && taskTitle && taskTitle.includes(oldTag)) {
-        const updatedTitle = taskTitle.replace(new RegExp(oldTag, 'g'), newTag);
-        tasksSheet.getRange(i + 1, 2).setValue(updatedTitle); // Update title in column B
-        console.log(`Updated task title from "${taskTitle}" to "${updatedTitle}"`);
+      if (taskProjectId === projectId && taskContext && taskContext.includes(oldTag)) {
+        const updatedContext = taskContext.replace(new RegExp(oldTag, 'g'), newTag);
+        tasksSheet.getRange(i + 1, 5).setValue(updatedContext); // Update context in column E
+        console.log(`Updated task context from "${taskContext}" to "${updatedContext}"`);
       }
     }
     
