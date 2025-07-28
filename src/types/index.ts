@@ -123,3 +123,23 @@ export interface UserProfile {
   picture: string;
   id_token: string;
 }
+
+// Enhanced project types for Project Hub
+export interface ProjectWithFolder extends Project {
+  driveFolderId: string; // Required for enhanced features
+}
+
+export interface FolderBreadcrumb {
+  id: string;
+  name: string;
+  path: string[];
+}
+
+export interface FolderContents {
+  files: ProjectFile[];
+  folders: DriveFolder[];
+  currentPath: string[];
+}
+
+// Tab types for Project Hub
+export type TabType = 'tasks' | 'files' | 'documents';

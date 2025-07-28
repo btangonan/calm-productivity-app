@@ -4,6 +4,7 @@ import AISuggestions from './AISuggestions';
 import GoogleIntegrations from './GoogleIntegrations';
 import FileDropzone from './FileDropzone';
 import ProjectFileList from './ProjectFileList';
+import ProjectTabs from './ProjectTabs';
 import TaskForm from './TaskForm';
 import DriveBrowser from './DriveBrowser';
 import { useApp } from '../context/AppContext';
@@ -16,6 +17,9 @@ const MainContent = () => {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [rightSidebarWidth, setRightSidebarWidth] = useState(384); // 24rem = 384px
   const [isResizingRight, setIsResizingRight] = useState(false);
+  const [useEnhancedProjectView, setUseEnhancedProjectView] = useState(
+    localStorage.getItem('enhanced-project-view') === 'true'
+  );
 
   const showProjectFeatures = currentView === 'project' && selectedProjectId;
   const showGoogleIntegrations = true; // Always show Google integrations
@@ -88,19 +92,41 @@ const MainContent = () => {
         <div className="p-4 space-y-4">
           {/* Project features section */}
           {showProjectFeatures && (
-            <>
-              <FileDropzone 
-                projectId={selectedProjectId!} 
-                onFilesUploaded={handleFilesUploaded}
-              />
-              <ProjectFileList 
-                projectId={selectedProjectId!}
-                refreshTrigger={fileRefreshTrigger}
-              />
-              <div className="bg-white rounded-lg">
-                <AISuggestions />
+            <div className="space-y-4">
+              {/* Feature flag toggle for testing */}
+              <div className="text-xs text-gray-500 flex items-center space-x-2">
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={useEnhancedProjectView}
+                    onChange={(e) => {
+                      setUseEnhancedProjectView(e.target.checked);
+                      localStorage.setItem('enhanced-project-view', e.target.checked.toString());
+                    }}
+                    className="form-checkbox h-3 w-3 text-primary-600"
+                  />
+                  <span className="ml-2">Enhanced Project View (Beta)</span>
+                </label>
               </div>
-            </>
+
+              {useEnhancedProjectView ? (
+                <ProjectTabs projectId={selectedProjectId!} />
+              ) : (
+                <>
+                  <FileDropzone 
+                    projectId={selectedProjectId!} 
+                    onFilesUploaded={handleFilesUploaded}
+                  />
+                  <ProjectFileList 
+                    projectId={selectedProjectId!}
+                    refreshTrigger={fileRefreshTrigger}
+                  />
+                  <div className="bg-white rounded-lg">
+                    <AISuggestions />
+                  </div>
+                </>
+              )}
+            </div>
           )}
           
           {/* Google integrations - always visible */}

@@ -803,6 +803,11 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     const response = await this.executeGoogleScript<any[]>(token, 'getFilePath', [fileId], 'GET');
     return response.data || [];
   }
+
+  async getProjectFolderId(projectId: string, token: string): Promise<string | null> {
+    const response = await this.executeGoogleScript<string>(token, 'getProjectFolderId', [projectId], 'GET');
+    return response.success ? response.data || null : null;
+  }
 }
 
 export const apiService = new ApiService();

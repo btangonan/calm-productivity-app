@@ -83,6 +83,9 @@ function doGet(e) {
       case 'getFilePath':
         result = getFilePath(parameters[0]);
         break;
+      case 'getProjectFolderId':
+        result = getProjectFolderId(parameters[0]);
+        break;
       case 'healthCheck':
         result = {
           success: true,
@@ -393,6 +396,28 @@ function getProjects(areaId = null) {
     
     return { success: true, data: projects };
   } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function getProjectFolderId(projectId) {
+  try {
+    const project = getProjects().data.find(p => p.id === projectId);
+    if (!project?.driveFolderUrl) {
+      console.warn(`No drive folder URL found for project ${projectId}`);
+      return { success: false, message: 'Project folder not found' };
+    }
+    
+    const folderId = extractFolderIdFromUrl(project.driveFolderUrl);
+    if (!folderId) {
+      console.warn(`Could not extract folder ID from URL: ${project.driveFolderUrl}`);
+      return { success: false, message: 'Invalid folder URL format' };
+    }
+    
+    console.log(`Extracted folder ID ${folderId} for project ${projectId}`);
+    return { success: true, data: folderId };
+  } catch (error) {
+    console.error('Error extracting folder ID:', error);
     return { success: false, message: error.toString() };
   }
 }
