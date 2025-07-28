@@ -1,4 +1,4 @@
-import { validateGoogleToken } from '../utils/google-auth.js';
+import { validateGoogleToken, getServiceAccountToken } from '../utils/google-auth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -21,12 +21,15 @@ export default async function handler(req, res) {
 
     console.log(`🔐 Fetching files for project: ${projectId} for user: ${user.email}`);
 
+    // Get service account access token
+    const serviceAccountToken = await getServiceAccountToken();
+
     // First, get the project to find its Drive folder ID
     const projectsResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEETS_ID}/values/Projects!A:H`,
       {
         headers: {
-          'Authorization': `Bearer ${user.accessToken}`,
+          'Authorization': `Bearer ${serviceAccountToken}`,
           'Content-Type': 'application/json'
         }
       }
@@ -61,7 +64,7 @@ export default async function handler(req, res) {
       `https://www.googleapis.com/drive/v3/files?q='${driveFolderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,size,createdTime,modifiedTime,thumbnailLink,webViewLink,parents)&orderBy=modifiedTime desc`,
       {
         headers: {
-          'Authorization': `Bearer ${user.accessToken}`,
+          'Authorization': `Bearer ${serviceAccountToken}`,
           'Content-Type': 'application/json'
         }
       }

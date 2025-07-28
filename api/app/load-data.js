@@ -1,4 +1,4 @@
-import { validateGoogleToken } from '../utils/google-auth.js';
+import { validateGoogleToken, getServiceAccountToken } from '../utils/google-auth.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -16,12 +16,15 @@ export default async function handler(req, res) {
 
     console.log(`🔐 Loading app data for user: ${user.email}`);
 
+    // Get service account access token for Google Sheets API
+    const serviceAccountToken = await getServiceAccountToken();
+
     // Use batch request to get all data at once (much faster than individual calls)
     const batchResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEETS_ID}/values:batchGet?ranges=Areas!A:F&ranges=Projects!A:H&ranges=Tasks!A:J`,
       {
         headers: {
-          'Authorization': `Bearer ${user.accessToken}`,
+          'Authorization': `Bearer ${serviceAccountToken}`,
           'Content-Type': 'application/json'
         }
       }

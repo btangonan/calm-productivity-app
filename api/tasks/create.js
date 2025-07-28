@@ -1,4 +1,4 @@
-import { validateGoogleToken } from '../utils/google-auth.js';
+import { validateGoogleToken, getServiceAccountToken } from '../utils/google-auth.js';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -44,13 +44,16 @@ export default async function handler(req, res) {
 
     console.log(`📊 Creating task in Google Sheets: ${taskId}`);
 
+    // Get service account access token
+    const serviceAccountToken = await getServiceAccountToken();
+
     // Write to Google Sheets using direct API call (much faster than Apps Script)
     const sheetsResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEETS_ID}/values/Tasks!A:J:append?valueInputOption=RAW`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${user.accessToken}`,
+          'Authorization': `Bearer ${serviceAccountToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
