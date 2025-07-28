@@ -6,6 +6,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('[ENV_DEBUG] GOOGLE_PRIVATE_KEY_BASE64 exists:', !!process.env.GOOGLE_PRIVATE_KEY_BASE64);
     const startTime = Date.now();
     
     // Authenticate user
@@ -139,7 +140,7 @@ export default async function handler(req, res) {
       error_stack: process.env.NODE_ENV === 'development' ? error.stack : undefined, // Only show stack in dev
       environment_debug: {
         has_service_account_email: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        has_private_key: !!process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+        has_private_key: !!process.env.GOOGLE_PRIVATE_KEY_BASE64,
         has_sheets_id: !!process.env.GOOGLE_SHEETS_ID
       }
     });
