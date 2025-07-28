@@ -14,4 +14,4 @@ yarn-error.log*
 
 # Google OAuth secrets
 client_secret_*.json
-credentials.json
+credentials.jsonservice-account-key.json

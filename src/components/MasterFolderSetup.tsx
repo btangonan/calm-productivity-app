@@ -22,19 +22,35 @@ const MasterFolderSetup: React.FC = () => {
       setLoading(true);
       
       // Get service account email
-      const emailData = await apiService.getServiceAccountEmail(state.userProfile.id_token);
-      setServiceAccountEmail(emailData.email);
+      try {
+        const emailData = await apiService.getServiceAccountEmail(state.userProfile.id_token);
+        console.log('Email data received:', emailData);
+        setServiceAccountEmail(emailData.email);
+      } catch (emailError) {
+        console.error('Failed to load service account email:', emailError);
+        // Fallback to hardcoded email
+        setServiceAccountEmail('nowandlater@solid-study-467023-i3.iam.gserviceaccount.com');
+      }
       
       // Get current master folder ID
-      const folderData = await apiService.getMasterFolderId(state.userProfile.id_token);
-      setCurrentMasterFolderId(folderData.folderId);
+      try {
+        const folderData = await apiService.getMasterFolderId(state.userProfile.id_token);
+        console.log('Folder data received:', folderData);
+        setCurrentMasterFolderId(folderData.folderId);
+      } catch (folderError) {
+        console.error('Failed to load master folder ID:', folderError);
+        setCurrentMasterFolderId('');
+      }
       
-      setMessage('Current settings loaded successfully');
-      setMessageType('success');
+      setMessage('Settings loaded (some features are still being migrated to the new backend)');
+      setMessageType('info');
     } catch (error) {
       console.error('Failed to load settings:', error);
-      setMessage('Failed to load current settings');
+      setMessage('Some settings could not be loaded. Using defaults.');
       setMessageType('error');
+      // Set fallback values
+      setServiceAccountEmail('nowandlater@solid-study-467023-i3.iam.gserviceaccount.com');
+      setCurrentMasterFolderId('');
     } finally {
       setLoading(false);
     }
@@ -82,7 +98,17 @@ const MasterFolderSetup: React.FC = () => {
   };
 
   const handleShareFolder = async () => {
-    if (!state.userProfile || !currentMasterFolderId) return;
+    if (!state.userProfile) {
+      setMessage('Please sign in to use this feature');
+      setMessageType('error');
+      return;
+    }
+
+    if (!currentMasterFolderId) {
+      setMessage('Please set a master folder first before sharing');
+      setMessageType('error');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -91,10 +117,10 @@ const MasterFolderSetup: React.FC = () => {
 
       const result = await apiService.shareFolderWithServiceAccount(currentMasterFolderId, state.userProfile.id_token);
       setMessage(result.message);
-      setMessageType('success');
+      setMessageType('info');
     } catch (error) {
       console.error('Failed to share folder:', error);
-      setMessage('Failed to share folder with service account');
+      setMessage(`Automatic sharing is not available yet. Please manually share your folder with: ${serviceAccountEmail}`);
       setMessageType('error');
     } finally {
       setLoading(false);

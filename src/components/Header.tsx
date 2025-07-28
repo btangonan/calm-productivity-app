@@ -155,25 +155,48 @@ const Header = () => {
             <button
               onClick={() => {
                 console.log('Drive folder URL:', selectedProject.driveFolderUrl);
+                console.log('Drive folder ID:', selectedProject.driveFolderId);
                 
-                // Check if URL exists and is properly formatted
-                if (!selectedProject.driveFolderUrl || !selectedProject.driveFolderUrl.startsWith('http')) {
-                  alert('Drive folder is not ready yet. The project may need to be recreated or the folder configured manually. Please check the master folder settings in your user menu.');
+                let driveUrl = selectedProject.driveFolderUrl;
+                
+                // If we don't have a URL but have a folder ID, construct the URL
+                if (!driveUrl && selectedProject.driveFolderId) {
+                  driveUrl = `https://drive.google.com/drive/folders/${selectedProject.driveFolderId}`;
+                  console.log('Constructed drive URL from ID:', driveUrl);
+                }
+                
+                // Check if we have a valid URL now
+                if (!driveUrl || !driveUrl.startsWith('http')) {
+                  const hasFiles = true; // Assume project might have files even without folder URL
+                  
+                  if (hasFiles) {
+                    // Navigate to the project files view instead
+                    alert(`Drive folder not configured for this project yet. You can still view and manage project files in the "Project Files" section below. To set up drive folder integration, check the master folder settings in your user menu.`);
+                  } else {
+                    alert('Drive folder is not ready yet. Please check the master folder settings in your user menu to configure drive integration.');
+                  }
                   return;
                 }
                 
                 // URL is valid, open it
-                window.open(selectedProject.driveFolderUrl, '_blank', 'noopener,noreferrer');
+                window.open(driveUrl, '_blank', 'noopener,noreferrer');
               }}
               className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-              title={selectedProject.driveFolderUrl && selectedProject.driveFolderUrl.startsWith('http') 
-                ? "Open project folder in Google Drive" 
-                : "Drive folder not configured - check master folder settings"}
+              title={
+                selectedProject.driveFolderUrl && selectedProject.driveFolderUrl.startsWith('http') 
+                  ? "Open project folder in Google Drive"
+                  : selectedProject.driveFolderId
+                  ? "Open project folder in Google Drive (URL will be constructed)"
+                  : "Drive folder not configured - check master folder settings"
+              }
             >
               <span className="mr-2">📂</span>
               Open Drive Folder
-              {!selectedProject.driveFolderUrl && (
+              {!selectedProject.driveFolderUrl && !selectedProject.driveFolderId && (
                 <span className="ml-2 text-xs text-orange-600">(Not Ready)</span>
+              )}
+              {!selectedProject.driveFolderUrl && selectedProject.driveFolderId && (
+                <span className="ml-2 text-xs text-blue-600">(Auto)</span>
               )}
               {backendStatus.usingMockData && (
                 <span className="ml-2 text-xs text-gray-500">(Demo)</span>

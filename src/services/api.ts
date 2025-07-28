@@ -1068,23 +1068,90 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
   }
 
   async getServiceAccountEmail(token: string): Promise<{ email: string; message: string }> {
-    const response = await this.executeGoogleScript<{ email: string; message: string }>(token, 'getServiceAccountEmail', []);
-    return response.data;
+    try {
+      const response = await fetch('/api/settings/master-folder', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get service account email');
+      }
+      
+      return {
+        email: data.data.serviceAccountEmail,
+        message: data.data.message
+      };
+    } catch (error) {
+      console.error('Failed to get service account email:', error);
+      return {
+        email: 'nowandlater@solid-study-467023-i3.iam.gserviceaccount.com',
+        message: 'Share your master Drive folder with this email to enable full functionality'
+      };
+    }
   }
 
   async getMasterFolderId(token: string): Promise<{ folderId: string }> {
-    const response = await this.executeGoogleScript<{ folderId: string }>(token, 'getMasterFolderId', []);
-    return response.data;
+    try {
+      const response = await fetch('/api/settings/master-folder', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get master folder ID');
+      }
+      
+      return { folderId: data.data.currentMasterFolderId || '' };
+    } catch (error) {
+      console.error('Failed to get master folder ID:', error);
+      return { folderId: '' };
+    }
   }
 
   async setMasterFolderId(folderId: string, token: string): Promise<{ folderId: string; message: string }> {
-    const response = await this.executeGoogleScript<{ folderId: string; message: string }>(token, 'setMasterFolderId', [folderId]);
-    return response.data;
+    try {
+      const response = await fetch('/api/settings/master-folder', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ folderId }),
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to set master folder ID');
+      }
+      
+      return {
+        folderId: data.data.folderId,
+        message: data.data.message
+      };
+    } catch (error) {
+      console.error('Failed to set master folder ID:', error);
+      throw error;
+    }
   }
 
   async shareFolderWithServiceAccount(folderId: string, token: string): Promise<{ message: string; folderId: string; folderName: string; serviceAccountEmail?: string }> {
-    const response = await this.executeGoogleScript<{ message: string; folderId: string; folderName: string; serviceAccountEmail?: string }>(token, 'shareFolderWithServiceAccount', [folderId]);
-    return response.data;
+    // This functionality would need to be implemented in Vercel API
+    // For now, return a helpful message
+    return {
+      message: 'Folder sharing functionality is being migrated to the new backend. Please manually share your folder with: nowandlater@solid-study-467023-i3.iam.gserviceaccount.com',
+      folderId,
+      folderName: 'Unknown',
+      serviceAccountEmail: 'nowandlater@solid-study-467023-i3.iam.gserviceaccount.com'
+    };
   }
 }
 
