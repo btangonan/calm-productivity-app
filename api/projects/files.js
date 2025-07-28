@@ -83,7 +83,22 @@ export default async function handler(req, res) {
 
     console.log('Raw filesResponse.data.files:', filesResponse.data.files);
 
-    const files = (filesResponse.data.files || []).map(file => ({
+    // Filter out internal app folders and system files
+    const filteredFiles = (filesResponse.data.files || []).filter(file => {
+      // Hide the Tasks subfolder (internal app structure)
+      if (file.name === 'Tasks' && file.mimeType === 'application/vnd.google-apps.folder') {
+        return false;
+      }
+      
+      // Hide any other system/hidden files (starting with .)
+      if (file.name.startsWith('.')) {
+        return false;
+      }
+      
+      return true;
+    });
+
+    const files = filteredFiles.map(file => ({
       id: file.id,
       name: file.name,
       type: getFileType(file.mimeType),

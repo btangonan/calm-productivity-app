@@ -158,6 +158,24 @@ const Header = () => {
               rel="noopener noreferrer"
               className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
               title={backendStatus.usingMockData ? "Connect Google Apps Script backend to create real Drive folders" : "Open project folder in Google Drive"}
+              onClick={(e) => {
+                console.log('Drive folder URL:', selectedProject.driveFolderUrl);
+                console.log('Event target:', e.target);
+                console.log('Link element:', e.currentTarget);
+                
+                // Check if URL is properly formatted
+                if (!selectedProject.driveFolderUrl.startsWith('http')) {
+                  console.error('Drive folder URL is not properly formatted:', selectedProject.driveFolderUrl);
+                  e.preventDefault();
+                  alert('Invalid drive folder URL format. Please check the project setup.');
+                  return;
+                }
+                
+                // Force open in new window as fallback
+                setTimeout(() => {
+                  window.open(selectedProject.driveFolderUrl, '_blank', 'noopener,noreferrer');
+                }, 100);
+              }}
             >
               <span className="mr-2">📂</span>
               Open Drive Folder
