@@ -2,9 +2,9 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.29.001-PROJECT-NAME-SYNC";
-const SCRIPT_VERSION = "3.4.0"; // Increment with each deployment for verification
-const LAST_UPDATED = "2024-07-29T01:00:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.29.002-PROJECT-TASK-COMPLETION";
+const SCRIPT_VERSION = "3.5.0"; // Increment with each deployment for verification
+const LAST_UPDATED = "2024-07-29T02:00:00Z";
 
 // CORS configuration
 const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'
@@ -1927,6 +1927,9 @@ function updateProjectName(projectId, newName) {
         // Update project name in spreadsheet
         sheet.getRange(i + 1, 2).setValue(newName); // Column B (index 1) is name
         
+        // Update @project-name tags in all related tasks
+        updateProjectTagsInTasks(projectId, oldName, newName);
+        
         // Update Google Drive folder name if it exists
         if (driveFolderUrl) {
           try {
@@ -1961,6 +1964,38 @@ function updateProjectName(projectId, newName) {
   } catch (error) {
     console.error('Error updating project name:', error);
     return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Update @project-name tags in all tasks when project name changes
+ */
+function updateProjectTagsInTasks(projectId, oldName, newName) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const tasksSheet = spreadsheet.getSheetByName('Tasks');
+    const tasksData = tasksSheet.getDataRange().getValues();
+    
+    const oldTag = `@${oldName.replace(/\s+/g, '-').toLowerCase()}`;
+    const newTag = `@${newName.replace(/\s+/g, '-').toLowerCase()}`;
+    
+    console.log(`Updating project tags from "${oldTag}" to "${newTag}" for project ${projectId}`);
+    
+    // Find all tasks for this project and update their titles
+    for (let i = 1; i < tasksData.length; i++) {
+      const taskProjectId = tasksData[i][3]; // Column D (index 3) is projectId
+      const taskTitle = tasksData[i][1]; // Column B (index 1) is title
+      
+      if (taskProjectId === projectId && taskTitle && taskTitle.includes(oldTag)) {
+        const updatedTitle = taskTitle.replace(new RegExp(oldTag, 'g'), newTag);
+        tasksSheet.getRange(i + 1, 2).setValue(updatedTitle); // Update title in column B
+        console.log(`Updated task title from "${taskTitle}" to "${updatedTitle}"`);
+      }
+    }
+    
+    console.log(`Completed updating project tags for project ${projectId}`);
+  } catch (error) {
+    console.error('Error updating project tags in tasks:', error);
   }
 }
 
