@@ -142,4 +142,4 @@ export interface FolderContents {
 }
 
 // Tab types for Project Hub
-export type TabType = 'tasks' | 'files' | 'documents';
+export type TabType = 'tasks' | 'files';

@@ -10,7 +10,7 @@ export function useProjectTabs(projectId: string) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`project-tab-${projectId}`);
-      if (saved && ['tasks', 'files', 'documents'].includes(saved)) {
+      if (saved && ['tasks', 'files'].includes(saved)) {
         setActiveTab(saved as TabType);
       }
     } catch (err) {
