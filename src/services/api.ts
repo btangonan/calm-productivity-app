@@ -23,7 +23,7 @@ declare global {
 }
 
 class ApiService {
-  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwBRoV5gi3NVDpXuNtx_8qtaDq659CPMWMlpsCKgQrSRcIH5qynHiEI5vy1pteX4Mhq/exec';
+  private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxoBsxraR0CQMkvpVTcTpQylqRTK7fNuNoQs3bV-I-DKzP5_jWVBlGMJ2TrcN1trpMm/exec';
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
   private backendHealthy = true; // Track backend health status
 

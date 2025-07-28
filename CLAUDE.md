@@ -109,3 +109,11 @@ For every new API method:
 - ✅ Use proper git workflow: edit → add → commit → push
 - ✅ Update API URLs immediately after backend deployments
 - ✅ Document deployment versions and what they contain
+
+## Current Deployment Info
+
+### Latest Google Apps Script Deployment
+- **Version**: v2024.07.28.001-PERFORMANCE-BOOST
+- **URL**: https://script.google.com/macros/s/AKfycbxoBsxraR0CQMkvpVTcTpQylqRTK7fNuNoQs3bV-I-DKzP5_jWVBlGMJ2TrcN1trpMm/exec
+- **Features**: Optimistic UI updates, performance optimizations, comprehensive timing logs
+- **Date**: July 28, 2025
