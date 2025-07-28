@@ -50,29 +50,29 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
     try {
       if (editingTask) {
         // Update existing task
-        let taskTitle = formData.title;
+        let taskContext = formData.context;
         
         // Handle project tag changes when task is moved between projects
         const oldProjectId = editingTask.projectId;
         const newProjectId = formData.projectId || null;
         
         if (oldProjectId !== newProjectId) {
-          // Remove old project tag if it exists
+          // Remove old project tag from context if it exists
           if (oldProjectId) {
             const oldProject = projects.find(p => p.id === oldProjectId);
             if (oldProject) {
               const oldTag = `@${oldProject.name.replace(/\s+/g, '-').toLowerCase()}`;
-              taskTitle = taskTitle.replace(new RegExp(`\\s*${oldTag}\\s*`, 'g'), ' ').trim();
+              taskContext = taskContext.replace(new RegExp(`\\s*${oldTag}\\s*`, 'g'), ' ').trim();
             }
           }
           
-          // Add new project tag
+          // Add new project tag to context
           if (newProjectId) {
             const newProject = projects.find(p => p.id === newProjectId);
             if (newProject) {
               const newTag = `@${newProject.name.replace(/\s+/g, '-').toLowerCase()}`;
-              if (!taskTitle.includes(newTag)) {
-                taskTitle = `${taskTitle} ${newTag}`;
+              if (!taskContext.includes(newTag)) {
+                taskContext = taskContext ? `${taskContext} ${newTag}` : newTag;
               }
             }
           }
@@ -96,10 +96,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
         
         const backendUpdatedTask = await apiService.updateTask(
           editingTask.id,
-          taskTitle,
+          formData.title,
           formData.description,
           newProjectId || undefined,
-          formData.context,
+          taskContext,
           formData.dueDate || undefined,
           userProfile.id_token
         );
@@ -112,24 +112,24 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           throw new Error('User not authenticated');
         }
 
-        // Auto-add @project-name tag if task is being created in a project
-        let taskTitle = formData.title;
+        // Auto-add @project-name tag to context if task is being created in a project
+        let taskContext = formData.context;
         if (formData.projectId) {
           const project = projects.find(p => p.id === formData.projectId);
           if (project) {
             const projectTag = `@${project.name.replace(/\s+/g, '-').toLowerCase()}`;
-            // Only add tag if it's not already in the title
-            if (!taskTitle.includes(projectTag)) {
-              taskTitle = `${taskTitle} ${projectTag}`;
+            // Only add tag if it's not already in the context
+            if (!taskContext.includes(projectTag)) {
+              taskContext = taskContext ? `${taskContext} ${projectTag}` : projectTag;
             }
           }
         }
 
         const newTask = await apiService.createTask(
-          taskTitle,
+          formData.title,
           formData.description,
           formData.projectId || undefined,
-          formData.context,
+          taskContext,
           formData.dueDate || undefined,
           attachments,
           userProfile.id_token
