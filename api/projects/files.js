@@ -21,8 +21,8 @@ export default async function handler(req, res) {
 
     console.log(`🔐 Fetching files for project: ${projectId} for user: ${user.email}`);
 
-    // Get service account access token
-    const serviceAccountToken = await getServiceAccountToken();
+    // Get service account access token with user impersonation
+    const serviceAccountToken = await getServiceAccountToken(user.email);
 
     // First, get the project to find its Drive folder ID
     const projectsResponse = await fetch(

@@ -44,8 +44,8 @@ export default async function handler(req, res) {
 
     console.log(`📊 Creating task in Google Sheets: ${taskId}`);
 
-    // Get service account access token
-    const serviceAccountToken = await getServiceAccountToken();
+    // Get service account access token with user impersonation  
+    const serviceAccountToken = await getServiceAccountToken(user.email);
 
     // Write to Google Sheets using direct API call (much faster than Apps Script)
     const sheetsResponse = await fetch(

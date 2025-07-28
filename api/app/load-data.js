@@ -16,8 +16,8 @@ export default async function handler(req, res) {
 
     console.log(`🔐 Loading app data for user: ${user.email}`);
 
-    // Get service account access token for Google Sheets API
-    const serviceAccountToken = await getServiceAccountToken();
+    // Get service account access token with user impersonation
+    const serviceAccountToken = await getServiceAccountToken(user.email);
 
     // Use batch request to get all data at once (much faster than individual calls)
     const batchResponse = await fetch(

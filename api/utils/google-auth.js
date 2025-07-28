@@ -93,17 +93,24 @@ export async function refreshGoogleToken(refreshToken) {
   }
 }
 
-export async function getServiceAccountToken() {
+export async function getServiceAccountToken(userEmail = null) {
   try {
-    // Create JWT for service account
+    // Create JWT for service account with domain-wide delegation
     const now = Math.floor(Date.now() / 1000);
-    const jwt = await createServiceAccountJWT({
+    const jwtPayload = {
       iss: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly',
+      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/presentations',
       aud: 'https://oauth2.googleapis.com/token',
       exp: now + 3600,
       iat: now
-    });
+    };
+
+    // Add subject (user to impersonate) if provided
+    if (userEmail) {
+      jwtPayload.sub = userEmail;
+    }
+
+    const jwt = await createServiceAccountJWT(jwtPayload);
 
     // Exchange JWT for access token
     const response = await fetch('https://oauth2.googleapis.com/token', {
