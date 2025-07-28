@@ -120,8 +120,14 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
           progressTracker[file.name] = 25;
           setUploadProgress({...progressTracker});
 
-          if (project.driveFolderId) {
-            await apiService.uploadFileToFolder(project.driveFolderId, file, userProfile.id_token);
+          // Get the project folder ID first, then upload
+          const folderId = await apiService.getProjectFolderId(projectId, userProfile.id_token);
+          
+          progressTracker[file.name] = 50;
+          setUploadProgress({...progressTracker});
+
+          if (folderId) {
+            await apiService.uploadFileToFolder(folderId, file, userProfile.id_token);
           } else {
             await apiService.uploadFileToProject(projectId, file, userProfile.id_token);
           }

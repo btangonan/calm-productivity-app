@@ -2,9 +2,9 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.28.001-PROJECT-HUB-PHASE1";
-const SCRIPT_VERSION = "3.2.0"; // Increment with each deployment for verification
-const LAST_UPDATED = "2024-07-28T20:00:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.28.002-PROJECT-HUB-INTERACTIVE";
+const SCRIPT_VERSION = "3.3.0"; // Increment with each deployment for verification
+const LAST_UPDATED = "2024-07-28T22:00:00Z";
 
 // CORS configuration
 const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'

@@ -36,12 +36,23 @@ export default function ProjectTabs({ projectId }: ProjectTabsProps) {
         result = await apiService.createGoogleSheet(projectId, fileName, null, userProfile.id_token);
       }
 
-      if (result) {
+      if (result && result.documentUrl) {
+        console.log('Document created successfully:', result);
         setFileName('');
         setShowNameInput(null);
         
-        // Open the created document
-        window.open(result.documentUrl, '_blank');
+        // Open the created document in a new tab
+        const newWindow = window.open(result.documentUrl, '_blank');
+        if (!newWindow) {
+          // Fallback if popup was blocked
+          alert(`Document created successfully! Please visit: ${result.documentUrl}`);
+        }
+      } else {
+        console.error('Invalid response from document creation:', result);
+        dispatch({ 
+          type: 'SET_ERROR', 
+          payload: `Failed to create ${type}: Invalid response from server` 
+        });
       }
     } catch (error) {
       console.error('Failed to create document:', error);
