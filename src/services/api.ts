@@ -577,6 +577,14 @@ class ApiService {
     return response.data;
   }
 
+  async updateTask(taskId: string, title: string, description: string, projectId: string | undefined, context: string | undefined, dueDate: string | undefined, token: string): Promise<Task> {
+    const response = await this.executeGoogleScript<Task>(token, 'updateTask', [taskId, title, description, projectId, context, dueDate]);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to update task');
+    }
+    return response.data;
+  }
+
   async updateTaskCompletion(taskId: string, isCompleted: boolean, token: string): Promise<void> {
     const response = await this.executeGoogleScript<void>(token, 'updateTaskCompletion', [taskId, isCompleted]);
     if (!response.success) {

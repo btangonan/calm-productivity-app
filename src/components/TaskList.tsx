@@ -16,7 +16,7 @@ const TaskList = () => {
     let filtered = [...tasks];
     
     if (currentView === 'project' && selectedProjectId) {
-      filtered = filtered.filter(task => task.projectId === selectedProjectId);
+      filtered = filtered.filter(task => task.projectId === selectedProjectId && !task.isCompleted);
     } else if (currentView !== 'project') {
       const today = new Date();
       today.setHours(23, 59, 59, 999);

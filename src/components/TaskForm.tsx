@@ -50,29 +50,89 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
     try {
       if (editingTask) {
         // Update existing task
+        let taskTitle = formData.title;
+        
+        // Handle project tag changes when task is moved between projects
+        const oldProjectId = editingTask.projectId;
+        const newProjectId = formData.projectId || null;
+        
+        if (oldProjectId !== newProjectId) {
+          // Remove old project tag if it exists
+          if (oldProjectId) {
+            const oldProject = projects.find(p => p.id === oldProjectId);
+            if (oldProject) {
+              const oldTag = `@${oldProject.name.replace(/\s+/g, '-').toLowerCase()}`;
+              taskTitle = taskTitle.replace(new RegExp(`\\s*${oldTag}\\s*`, 'g'), ' ').trim();
+            }
+          }
+          
+          // Add new project tag
+          if (newProjectId) {
+            const newProject = projects.find(p => p.id === newProjectId);
+            if (newProject) {
+              const newTag = `@${newProject.name.replace(/\s+/g, '-').toLowerCase()}`;
+              if (!taskTitle.includes(newTag)) {
+                taskTitle = `${taskTitle} ${newTag}`;
+              }
+            }
+          }
+        }
+        
         const updatedTask = {
           ...editingTask,
-          title: formData.title,
+          title: taskTitle,
           description: formData.description,
-          projectId: formData.projectId || null,
+          projectId: newProjectId,
           context: formData.context,
           dueDate: formData.dueDate || null,
           attachments: attachments,
         };
         
-        dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
+        // Update task in backend
+        const userProfile = state.userProfile;
+        if (!userProfile) {
+          throw new Error('User not authenticated');
+        }
         
-        // TODO: Add API call to update task
-        // await apiService.updateTask(editingTask.id, updatedTask);
+        const backendUpdatedTask = await apiService.updateTask(
+          editingTask.id,
+          taskTitle,
+          formData.description,
+          newProjectId || undefined,
+          formData.context,
+          formData.dueDate || undefined,
+          userProfile.id_token
+        );
+        
+        dispatch({ type: 'UPDATE_TASK', payload: backendUpdatedTask });
       } else {
         // Create new task
+        const userProfile = state.userProfile;
+        if (!userProfile) {
+          throw new Error('User not authenticated');
+        }
+
+        // Auto-add @project-name tag if task is being created in a project
+        let taskTitle = formData.title;
+        if (formData.projectId) {
+          const project = projects.find(p => p.id === formData.projectId);
+          if (project) {
+            const projectTag = `@${project.name.replace(/\s+/g, '-').toLowerCase()}`;
+            // Only add tag if it's not already in the title
+            if (!taskTitle.includes(projectTag)) {
+              taskTitle = `${taskTitle} ${projectTag}`;
+            }
+          }
+        }
+
         const newTask = await apiService.createTask(
-          formData.title,
+          taskTitle,
           formData.description,
           formData.projectId || undefined,
           formData.context,
           formData.dueDate || undefined,
-          attachments
+          attachments,
+          userProfile.id_token
         );
 
         dispatch({ type: 'ADD_TASK', payload: newTask });
