@@ -2,9 +2,9 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.29.002-PROJECT-TASK-COMPLETION";
-const SCRIPT_VERSION = "3.5.0"; // Increment with each deployment for verification
-const LAST_UPDATED = "2024-07-29T02:00:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.29.003-TASK-UPDATE-FIX";
+const SCRIPT_VERSION = "3.6.0"; // Increment with each deployment for verification
+const LAST_UPDATED = "2024-07-29T02:30:00Z";
 
 // CORS configuration
 const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'
@@ -169,6 +169,9 @@ function doPost(e) {
         break;
       case 'createTask':
         result = createTask(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4]);
+        break;
+      case 'updateTask':
+        result = updateTask(parameters[0], parameters[1], parameters[2], parameters[3], parameters[4], parameters[5]);
         break;
       case 'updateTaskCompletion':
         result = updateTaskCompletion(parameters[0], parameters[1]);
@@ -599,6 +602,47 @@ function updateTaskCompletion(taskId, isCompleted) {
     
     return { success: false, message: 'Task not found' };
   } catch (error) {
+    return { success: false, message: error.toString() };
+  }
+}
+
+function updateTask(taskId, title, description, projectId, context, dueDate) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('Tasks');
+    const data = sheet.getDataRange().getValues();
+    
+    // Find the task row to update
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === taskId) {
+        // Update the task row (columns: taskId, title, description, projectId, context, dueDate, isCompleted, sortOrder, createdAt)
+        sheet.getRange(i + 1, 2).setValue(title); // Column B - title
+        sheet.getRange(i + 1, 3).setValue(description || ''); // Column C - description
+        sheet.getRange(i + 1, 4).setValue(projectId || ''); // Column D - projectId
+        sheet.getRange(i + 1, 5).setValue(context || ''); // Column E - context
+        sheet.getRange(i + 1, 6).setValue(dueDate || ''); // Column F - dueDate
+        
+        // Return the updated task
+        const updatedTask = {
+          id: taskId,
+          title: title,
+          description: description || '',
+          projectId: projectId || null,
+          context: context || '',
+          dueDate: dueDate || null,
+          isCompleted: data[i][6], // Keep existing completion status
+          sortOrder: data[i][7], // Keep existing sort order
+          createdAt: data[i][8] // Keep existing creation date
+        };
+        
+        console.log(`Updated task ${taskId}: "${title}"`);
+        return { success: true, data: updatedTask };
+      }
+    }
+    
+    return { success: false, message: 'Task not found' };
+  } catch (error) {
+    console.error('Error updating task:', error);
     return { success: false, message: error.toString() };
   }
 }
