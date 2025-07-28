@@ -27,10 +27,7 @@ export default async function handler(req, res) {
     const { GoogleAuth } = await import('google-auth-library');
     
     const auth = new GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        private_key: Buffer.from(process.env.GOOGLE_PRIVATE_KEY_BASE64, 'base64').toString('utf8'),
-      },
+      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON),
       scopes: [
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive.readonly'

@@ -104,10 +104,7 @@ export async function getServiceAccountToken(userEmail = null) {
     
     // Configure the authentication client
     const auth = new GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        private_key: Buffer.from(process.env.GOOGLE_PRIVATE_KEY_BASE64, 'base64').toString('utf8'),
-      },
+      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON),
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
