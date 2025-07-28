@@ -206,7 +206,8 @@ class ApiService {
   ];
 
   private async executeGoogleScript<T>(token: string, functionName: string, args: any[] = [], httpMethod: 'GET' | 'POST' = 'POST'): Promise<GoogleScriptResponse<T>> {
-    console.log(`🔄 executeGoogleScript called: ${functionName} (${httpMethod})`);
+    const startTime = performance.now();
+    console.log(`🔄 executeGoogleScript called: ${functionName} (${httpMethod}) at ${new Date().toLocaleTimeString()}`);
     console.log(`📊 Backend status: isGoogleAppsScript=${this.isGoogleAppsScript}, backendHealthy=${this.backendHealthy}`);
     
     if (!this.isGoogleAppsScript || !this.backendHealthy) {
@@ -255,10 +256,14 @@ class ApiService {
       }
 
       const result = await response.json();
+      const endTime = performance.now();
       console.log(`✅ ${functionName} response:`, result);
+      console.log(`⚡ ${functionName} execution time: ${(endTime - startTime).toFixed(1)}ms`);
       return result as GoogleScriptResponse<T>;
     } catch (error) {
+      const endTime = performance.now();
       console.error(`❌ Apps Script request failed for ${functionName}:`, error);
+      console.log(`⚡ ${functionName} failed after: ${(endTime - startTime).toFixed(1)}ms`);
       console.log(`🔄 Setting backendHealthy to false, switching to mock data`);
       this.backendHealthy = false;
       return this.getMockResponse<T>(functionName, ...args);

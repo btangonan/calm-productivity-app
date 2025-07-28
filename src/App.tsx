@@ -20,11 +20,17 @@ function AppContent() {
 
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        // Check backend health first
-        console.log('🚀 Starting application...');
-        await apiService.checkBackendHealth();
-        const status = apiService.getBackendStatus();
+        // Performance timing
+        const startTime = performance.now();
+        console.log('🚀 Starting application...', new Date().toLocaleTimeString());
         
+        // Check backend health first
+        const healthStartTime = performance.now();
+        await apiService.checkBackendHealth();
+        const healthEndTime = performance.now();
+        console.log(`⚡ Backend health check: ${(healthEndTime - healthStartTime).toFixed(1)}ms`);
+        
+        const status = apiService.getBackendStatus();
         console.log('📊 Backend Status:', status);
         if (status.usingMockData) {
           console.warn('⚠️ Using mock data - check Google Apps Script deployment');
@@ -34,17 +40,25 @@ function AppContent() {
         console.log('🔑 Using token for API calls:', token ? 'Present' : 'Missing');
         
         console.log('📡 Loading all app data in single call...');
+        const dataStartTime = performance.now();
         const appData = await apiService.loadAppData(token);
+        const dataEndTime = performance.now();
+        console.log(`⚡ App data loading: ${(dataEndTime - dataStartTime).toFixed(1)}ms`);
 
         console.log('📊 Loaded data:');
         console.log('   Areas:', appData.areas.length, 'items');
         console.log('   Projects:', appData.projects.length, 'items');
         console.log('   Tasks:', appData.tasks.length, 'items');
 
+        const dispatchStartTime = performance.now();
         dispatch({ type: 'SET_AREAS', payload: appData.areas });
         dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
         dispatch({ type: 'SET_TASKS', payload: appData.tasks });
+        const dispatchEndTime = performance.now();
         
+        const totalTime = performance.now() - startTime;
+        console.log(`⚡ State dispatch: ${(dispatchEndTime - dispatchStartTime).toFixed(1)}ms`);
+        console.log(`🏁 Total app loading time: ${totalTime.toFixed(1)}ms`);
         console.log('✅ Application loaded successfully');
         if (status.usingMockData) {
           console.log('💡 Tip: Open /test-deployment.html to debug Google Apps Script connection');

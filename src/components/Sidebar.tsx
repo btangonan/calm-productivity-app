@@ -141,9 +141,12 @@ const Sidebar = () => {
   const createNewProject = async (areaId?: string) => {
     if (isCreating) return;
     setIsCreating(true);
-    console.log('Creating new project...', { areaId });
+    const projectStartTime = performance.now();
+    console.log('🆕 Creating new project...', { areaId }, 'at', new Date().toLocaleTimeString());
     try {
       const newProject = await apiService.createProject('New Project', '', areaId);
+      const projectEndTime = performance.now();
+      console.log(`⚡ Project creation total time: ${(projectEndTime - projectStartTime).toFixed(1)}ms`);
       console.log('Created project:', newProject);
       dispatch({ type: 'ADD_PROJECT', payload: newProject });
       setEditingItem({ id: newProject.id, type: 'project', name: newProject.name });

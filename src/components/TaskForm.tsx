@@ -125,6 +125,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           }
         }
 
+        const taskStartTime = performance.now();
+        console.log('🆕 Creating task:', formData.title, 'at', new Date().toLocaleTimeString());
+        
         const newTask = await apiService.createTask(
           formData.title,
           formData.description,
@@ -135,6 +138,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           userProfile.id_token
         );
 
+        const taskEndTime = performance.now();
+        console.log(`⚡ Task creation total time: ${(taskEndTime - taskStartTime).toFixed(1)}ms`);
+        
         dispatch({ type: 'ADD_TASK', payload: newTask });
       }
       
