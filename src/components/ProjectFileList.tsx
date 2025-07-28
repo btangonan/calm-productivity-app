@@ -120,17 +120,8 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
           progressTracker[file.name] = 25;
           setUploadProgress({...progressTracker});
 
-          // Get the project folder ID first, then upload
-          const folderId = await apiService.getProjectFolderId(projectId, userProfile.id_token);
-          
-          progressTracker[file.name] = 50;
-          setUploadProgress({...progressTracker});
-
-          if (folderId) {
-            await apiService.uploadFileToFolder(folderId, file, userProfile.id_token);
-          } else {
-            await apiService.uploadFileToProject(projectId, file, userProfile.id_token);
-          }
+          // Use the legacy uploadFileToProject method which handles folder creation automatically
+          await apiService.uploadFileToProject(projectId, file, userProfile.id_token);
 
           progressTracker[file.name] = 100;
           setUploadProgress({...progressTracker});
