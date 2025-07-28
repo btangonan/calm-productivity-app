@@ -808,6 +808,16 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     const response = await this.executeGoogleScript<string>(token, 'getProjectFolderId', [projectId], 'GET');
     return response.success ? response.data || null : null;
   }
+
+  async createGoogleDoc(projectId: string, fileName: string, parentFolderId: string | null, token: string): Promise<any> {
+    const response = await this.executeGoogleScript<any>(token, 'createGoogleDoc', [projectId, fileName, parentFolderId]);
+    return response.data;
+  }
+
+  async createGoogleSheet(projectId: string, fileName: string, parentFolderId: string | null, token: string): Promise<any> {
+    const response = await this.executeGoogleScript<any>(token, 'createGoogleSheet', [projectId, fileName, parentFolderId]);
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

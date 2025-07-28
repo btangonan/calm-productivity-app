@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
 import type { ProjectFile } from '../types';
@@ -13,6 +13,12 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  
+  // Dropzone state
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchProjectFiles();
@@ -48,6 +54,105 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
         type: 'SET_ERROR', 
         payload: 'Failed to delete file' 
       });
+    }
+  };
+
+  // Dropzone handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      handleFileUpload(droppedFiles);
+    }
+  }, []);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length > 0) {
+      handleFileUpload(selectedFiles);
+    }
+  }, []);
+
+  const handleFileUpload = async (filesToUpload: File[]) => {
+    setIsUploading(true);
+    
+    try {
+      const project = state.projects.find(p => p.id === projectId);
+      if (!project) {
+        throw new Error('Project not found');
+      }
+
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        throw new Error('User not authenticated');
+      }
+
+      // Initialize progress tracking
+      const progressTracker: Record<string, number> = {};
+      filesToUpload.forEach(file => {
+        progressTracker[file.name] = 0;
+      });
+      setUploadProgress(progressTracker);
+
+      // Upload files one by one to the project's Drive folder
+      for (const file of filesToUpload) {
+        try {
+          progressTracker[file.name] = 25;
+          setUploadProgress({...progressTracker});
+
+          if (project.driveFolderId) {
+            await apiService.uploadFileToFolder(project.driveFolderId, file, userProfile.id_token);
+          } else {
+            await apiService.uploadFileToProject(projectId, file, userProfile.id_token);
+          }
+
+          progressTracker[file.name] = 100;
+          setUploadProgress({...progressTracker});
+        } catch (error) {
+          console.error(`Failed to upload ${file.name}:`, error);
+          dispatch({ 
+            type: 'SET_ERROR', 
+            payload: `Failed to upload ${file.name}` 
+          });
+        }
+      }
+
+      // Refresh file list after upload
+      await fetchProjectFiles();
+      
+      // Clear progress after a brief delay
+      setTimeout(() => {
+        setUploadProgress({});
+      }, 2000);
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: 'Failed to upload files' 
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -118,7 +223,26 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div 
+      className={`bg-white rounded-lg border-2 border-dashed p-6 transition-colors ${
+        isDragActive 
+          ? 'border-primary-400 bg-primary-50' 
+          : 'border-gray-200 hover:border-gray-300'
+      }`}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-900">
           Project Files
@@ -129,45 +253,75 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
           )}
         </h3>
         
-        {files.length > 0 && (
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded ${
-                viewMode === 'list' 
-                  ? 'text-primary-600 bg-primary-100' 
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-              title="List view"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded ${
-                viewMode === 'grid' 
-                  ? 'text-primary-600 bg-primary-100' 
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-              title="Grid view"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 6.707 6.293a1 1 0 00-1.414 1.414l4 4a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-        )}
+        <div className="flex items-center space-x-2">
+          {/* Upload button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            {isUploading ? 'Uploading...' : 'Upload Files'}
+          </button>
+          
+          {files.length > 0 && (
+            <>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded ${
+                  viewMode === 'list' 
+                    ? 'text-primary-600 bg-primary-100' 
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+                title="List view"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded ${
+                  viewMode === 'grid' 
+                    ? 'text-primary-600 bg-primary-100' 
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+                title="Grid view"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 6.707 6.293a1 1 0 00-1.414 1.414l4 4a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {files.length === 0 ? (
-        <div className="text-center py-8">
-          <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <p className="text-gray-500 text-sm">No files uploaded yet</p>
-          <p className="text-gray-400 text-xs mt-1">Use the dropzone above to add files</p>
+        <div className="text-center py-12">
+          {isDragActive ? (
+            <>
+              <svg className="w-16 h-16 text-primary-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-primary-600 text-lg font-medium">Drop files here</p>
+              <p className="text-primary-500 text-sm mt-1">Release to upload to this project</p>
+            </>
+          ) : (
+            <>
+              <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-gray-500 text-sm mb-2">No files uploaded yet</p>
+              <p className="text-gray-400 text-xs">
+                <span className="font-medium cursor-pointer text-primary-600 hover:text-primary-700" onClick={() => fileInputRef.current?.click()}>
+                  Click to upload
+                </span> or drag and drop files here
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3' : 'space-y-2'}>

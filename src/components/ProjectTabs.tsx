@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useProjectTabs } from '../hooks/useProjectTabs';
 import DraggableTaskList from './DraggableTaskList';
 import ProjectFileList from './ProjectFileList';
 import { useApp } from '../context/AppContext';
+import { apiService } from '../services/api';
 
 interface ProjectTabsProps {
   projectId: string;
@@ -10,9 +11,53 @@ interface ProjectTabsProps {
 
 export default function ProjectTabs({ projectId }: ProjectTabsProps) {
   const { activeTab, changeTab, error, clearError } = useProjectTabs(projectId);
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
+  const [creatingDocument, setCreatingDocument] = useState<string | null>(null);
+  const [showNameInput, setShowNameInput] = useState<string | null>(null);
+  const [fileName, setFileName] = useState('');
   
   const project = state.projects.find(p => p.id === projectId);
+  
+  const createDocument = async (type: 'doc' | 'sheet') => {
+    if (!fileName.trim()) {
+      alert('Please enter a file name');
+      return;
+    }
+
+    setCreatingDocument(type);
+    try {
+      const userProfile = state.userProfile;
+      if (!userProfile) throw new Error('Not authenticated');
+
+      let result;
+      if (type === 'doc') {
+        result = await apiService.createGoogleDoc(projectId, fileName, null, userProfile.id_token);
+      } else {
+        result = await apiService.createGoogleSheet(projectId, fileName, null, userProfile.id_token);
+      }
+
+      if (result) {
+        setFileName('');
+        setShowNameInput(null);
+        
+        // Open the created document
+        window.open(result.documentUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Failed to create document:', error);
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: `Failed to create ${type}: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      });
+    } finally {
+      setCreatingDocument(null);
+    }
+  };
+
+  const handleCreateClick = (type: 'doc' | 'sheet') => {
+    setShowNameInput(type);
+    setFileName(`New ${type === 'doc' ? 'Document' : 'Spreadsheet'}`);
+  };
   
   if (!project) {
     return (
@@ -78,15 +123,81 @@ export default function ProjectTabs({ projectId }: ProjectTabsProps) {
           </div>
         )}
         {activeTab === 'documents' && (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
+          <div className="p-6">
+            <div className="text-center mb-8">
               <div className="text-4xl mb-4">📝</div>
-              <div className="text-lg font-medium mb-2">Documents Coming Soon</div>
-              <div className="text-sm">Google Docs, Sheets, and Slides integration will be available here.</div>
+              <div className="text-lg font-medium mb-2">Create New Document</div>
+              <div className="text-sm text-gray-600">Create Google Docs and Sheets directly in this project</div>
+            </div>
+            
+            <div className="max-w-md mx-auto space-y-4">
+              <button
+                onClick={() => handleCreateClick('doc')}
+                disabled={creatingDocument === 'doc'}
+                className="w-full flex items-center justify-center px-6 py-4 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 transition-colors"
+              >
+                <span className="text-2xl mr-3">📝</span>
+                <div className="text-left">
+                  <div className="font-medium">Google Doc</div>
+                  <div className="text-sm text-gray-500">Create a new document</div>
+                </div>
+                {creatingDocument === 'doc' && <span className="ml-auto">...</span>}
+              </button>
+              
+              <button
+                onClick={() => handleCreateClick('sheet')}
+                disabled={creatingDocument === 'sheet'}
+                className="w-full flex items-center justify-center px-6 py-4 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 transition-colors"
+              >
+                <span className="text-2xl mr-3">📊</span>
+                <div className="text-left">
+                  <div className="font-medium">Google Sheets</div>
+                  <div className="text-sm text-gray-500">Create a new spreadsheet</div>
+                </div>
+                {creatingDocument === 'sheet' && <span className="ml-auto">...</span>}
+              </button>
             </div>
           </div>
         )}
       </div>
+
+      {/* File name input modal */}
+      {showNameInput && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Create New {showNameInput === 'doc' ? 'Document' : 'Spreadsheet'}
+            </h3>
+            <input
+              type="text"
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && createDocument(showNameInput as any)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Enter file name"
+              autoFocus
+            />
+            <div className="flex justify-end space-x-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowNameInput(null);
+                  setFileName('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => createDocument(showNameInput as any)}
+                disabled={!fileName.trim() || creatingDocument}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
+              >
+                {creatingDocument ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

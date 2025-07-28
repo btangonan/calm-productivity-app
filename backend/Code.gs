@@ -242,6 +242,12 @@ function doPost(e) {
       case 'testDeployment':
         result = testDeployment(parameters[0]);
         break;
+      case 'createGoogleDoc':
+        result = createGoogleDoc(parameters[0], parameters[1], parameters[2]);
+        break;
+      case 'createGoogleSheet':
+        result = createGoogleSheet(parameters[0], parameters[1], parameters[2]);
+        break;
       default:
         result = { success: false, message: `Unknown function: '${functionName}'`, version: DEPLOYMENT_VERSION };
         break;
@@ -1178,6 +1184,81 @@ function createProjectPlanTemplate(projectName) {
 function extractFolderIdFromUrl(url) {
   const match = url.match(/folders\/([a-zA-Z0-9-_]+)/);
   return match ? match[1] : null;
+}
+
+/**
+ * Google Docs/Sheets Creation for Project Hub
+ */
+function createGoogleDoc(projectId, fileName, parentFolderId = null) {
+  try {
+    const targetFolderId = parentFolderId || getProjectFolderId(projectId).data;
+    if (!targetFolderId) {
+      return { success: false, message: 'Project folder not found' };
+    }
+    
+    // Validate folder exists and is accessible
+    const folder = DriveApp.getFolderById(targetFolderId);
+    
+    // Create document
+    const doc = Docs.Documents.create({ title: fileName });
+    const file = DriveApp.getFileById(doc.documentId);
+    
+    // Move to target folder
+    folder.addFile(file);
+    DriveApp.getRootFolder().removeFile(file);
+    
+    console.log(`Created Google Doc "${fileName}" in folder ${targetFolderId}`);
+    
+    return { 
+      success: true, 
+      data: { 
+        documentId: doc.documentId,
+        documentUrl: `https://docs.google.com/document/d/${doc.documentId}/edit`,
+        folderId: targetFolderId,
+        fileName: fileName,
+        mimeType: 'application/vnd.google-apps.document',
+        createdAt: new Date().toISOString()
+      } 
+    };
+  } catch (error) {
+    console.error('Error creating Google Doc:', error);
+    return { success: false, message: `Failed to create document: ${error.toString()}` };
+  }
+}
+
+function createGoogleSheet(projectId, fileName, parentFolderId = null) {
+  try {
+    const targetFolderId = parentFolderId || getProjectFolderId(projectId).data;
+    if (!targetFolderId) {
+      return { success: false, message: 'Project folder not found' };
+    }
+    
+    const folder = DriveApp.getFolderById(targetFolderId);
+    
+    // Create spreadsheet
+    const sheet = SpreadsheetApp.create(fileName);
+    const file = DriveApp.getFileById(sheet.getId());
+    
+    folder.addFile(file);
+    DriveApp.getRootFolder().removeFile(file);
+    
+    console.log(`Created Google Sheet "${fileName}" in folder ${targetFolderId}`);
+    
+    return { 
+      success: true, 
+      data: { 
+        documentId: sheet.getId(),
+        documentUrl: sheet.getUrl(),
+        folderId: targetFolderId,
+        fileName: fileName,
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+        createdAt: new Date().toISOString()
+      } 
+    };
+  } catch (error) {
+    console.error('Error creating Google Sheet:', error);
+    return { success: false, message: `Failed to create spreadsheet: ${error.toString()}` };
+  }
 }
 
 /**
