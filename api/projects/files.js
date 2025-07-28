@@ -61,7 +61,16 @@ export default async function handler(req, res) {
       });
     }
 
-    const driveFolderId = project[5];
+    const driveFolderUrl = project[5];
+    const driveFolderId = getDriveFolderIdFromUrl(driveFolderUrl);
+
+    if (!driveFolderId) {
+      console.log(`Invalid Drive folder URL for project: ${projectId}`);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid Drive folder URL',
+      });
+    }
     console.log(`📁 Found Drive folder: ${driveFolderId}`);
 
     // Get files from Google Drive API (much faster than Apps Script)
@@ -125,4 +134,10 @@ function getFileType(mimeType) {
   if (mimeType.includes('folder')) return 'folder';
   
   return 'file';
+}
+
+function getDriveFolderIdFromUrl(url) {
+  if (!url) return null;
+  const match = url.match(/folders\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
 }
