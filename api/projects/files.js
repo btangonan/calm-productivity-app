@@ -81,6 +81,8 @@ export default async function handler(req, res) {
       orderBy: 'modifiedTime desc',
     });
 
+    console.log('Raw filesResponse.data.files:', filesResponse.data.files);
+
     const files = (filesResponse.data.files || []).map(file => ({
       id: file.id,
       name: file.name,
@@ -94,6 +96,8 @@ export default async function handler(req, res) {
       downloadUrl: `https://drive.google.com/uc?id=${file.id}&export=download`,
       isFolder: file.mimeType === 'application/vnd.google-apps.folder'
     }));
+
+    console.log('Processed files array:', files);
 
     const duration = Date.now() - startTime;
     console.log(`⚡ Fetched ${files.length} files in ${duration}ms for project: ${projectId}`);
