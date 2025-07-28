@@ -24,8 +24,34 @@ declare global {
 
 class ApiService {
   private readonly APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxoBsxraR0CQMkvpVTcTpQylqRTK7fNuNoQs3bV-I-DKzP5_jWVBlGMJ2TrcN1trpMm/exec';
+  private readonly EDGE_FUNCTIONS_URL = import.meta.env.NODE_ENV === 'production' 
+    ? 'https://nowandlater.vercel.app/api'
+    : 'http://localhost:3000/api';
+  
   private isGoogleAppsScript = true; // Enable Google Apps Script backend
+  private useEdgeFunctions = false; // Feature flag for Edge Functions
+  private enableFallback = true; // Fallback to Apps Script if Edge Functions fail
   private backendHealthy = true; // Track backend health status
+
+  // Methods to control Edge Functions for testing
+  enableEdgeFunctions() {
+    this.useEdgeFunctions = true;
+    console.log('🚀 Edge Functions enabled');
+  }
+
+  disableEdgeFunctions() {
+    this.useEdgeFunctions = false;
+    console.log('🔄 Using legacy Apps Script');
+  }
+
+  getBackendStatus() {
+    return {
+      useEdgeFunctions: this.useEdgeFunctions,
+      enableFallback: this.enableFallback,
+      edgeFunctionsUrl: this.EDGE_FUNCTIONS_URL,
+      appsScriptUrl: this.APPS_SCRIPT_URL
+    };
+  }
 
   // Mock data for development
   private mockAreas: Area[] = [
@@ -583,10 +609,67 @@ class ApiService {
   }
 
   async createTask(title: string, description: string, projectId: string | undefined, context: string | undefined, dueDate: string | undefined, attachments: TaskAttachment[] | undefined, token: string): Promise<Task> {
+    const startTime = performance.now();
+    
+    try {
+      // Try Edge Functions first if enabled
+      if (this.useEdgeFunctions) {
+        const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/tasks/create`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title,
+            description,
+            projectId,
+            context,
+            dueDate,
+            attachments
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const duration = performance.now() - startTime;
+          console.log(`⚡ Edge Function createTask: ${duration.toFixed(1)}ms`);
+          return result.data;
+        }
+
+        // If Edge Function fails and fallback is enabled
+        if (this.enableFallback) {
+          console.warn('Edge Function failed, falling back to Apps Script');
+          return await this.createTaskLegacy(title, description, projectId, context, dueDate, attachments, token);
+        }
+
+        throw new Error(`Edge Function failed: ${response.status}`);
+      }
+
+      // Use legacy Apps Script
+      return await this.createTaskLegacy(title, description, projectId, context, dueDate, attachments, token);
+
+    } catch (error) {
+      console.error('Task creation failed:', error);
+      
+      // Fallback to legacy if enabled
+      if (this.useEdgeFunctions && this.enableFallback) {
+        console.warn('Falling back to Apps Script due to error');
+        return await this.createTaskLegacy(title, description, projectId, context, dueDate, attachments, token);
+      }
+      
+      throw error;
+    }
+  }
+
+  private async createTaskLegacy(title: string, description: string, projectId: string | undefined, context: string | undefined, dueDate: string | undefined, attachments: TaskAttachment[] | undefined, token: string): Promise<Task> {
+    const startTime = performance.now();
     const response = await this.executeGoogleScript<Task>(token, 'createTask', [title, description, projectId, context, dueDate, attachments]);
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to create task');
     }
+    const duration = performance.now() - startTime;
+    console.log(`🔄 Legacy createTask: ${duration.toFixed(1)}ms`);
     return response.data;
   }
 
