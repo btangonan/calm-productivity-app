@@ -11,3 +11,7 @@ yarn-debug.log*
 yarn-error.log*
 .vscode/
 .idea/
+
+# Google OAuth secrets
+client_secret_*.json
+credentials.json
