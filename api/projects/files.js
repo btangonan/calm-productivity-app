@@ -34,23 +34,34 @@ export default async function handler(req, res) {
       console.log('🎯 Using user access token for API calls');
     }
 
+    // Use Google APIs directly
+    console.log('🔍 Initializing Google APIs...');
+    const { google } = await import('googleapis');
+    const { GoogleAuth } = await import('google-auth-library');
+    
+    const auth = new GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      },
+      scopes: [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive.readonly'
+      ],
+    });
+
+    const authClient = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: authClient });
+    const drive = google.drive({ version: 'v3', auth: authClient });
+
     // First, get the project to find its Drive folder ID
-    const projectsResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEETS_ID}/values/Projects!A:H`,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    console.log('🔍 Fetching project data from Sheets...');
+    const projectsResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+      range: 'Projects!A:H',
+    });
 
-    if (!projectsResponse.ok) {
-      throw new Error(`Failed to fetch projects: ${projectsResponse.status}`);
-    }
-
-    const projectsData = await projectsResponse.json();
-    const projects = (projectsData.values || []).slice(1);
+    const projects = (projectsResponse.data.values || []).slice(1);
     const project = projects.find(row => row[0] === projectId);
 
     if (!project || !project[5]) {
@@ -70,24 +81,14 @@ export default async function handler(req, res) {
     console.log(`📁 Found Drive folder: ${driveFolderId}`);
 
     // Get files from Google Drive API (much faster than Apps Script)
-    const filesResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q='${driveFolderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,size,createdTime,modifiedTime,thumbnailLink,webViewLink,parents)&orderBy=modifiedTime desc`,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    console.log('🔍 Fetching files from Drive API...');
+    const filesResponse = await drive.files.list({
+      q: `'${driveFolderId}' in parents and trashed=false`,
+      fields: 'files(id,name,mimeType,size,createdTime,modifiedTime,thumbnailLink,webViewLink,parents)',
+      orderBy: 'modifiedTime desc',
+    });
 
-    if (!filesResponse.ok) {
-      const errorText = await filesResponse.text();
-      console.error('Drive API error:', filesResponse.status, errorText);
-      throw new Error(`Drive API error: ${filesResponse.status}`);
-    }
-
-    const filesData = await filesResponse.json();
-    const files = (filesData.files || []).map(file => ({
+    const files = (filesResponse.data.files || []).map(file => ({
       id: file.id,
       name: file.name,
       type: getFileType(file.mimeType),

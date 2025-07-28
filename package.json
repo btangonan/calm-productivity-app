@@ -21,6 +21,8 @@
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.4.21",
     "axios": "^1.11.0",
+    "google-auth-library": "^10.2.0",
+    "googleapis": "^154.0.0",
     "jwt-decode": "^4.0.0",
     "node-fetch": "^3.3.2",
     "postcss": "^8.5.6",

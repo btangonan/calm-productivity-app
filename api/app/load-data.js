@@ -40,41 +40,29 @@ export default async function handler(req, res) {
       console.log('🔍 Token preview:', apiToken.substring(0, 20) + '...');
     }
 
-    // Use batch request to get all data at once (much faster than individual calls)
-    const batchResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEETS_ID}/values:batchGet?ranges=Areas!A:F&ranges=Projects!A:H&ranges=Tasks!A:J`,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    // Use Google Sheets API directly with authentication
+    console.log('🔍 Initializing Google Sheets API...');
+    const { google } = await import('googleapis');
+    const { GoogleAuth } = await import('google-auth-library');
+    
+    const auth = new GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
 
-    if (!batchResponse.ok) {
-      const errorText = await batchResponse.text();
-      console.error('Sheets batch API error:', batchResponse.status, errorText);
-      
-      // Parse the Google API error for detailed info
-      let googleError;
-      try {
-        googleError = JSON.parse(errorText);
-        console.error('Google API Response Body:', googleError);
-      } catch (e) {
-        console.error('Raw Google API Response:', errorText);
-      }
-      
-      return res.status(502).json({
-        success: false,
-        error: 'Google Sheets API request failed',
-        google_api_status: batchResponse.status,
-        google_api_error: googleError || errorText,
-        details: process.env.NODE_ENV === 'development' ? `Google API returned ${batchResponse.status}` : undefined
-      });
-    }
+    const authClient = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: authClient });
 
-    const batchResult = await batchResponse.json();
-    const [areasData, projectsData, tasksData] = batchResult.valueRanges;
+    console.log('🔍 Making batch API call to Google Sheets...');
+    const batchResponse = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+      ranges: ['Areas!A:F', 'Projects!A:H', 'Tasks!A:J'],
+    });
+
+    const [areasData, projectsData, tasksData] = batchResponse.data.valueRanges;
 
     // Convert areas data
     const areas = (areasData.values || []).slice(1).map(row => ({
