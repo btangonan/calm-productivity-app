@@ -27,7 +27,9 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
   const fetchProjectFiles = async () => {
     setLoading(true);
     try {
+      console.log('Fetching project files for project:', projectId);
       const projectFiles = await apiService.getProjectFiles(projectId);
+      console.log('Received project files:', projectFiles);
       setFiles(projectFiles);
     } catch (error) {
       console.error('Failed to fetch project files:', error);
@@ -121,7 +123,8 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
           setUploadProgress({...progressTracker});
 
           // Use the legacy uploadFileToProject method which handles folder creation automatically
-          await apiService.uploadFileToProject(projectId, file, userProfile.id_token);
+          const uploadResult = await apiService.uploadFileToProject(projectId, file, userProfile.id_token);
+          console.log('Upload result:', uploadResult);
 
           progressTracker[file.name] = 100;
           setUploadProgress({...progressTracker});
@@ -134,8 +137,12 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
         }
       }
 
-      // Refresh file list after upload
-      await fetchProjectFiles();
+      // Refresh file list after upload with a small delay to ensure files are indexed
+      console.log('Refreshing file list after upload...');
+      setTimeout(async () => {
+        await fetchProjectFiles();
+        console.log('File list refreshed');
+      }, 1000);
       
       // Clear progress after a brief delay
       setTimeout(() => {
