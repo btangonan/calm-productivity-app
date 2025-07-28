@@ -51,17 +51,32 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   }, []);
 
   const handleTaskToggle = async (taskId: string, isCompleted: boolean) => {
+    const originalTask = tasks.find(task => task.id === taskId);
+    if (!originalTask) return;
+
     try {
-      await apiService.updateTaskCompletion(taskId, isCompleted);
-      const updatedTask = tasks.find(task => task.id === taskId);
-      if (updatedTask) {
-        dispatch({
-          type: 'UPDATE_TASK',
-          payload: { ...updatedTask, isCompleted },
-        });
+      // Get authentication token
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        throw new Error('User not authenticated');
       }
+
+      // Optimistically update UI immediately
+      dispatch({
+        type: 'UPDATE_TASK',
+        payload: { ...originalTask, isCompleted },
+      });
+
+      // Then update backend
+      await apiService.updateTaskCompletion(taskId, isCompleted, userProfile.id_token);
+      
     } catch (error) {
       console.error('Failed to update task:', error);
+      // Revert the optimistic update on error
+      dispatch({
+        type: 'UPDATE_TASK',
+        payload: originalTask,
+      });
       dispatch({ type: 'SET_ERROR', payload: 'Failed to update task' });
     }
   };
