@@ -1066,6 +1066,26 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     const response = await this.executeGoogleScript<any>(token, 'createGoogleSheet', [projectId, fileName, parentFolderId]);
     return response.data;
   }
+
+  async getServiceAccountEmail(token: string): Promise<{ email: string; message: string }> {
+    const response = await this.executeGoogleScript<{ email: string; message: string }>(token, 'getServiceAccountEmail', []);
+    return response.data;
+  }
+
+  async getMasterFolderId(token: string): Promise<{ folderId: string }> {
+    const response = await this.executeGoogleScript<{ folderId: string }>(token, 'getMasterFolderId', []);
+    return response.data;
+  }
+
+  async setMasterFolderId(folderId: string, token: string): Promise<{ folderId: string; message: string }> {
+    const response = await this.executeGoogleScript<{ folderId: string; message: string }>(token, 'setMasterFolderId', [folderId]);
+    return response.data;
+  }
+
+  async shareFolderWithServiceAccount(folderId: string, token: string): Promise<{ message: string; folderId: string; folderName: string; serviceAccountEmail?: string }> {
+    const response = await this.executeGoogleScript<{ message: string; folderId: string; folderName: string; serviceAccountEmail?: string }>(token, 'shareFolderWithServiceAccount', [folderId]);
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

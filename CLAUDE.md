@@ -117,3 +117,37 @@ For every new API method:
 - **URL**: https://script.google.com/macros/s/AKfycbxoBsxraR0CQMkvpVTcTpQylqRTK7fNuNoQs3bV-I-DKzP5_jWVBlGMJ2TrcN1trpMm/exec
 - **Features**: Optimistic UI updates, performance optimizations, comprehensive timing logs
 - **Date**: July 28, 2025
+
+## Master Folder Configuration (NEW FEATURE)
+
+### Service Account Email
+- **Email**: `nowandlater@solid-study-467023-i3.iam.gserviceaccount.com`
+- **Purpose**: This service account needs access to your master Drive folder to manage areas and projects
+
+### Setting Up Your Master Folder
+
+1. **Create or Choose a Google Drive Folder**
+   - Create a new folder in Google Drive (e.g., "Productivity App")
+   - Or choose an existing folder you want to use
+
+2. **Share the Folder with Service Account**
+   - Right-click the folder → "Share"
+   - Add: `nowandlater@solid-study-467023-i3.iam.gserviceaccount.com`
+   - Give "Editor" permissions
+
+3. **Configure in the App**
+   - Use the MasterFolderSetup component in your app
+   - Copy the folder URL from Google Drive
+   - Paste it in the configuration form
+   - Click "Set Folder" and then "Share"
+
+### Available API Methods
+- `getServiceAccountEmail()` - Get the service account email
+- `getMasterFolderId()` - Get current master folder ID
+- `setMasterFolderId(folderId)` - Set a new master folder
+- `shareFolderWithServiceAccount(folderId)` - Automatically share folder with service account
+
+### Backend Functions
+- All functions now use `getActualMasterFolderId()` instead of hardcoded `DRIVE_FOLDER_ID`
+- Master folder ID is stored in PropertiesService for user customization
+- Automatic validation that folders exist and are accessible

@@ -260,6 +260,18 @@ function doPost(e) {
       case 'createGoogleSheet':
         result = createGoogleSheet(parameters[0], parameters[1], parameters[2]);
         break;
+      case 'getServiceAccountEmail':
+        result = getServiceAccountEmail();
+        break;
+      case 'getMasterFolderId':
+        result = getMasterFolderId();
+        break;
+      case 'setMasterFolderId':
+        result = setMasterFolderId(parameters[0]);
+        break;
+      case 'shareFolderWithServiceAccount':
+        result = shareFolderWithServiceAccount(parameters[0]);
+        break;
       default:
         result = { success: false, message: `Unknown function: '${functionName}'`, version: DEPLOYMENT_VERSION };
         break;
@@ -777,7 +789,7 @@ function reorderTasks(taskIds) {
  */
 function initializeMasterFolderStructure() {
   try {
-    const masterFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    const masterFolder = DriveApp.getFolderById(getActualMasterFolderId());
     
     // Create Unorganized Projects folder if it doesn't exist
     let unorganizedFolder = null;
@@ -795,7 +807,7 @@ function initializeMasterFolderStructure() {
     }
     
     return {
-      masterFolderId: DRIVE_FOLDER_ID,
+      masterFolderId: getActualMasterFolderId(),
       unorganizedFolderId: unorganizedFolder.getId()
     };
   } catch (error) {
@@ -809,7 +821,7 @@ function initializeMasterFolderStructure() {
  */
 function createAreaFolder(areaName, areaId) {
   try {
-    const masterFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    const masterFolder = DriveApp.getFolderById(getActualMasterFolderId());
     const folderName = `${areaName} (${areaId.substring(0, 8)})`;
     
     // Check if folder already exists
@@ -851,7 +863,7 @@ function createProjectFolder(projectName, projectId, areaId = null) {
       }
     } else {
       // Use unorganized projects folder
-      const masterFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+      const masterFolder = DriveApp.getFolderById(getActualMasterFolderId());
       const folders = masterFolder.getFolders();
       while (folders.hasNext()) {
         const folder = folders.next();
@@ -1474,7 +1486,7 @@ function testIntegrations() {
     results.sheets = '✓ Sheets access working';
     
     // Test Drive access
-    const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    const folder = DriveApp.getFolderById(getActualMasterFolderId());
     results.drive = '✓ Drive access working';
     
     // Test Gmail access
@@ -1747,7 +1759,7 @@ function getHealthCheck() {
       serverTime: new Date().toISOString(),
       status: "healthy",
       spreadsheetId: SPREADSHEET_ID,
-      driveFolderId: DRIVE_FOLDER_ID,
+      driveFolderId: getActualMasterFolderId(),
       calendarId: CALENDAR_ID
     };
   } catch (error) {
@@ -1829,7 +1841,7 @@ function verifyGoogleToken(idToken) {
 function getUserFolder(userEmail) {
   try {
     // Create a folder structure: Master > Users > [user-email]
-    const masterFolder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    const masterFolder = DriveApp.getFolderById(getActualMasterFolderId());
     
     // Look for Users folder
     let usersFolder;
@@ -1853,7 +1865,7 @@ function getUserFolder(userEmail) {
     return userFolder;
   } catch (error) {
     console.error('Error getting user folder:', error);
-    return DriveApp.getFolderById(DRIVE_FOLDER_ID); // Fallback to master folder
+    return DriveApp.getFolderById(getActualMasterFolderId()); // Fallback to master folder
   }
 }
 
@@ -2227,4 +2239,137 @@ function getFilePath(fileId) {
     console.error('Error getting file path:', error);
     return { success: false, message: error.toString() };
   }
+}
+
+/**
+ * Get the service account email
+ */
+function getServiceAccountEmail() {
+  try {
+    // This is the known service account email for this app
+    const serviceAccountEmail = 'nowandlater@solid-study-467023-i3.iam.gserviceaccount.com';
+    
+    return { 
+      success: true, 
+      data: { 
+        email: serviceAccountEmail,
+        message: 'Share your master Drive folder with this email to enable full functionality'
+      } 
+    };
+  } catch (error) {
+    console.error('Error getting service account email:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Get current master folder ID
+ */
+function getMasterFolderId() {
+  try {
+    return { success: true, data: { folderId: getActualMasterFolderId() } };
+  } catch (error) {
+    console.error('Error getting master folder ID:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Set master folder ID (user configurable)
+ * This allows users to specify their own master folder
+ */
+function setMasterFolderId(newFolderId) {
+  try {
+    if (!newFolderId || typeof newFolderId !== 'string') {
+      return { success: false, message: 'Valid folder ID is required' };
+    }
+    
+    // Validate that the folder exists and is accessible
+    try {
+      const folder = DriveApp.getFolderById(newFolderId);
+      folder.getName(); // This will throw if folder doesn't exist or isn't accessible
+    } catch (folderError) {
+      return { 
+        success: false, 
+        message: 'Cannot access folder. Make sure the folder exists and is shared with the service account.' 
+      };
+    }
+    
+    // For now, we store this in PropertiesService since we can't modify the script constants
+    PropertiesService.getScriptProperties().setProperty('MASTER_FOLDER_ID', newFolderId);
+    
+    return { 
+      success: true, 
+      data: { 
+        folderId: newFolderId,
+        message: 'Master folder updated successfully. You may need to redeploy the script for all features to work properly.'
+      } 
+    };
+  } catch (error) {
+    console.error('Error setting master folder ID:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Share a folder with the service account
+ */
+function shareFolderWithServiceAccount(folderId) {
+  try {
+    if (!folderId || typeof folderId !== 'string') {
+      return { success: false, message: 'Valid folder ID is required' };
+    }
+    
+    const serviceAccountEmail = 'nowandlater@solid-study-467023-i3.iam.gserviceaccount.com';
+    
+    try {
+      const folder = DriveApp.getFolderById(folderId);
+      
+      // Check if already shared
+      const editors = folder.getEditors();
+      const viewers = folder.getViewers();
+      const allUsers = [...editors, ...viewers];
+      const isAlreadyShared = allUsers.some(user => user.getEmail() === serviceAccountEmail);
+      
+      if (isAlreadyShared) {
+        return { 
+          success: true, 
+          data: { 
+            message: 'Folder is already shared with the service account',
+            folderId: folderId,
+            folderName: folder.getName()
+          } 
+        };
+      }
+      
+      // Share the folder with edit permissions
+      folder.addEditor(serviceAccountEmail);
+      
+      return { 
+        success: true, 
+        data: { 
+          message: 'Folder shared successfully with the service account',
+          folderId: folderId,
+          folderName: folder.getName(),
+          serviceAccountEmail: serviceAccountEmail
+        } 
+      };
+    } catch (folderError) {
+      return { 
+        success: false, 
+        message: 'Cannot access folder. Make sure the folder ID is correct and you have permission to share it.' 
+      };
+    }
+  } catch (error) {
+    console.error('Error sharing folder with service account:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Get the actual master folder ID (checking PropertiesService first, then falling back to constant)
+ */
+function getActualMasterFolderId() {
+  const customFolderId = PropertiesService.getScriptProperties().getProperty('MASTER_FOLDER_ID');
+  return customFolderId || DRIVE_FOLDER_ID;
 }
