@@ -2,9 +2,9 @@
 // This script manages the Google Sheets database and Google Drive integration
 
 // DEPLOYMENT TRACKING - UPDATE THESE WITH EACH DEPLOYMENT
-const DEPLOYMENT_VERSION = "v2024.07.29.004-CONTEXT-TAG-FIX";
-const SCRIPT_VERSION = "3.7.0"; // Increment with each deployment for verification
-const LAST_UPDATED = "2024-07-29T03:00:00Z";
+const DEPLOYMENT_VERSION = "v2024.07.29.005-PERFORMANCE-BOOST";
+const SCRIPT_VERSION = "4.0.0"; // Major version bump for performance improvements
+const LAST_UPDATED = "2024-07-29T04:00:00Z";
 
 // CORS configuration
 const ALLOWED_ORIGIN = '*'; // For production, use 'https://nowandlater.vercel.app'
@@ -85,6 +85,9 @@ function doGet(e) {
         break;
       case 'getProjectFolderId':
         result = getProjectFolderId(parameters[0]);
+        break;
+      case 'loadAppData':
+        result = loadAppData();
         break;
       case 'healthCheck':
         result = {
@@ -314,6 +317,46 @@ function initializeDatabase() {
 }
 
 /**
+ * Optimized app loading - get all data in one call
+ */
+function loadAppData() {
+  try {
+    console.log('Loading app data in single call...');
+    
+    // Get all data concurrently (as much as possible)
+    const areas = getAreas();
+    const projects = getProjects();
+    const tasks = getTasks();
+    
+    if (!areas.success || !projects.success || !tasks.success) {
+      return { 
+        success: false, 
+        message: 'Failed to load app data',
+        details: {
+          areas: areas.success,
+          projects: projects.success,
+          tasks: tasks.success
+        }
+      };
+    }
+    
+    console.log('App data loaded successfully');
+    return {
+      success: true,
+      data: {
+        areas: areas.data,
+        projects: projects.data,
+        tasks: tasks.data,
+        loadedAt: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    console.error('Error loading app data:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
  * CRUD Operations for Areas
  */
 function createArea(name, description = '') {
@@ -365,10 +408,24 @@ function createProject(name, description = '', areaId = null) {
     const id = Utilities.getUuid();
     const createdAt = new Date().toISOString();
     
-    // Create Google Drive folder for this project
-    const driveFolderUrl = createProjectFolder(name, id);
+    // Create project in spreadsheet immediately (fast response)
+    sheet.appendRow([id, name, description, areaId, 'Active', '', createdAt]);
     
-    sheet.appendRow([id, name, description, areaId, 'Active', driveFolderUrl, createdAt]);
+    // Start background Drive folder creation (don't wait for it)
+    try {
+      const driveFolderUrl = createProjectFolder(name, id, areaId);
+      // Update the spreadsheet with the folder URL after creation
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === id) {
+          sheet.getRange(i + 1, 6).setValue(driveFolderUrl); // Column F is driveFolderUrl
+          break;
+        }
+      }
+    } catch (driveError) {
+      console.error('Drive folder creation failed (background):', driveError);
+      // Don't fail the entire operation if Drive fails
+    }
     
     return { 
       success: true, 
@@ -378,7 +435,7 @@ function createProject(name, description = '', areaId = null) {
         description, 
         areaId, 
         status: 'Active', 
-        driveFolderUrl, 
+        driveFolderUrl: '', // Initially empty, will be updated in background
         createdAt 
       } 
     };

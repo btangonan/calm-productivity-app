@@ -33,21 +33,17 @@ function AppContent() {
         const token = state.userProfile.id_token;
         console.log('🔑 Using token for API calls:', token ? 'Present' : 'Missing');
         
-        console.log('📡 Loading areas, projects, and tasks...');
-        const [areas, projects, tasks] = await Promise.all([
-          apiService.getAreas(token),
-          apiService.getProjects(undefined, token),
-          apiService.getTasks(undefined, undefined, token),
-        ]);
+        console.log('📡 Loading all app data in single call...');
+        const appData = await apiService.loadAppData(token);
 
         console.log('📊 Loaded data:');
-        console.log('   Areas:', areas.length, 'items');
-        console.log('   Projects:', projects.length, 'items');
-        console.log('   Tasks:', tasks.length, 'items');
+        console.log('   Areas:', appData.areas.length, 'items');
+        console.log('   Projects:', appData.projects.length, 'items');
+        console.log('   Tasks:', appData.tasks.length, 'items');
 
-        dispatch({ type: 'SET_AREAS', payload: areas });
-        dispatch({ type: 'SET_PROJECTS', payload: projects });
-        dispatch({ type: 'SET_TASKS', payload: tasks });
+        dispatch({ type: 'SET_AREAS', payload: appData.areas });
+        dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
+        dispatch({ type: 'SET_TASKS', payload: appData.tasks });
         
         console.log('✅ Application loaded successfully');
         if (status.usingMockData) {

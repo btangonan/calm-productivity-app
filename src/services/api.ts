@@ -561,6 +561,14 @@ class ApiService {
     return response.data || [];
   }
 
+  async loadAppData(token: string): Promise<{areas: Area[], projects: Project[], tasks: Task[]}> {
+    const response = await this.executeGoogleScript<{areas: Area[], projects: Project[], tasks: Task[]}>(token, 'loadAppData', [], 'GET');
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to load app data');
+    }
+    return response.data;
+  }
+
   async createProject(name: string, description: string, areaId: string | undefined, token: string): Promise<Project> {
     const response = await this.executeGoogleScript<Project>(token, 'createProject', [name, description, areaId]);
     if (!response.success || !response.data) {
