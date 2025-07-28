@@ -22,7 +22,9 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editingDescription, setEditingDescription] = useState(task.description || '');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<'bottom' | 'top'>('bottom');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const {
     attributes,
@@ -224,8 +226,20 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
         {/* Three dots menu */}
         <div className="relative" ref={dropdownRef}>
           <button
+            ref={buttonRef}
             onClick={(e) => {
               e.stopPropagation();
+              
+              // Calculate if dropdown should appear above or below
+              if (buttonRef.current) {
+                const rect = buttonRef.current.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const spaceAbove = rect.top;
+                
+                // If there's less than 100px below, show dropdown above
+                setDropdownPosition(spaceBelow < 100 && spaceAbove > 100 ? 'top' : 'bottom');
+              }
+              
               setShowDropdown(!showDropdown);
             }}
             className="opacity-100 p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 mt-0.5 flex-shrink-0"
@@ -237,7 +251,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
           </button>
           
           {showDropdown && (
-            <div className="absolute left-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[120px]">
+            <div className={`absolute left-0 ${dropdownPosition === 'top' ? 'bottom-8' : 'top-8'} bg-white border border-gray-200 rounded-md shadow-xl z-[9999] min-w-[120px]`}>
               <button
                 onClick={handleEditClick}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 flex items-center"
