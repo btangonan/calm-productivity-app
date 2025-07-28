@@ -150,8 +150,13 @@ export async function getServiceAccountToken(userEmail = null) {
     const result = await response.json();
     return result.access_token;
   } catch (error) {
-    console.error('Service account token error:', error);
-    throw error;
+    console.error('[DEBUG] Service account token error:', error);
+    console.error('[DEBUG] Error type:', error.constructor.name);
+    console.error('[DEBUG] Error message:', error.message);
+    console.error('[DEBUG] Error stack:', error.stack);
+    
+    // Re-throw with more context
+    throw new Error(`Service account authentication failed: ${error.message}`);
   }
 }
 
@@ -171,8 +176,19 @@ async function createServiceAccountJWT(payload) {
   const messageBuffer = new TextEncoder().encode(message);
 
   // Import private key - fix common Vercel environment variable formatting issues
-  const privateKeyPem = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n');
-  console.log('Private key format check:', privateKeyPem.substring(0, 50) + '...');
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY environment variable is not set');
+  }
+  
+  let privateKeyPem;
+  try {
+    privateKeyPem = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n');
+    console.log('Private key format check:', privateKeyPem.substring(0, 50) + '...');
+    console.log('Private key ends with:', privateKeyPem.substring(privateKeyPem.length - 50));
+  } catch (keyError) {
+    console.error('Error processing private key:', keyError);
+    throw new Error(`Private key processing failed: ${keyError.message}`);
+  }
   const privateKey = await crypto.subtle.importKey(
     'pkcs8',
     pemToArrayBuffer(privateKeyPem),

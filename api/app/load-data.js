@@ -140,7 +140,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Detailed error from Edge Function:', error);
+    // Log the full error object to Vercel's logs
+    console.error('[DEBUG] Detailed Error:', error);
+    console.error('[DEBUG] Error name:', error.name);
+    console.error('[DEBUG] Error message:', error.message);
+    console.error('[DEBUG] Error stack:', error.stack);
     
     // If the error is from a failed fetch to Google's API
     if (error.response) {
@@ -153,19 +157,25 @@ export default async function handler(req, res) {
           success: false,
           error: 'Google API request failed',
           google_api_status: error.response.status,
-          google_error: JSON.parse(googleError),
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+          google_error: JSON.parse(googleError)
         });
       } catch (parseError) {
         console.error('Could not parse Google API error:', parseError);
       }
     }
     
+    // Return a more informative error response to the frontend
     return res.status(500).json({
       success: false,
       error: 'Failed to load app data',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      error_type: error.constructor.name
+      error_type: error.name, // e.g., 'TypeError'
+      error_message: error.message, // The specific error message
+      error_stack: process.env.NODE_ENV === 'development' ? error.stack : undefined, // Only show stack in dev
+      environment_debug: {
+        has_service_account_email: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        has_private_key: !!process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+        has_sheets_id: !!process.env.GOOGLE_SHEETS_ID
+      }
     });
   }
 }
