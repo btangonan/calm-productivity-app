@@ -28,7 +28,11 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
     setLoading(true);
     try {
       console.log('Fetching project files for project:', projectId);
-      const projectFiles = await apiService.getProjectFiles(projectId);
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        throw new Error('User not authenticated');
+      }
+      const projectFiles = await apiService.getProjectFiles(projectId, userProfile.id_token);
       console.log('Received project files:', projectFiles);
       setFiles(projectFiles);
     } catch (error) {
