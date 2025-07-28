@@ -21,15 +21,25 @@ export default async function handler(req, res) {
 
     console.log(`🔐 Fetching files for project: ${projectId} for user: ${user.email}`);
 
-    // Get service account access token with user impersonation
-    const serviceAccountToken = await getServiceAccountToken(user.email);
+    // Use the user's access token directly (if available) or service account as fallback
+    let apiToken;
+    
+    if (user.isJWT || user.accessToken.startsWith('eyJ')) {
+      // For JWT tokens, use service account (shared spreadsheet access)
+      apiToken = await getServiceAccountToken();
+      console.log('🔧 Using service account token for JWT user');
+    } else {
+      // For real access tokens, use user's token directly
+      apiToken = user.accessToken;
+      console.log('🎯 Using user access token for API calls');
+    }
 
     // First, get the project to find its Drive folder ID
     const projectsResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEETS_ID}/values/Projects!A:H`,
       {
         headers: {
-          'Authorization': `Bearer ${serviceAccountToken}`,
+          'Authorization': `Bearer ${apiToken}`,
           'Content-Type': 'application/json'
         }
       }
@@ -64,7 +74,7 @@ export default async function handler(req, res) {
       `https://www.googleapis.com/drive/v3/files?q='${driveFolderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,size,createdTime,modifiedTime,thumbnailLink,webViewLink,parents)&orderBy=modifiedTime desc`,
       {
         headers: {
-          'Authorization': `Bearer ${serviceAccountToken}`,
+          'Authorization': `Bearer ${apiToken}`,
           'Content-Type': 'application/json'
         }
       }

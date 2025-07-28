@@ -17,11 +17,16 @@ export default async function handler(req, res) {
     console.log(`🔐 Loading app data for user: ${user.email}`);
 
     // Use the user's access token directly (if available) or service account as fallback
-    let apiToken = user.accessToken;
+    let apiToken;
     
-    if (user.isJWT) {
-      // For old JWT tokens, use service account
+    if (user.isJWT || user.accessToken.startsWith('eyJ')) {
+      // For JWT tokens, use service account (shared spreadsheet access)
       apiToken = await getServiceAccountToken();
+      console.log('🔧 Using service account token for JWT user');
+    } else {
+      // For real access tokens, use user's token directly
+      apiToken = user.accessToken;
+      console.log('🎯 Using user access token for API calls');
     }
 
     // Use batch request to get all data at once (much faster than individual calls)
