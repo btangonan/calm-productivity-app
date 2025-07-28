@@ -16,15 +16,20 @@ export default async function handler(req, res) {
 
     console.log(`🔐 Loading app data for user: ${user.email}`);
 
-    // Get service account access token with user impersonation
-    const serviceAccountToken = await getServiceAccountToken(user.email);
+    // Use the user's access token directly (if available) or service account as fallback
+    let apiToken = user.accessToken;
+    
+    if (user.isJWT) {
+      // For old JWT tokens, use service account
+      apiToken = await getServiceAccountToken();
+    }
 
     // Use batch request to get all data at once (much faster than individual calls)
     const batchResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEETS_ID}/values:batchGet?ranges=Areas!A:F&ranges=Projects!A:H&ranges=Tasks!A:J`,
       {
         headers: {
-          'Authorization': `Bearer ${serviceAccountToken}`,
+          'Authorization': `Bearer ${apiToken}`,
           'Content-Type': 'application/json'
         }
       }

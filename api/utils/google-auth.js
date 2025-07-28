@@ -6,9 +6,28 @@ export async function validateGoogleToken(authHeader) {
   const token = authHeader.substring(7);
   
   try {
-    // Check if it's a JWT token (starts with eyJ)
+    // Try validating as access token first (for the new OAuth flow)
+    const accessTokenResponse = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
+    
+    if (accessTokenResponse.ok) {
+      const tokenInfo = await accessTokenResponse.json();
+      
+      // Validate token is for our application
+      if (tokenInfo.audience && tokenInfo.audience !== process.env.GOOGLE_CLIENT_ID) {
+        console.error(`Access token audience mismatch: ${tokenInfo.audience} !== ${process.env.GOOGLE_CLIENT_ID}`);
+        return null;
+      }
+
+      return {
+        userId: tokenInfo.user_id,
+        email: tokenInfo.email,
+        accessToken: token, // This is a real access token for API calls
+        expiresAt: new Date(tokenInfo.expires_in * 1000 + Date.now())
+      };
+    }
+
+    // Fallback: Check if it's a JWT ID token (for backward compatibility)
     if (token.startsWith('eyJ')) {
-      // It's a JWT ID token - validate with Google's tokeninfo endpoint for ID tokens
       const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
       
       if (!response.ok) {
@@ -34,33 +53,14 @@ export async function validateGoogleToken(authHeader) {
       return {
         userId: tokenInfo.sub,
         email: tokenInfo.email,
-        accessToken: token, // We'll use service account for actual API calls
-        expiresAt: new Date(tokenInfo.exp * 1000)
-      };
-    } else {
-      // It's an OAuth access token - use the original validation
-      const response = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
-      
-      if (!response.ok) {
-        console.error(`Access token validation failed: ${response.status} ${response.statusText}`);
-        return null;
-      }
-
-      const tokenInfo = await response.json();
-      
-      // Validate token is for our application
-      if (tokenInfo.audience !== process.env.GOOGLE_CLIENT_ID) {
-        console.error(`Access token audience mismatch: ${tokenInfo.audience} !== ${process.env.GOOGLE_CLIENT_ID}`);
-        return null;
-      }
-
-      return {
-        userId: tokenInfo.user_id,
-        email: tokenInfo.email,
         accessToken: token,
-        expiresAt: new Date(tokenInfo.expires_in * 1000 + Date.now())
+        expiresAt: new Date(tokenInfo.exp * 1000),
+        isJWT: true // Flag to indicate we need service account for API calls
       };
     }
+
+    console.error('Token validation failed for both access token and ID token');
+    return null;
   } catch (error) {
     console.error('Token validation error:', error);
     return null;
@@ -95,21 +95,20 @@ export async function refreshGoogleToken(refreshToken) {
 
 export async function getServiceAccountToken(userEmail = null) {
   try {
-    // Create JWT for service account with domain-wide delegation
+    // For personal Gmail accounts, we can't use domain-wide delegation
+    // Use service account without impersonation for shared resources only
     const now = Math.floor(Date.now() / 1000);
     const jwtPayload = {
       iss: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/presentations',
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
       aud: 'https://oauth2.googleapis.com/token',
       exp: now + 3600,
       iat: now
     };
 
-    // Add subject (user to impersonate) if provided
-    if (userEmail) {
-      jwtPayload.sub = userEmail;
-    }
-
+    // Note: Cannot impersonate personal Gmail users without domain-wide delegation
+    // This will only work for resources shared with the service account
+    
     const jwt = await createServiceAccountJWT(jwtPayload);
 
     // Exchange JWT for access token

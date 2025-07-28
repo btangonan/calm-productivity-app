@@ -122,6 +122,8 @@ export interface UserProfile {
   email: string;
   picture: string;
   id_token: string;
+  access_token?: string;
+  refresh_token?: string;
 }
 
 // Enhanced project types for Project Hub
