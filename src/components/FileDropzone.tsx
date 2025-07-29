@@ -64,10 +64,21 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ projectId, onFilesUploaded 
         throw new Error('User not authenticated');
       }
 
+      console.log('🔍 FileDropzone token debug:', {
+        hasUserProfile: !!userProfile,
+        hasAccessToken: !!userProfile.access_token,
+        hasIdToken: !!userProfile.id_token,
+        accessTokenPrefix: userProfile.access_token?.substring(0, 20),
+        idTokenPrefix: userProfile.id_token?.substring(0, 20),
+        email: userProfile.email
+      });
+
       const token = userProfile.access_token || userProfile.id_token;
       if (!token) {
         throw new Error('No authentication token available');
       }
+
+      console.log('🔑 FileDropzone using token:', token.substring(0, 20) + '...');
 
       // Initialize progress tracking
       const progressTracker: Record<string, number> = {};
