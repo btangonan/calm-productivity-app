@@ -322,6 +322,31 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
     return 'bg-gray-100 text-gray-800';
   };
 
+  // Enhanced file opening logic with file-type-specific handling
+  const handleFileOpen = (file: ProjectFile) => {
+    if (!file.url) {
+      console.error('No URL available for file:', file.name);
+      dispatch({ type: 'SET_ERROR', payload: 'Unable to open file - no URL available' });
+      return;
+    }
+
+    console.log(`🔗 Opening file: ${file.name} (${file.mimeType})`);
+    console.log(`🔗 Using URL: ${file.url}`);
+
+    // Open file in new tab to avoid navigating away from the app
+    try {
+      const newWindow = window.open(file.url, '_blank', 'noopener,noreferrer');
+      if (!newWindow) {
+        // Fallback if popup blocked
+        console.warn('Popup blocked, trying direct navigation');
+        window.location.href = file.url;
+      }
+    } catch (error) {
+      console.error('Failed to open file:', error);
+      dispatch({ type: 'SET_ERROR', payload: `Failed to open ${file.name}` });
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -464,7 +489,7 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
                 group rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer
                 ${viewMode === 'grid' ? 'p-3' : 'p-3'}
               `}
-              onDoubleClick={() => window.open(file.url, '_blank')}
+              onDoubleClick={() => handleFileOpen(file)}
               title="Double-click to open file"
             >
               {viewMode === 'list' ? (
@@ -474,15 +499,13 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
                       {getFileIcon(file.mimeType, file.name)}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-gray-900 hover:text-primary-600 truncate block"
-                        title={file.name}
+                      <button
+                        onClick={() => handleFileOpen(file)}
+                        className="text-sm font-medium text-gray-900 hover:text-primary-600 truncate block text-left w-full"
+                        title={`Click to open ${file.name}`}
                       >
                         {file.name}
-                      </a>
+                      </button>
                       <div className="flex items-center mt-1 text-xs text-gray-500 space-x-2">
                         <span>{formatFileSize(file.size)}</span>
                         <span>•</span>
@@ -491,17 +514,15 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <a
-                      href={file.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => handleFileOpen(file)}
                       className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-600 transition-opacity"
                       title="Open file"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                    </a>
+                    </button>
                     <button
                       onClick={() => handleFileDelete(file.id)}
                       className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
@@ -528,30 +549,26 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
                       </span>
                     </div>
                   )}
-                  <a
-                    href={file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-gray-900 hover:text-primary-600 truncate block"
-                    title={file.name}
+                  <button
+                    onClick={() => handleFileOpen(file)}
+                    className="text-sm font-medium text-gray-900 hover:text-primary-600 truncate block text-left w-full"
+                    title={`Click to open ${file.name}`}
                   >
                     {file.name}
-                  </a>
+                  </button>
                   <div className="text-xs text-gray-500 mt-1">
                     {formatFileSize(file.size)}
                   </div>
                   <div className="flex items-center justify-center space-x-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <a
-                      href={file.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => handleFileOpen(file)}
                       className="p-1 text-gray-400 hover:text-primary-600"
                       title="Open file"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                    </a>
+                    </button>
                     <button
                       onClick={() => handleFileDelete(file.id)}
                       className="p-1 text-gray-400 hover:text-red-600"

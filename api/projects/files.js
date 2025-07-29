@@ -134,11 +134,13 @@ async function handleGetFiles(req, res) {
       type: getFileType(file.mimeType),
       mimeType: file.mimeType,
       size: parseInt(file.size) || 0,
+      url: file.webViewLink, // Map webViewLink to url for frontend compatibility
+      thumbnailUrl: file.thumbnailLink,
+      webViewLink: file.webViewLink, // Keep for future use
+      downloadUrl: `https://drive.google.com/uc?id=${file.id}&export=download`,
+      driveFileId: file.id,
       createdAt: file.createdTime,
       modifiedAt: file.modifiedTime,
-      thumbnailLink: file.thumbnailLink,
-      webViewLink: file.webViewLink,
-      downloadUrl: `https://drive.google.com/uc?id=${file.id}&export=download`,
       isFolder: file.mimeType === 'application/vnd.google-apps.folder'
     }));
 
@@ -329,10 +331,13 @@ async function handleUploadFile(req, res) {
       type: getFileType(uploadedFile.mimeType),
       mimeType: uploadedFile.mimeType,
       size: parseInt(uploadedFile.size) || buffer.length,
+      url: uploadedFile.webViewLink, // Map webViewLink to url for frontend compatibility
+      thumbnailUrl: uploadedFile.thumbnailLink,
+      webViewLink: uploadedFile.webViewLink, // Keep for future use
+      downloadUrl: `https://drive.google.com/uc?id=${uploadedFile.id}&export=download`,
+      driveFileId: uploadedFile.id,
       createdAt: uploadedFile.createdTime || new Date().toISOString(),
       modifiedAt: uploadedFile.modifiedTime || new Date().toISOString(),
-      webViewLink: uploadedFile.webViewLink,
-      downloadUrl: `https://drive.google.com/uc?id=${uploadedFile.id}&export=download`,
       isFolder: false
     };
 
