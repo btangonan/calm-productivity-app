@@ -35,7 +35,8 @@ export default async function handler(req, res) {
     });
 
     const authClient = await auth.getClient();
-    console.log(`⚡ Auth setup: ${Date.now() - authStartTime}ms`);
+    const authDuration = Date.now() - authStartTime;
+    console.log(`⚡ Auth setup: ${authDuration}ms`);
     
     const sheets = google.sheets({ version: 'v4', auth: authClient });
 
@@ -45,78 +46,58 @@ export default async function handler(req, res) {
       spreadsheetId: process.env.GOOGLE_SHEETS_ID,
       ranges: ['Areas!A:F', 'Projects!A:H', 'Tasks!A:J'],
     });
-    console.log(`⚡ Sheets API call: ${Date.now() - apiStartTime}ms`);
+    const apiDuration = Date.now() - apiStartTime;
+    console.log(`⚡ Sheets API call: ${apiDuration}ms`);
 
     const [areasData, projectsData, tasksData] = batchResponse.data.valueRanges;
 
     const processingStartTime = Date.now();
     console.log('🔄 Processing data...');
 
-    // Convert areas data (optimized)
-    const areasValues = areasData.values || [];
-    const areas = [];
-    for (let i = 1; i < areasValues.length; i++) {
-      const row = areasValues[i];
-      if (row[0]) { // Only process rows with ID
-        areas.push({
-          id: row[0],
-          name: row[1] || '',
-          description: row[2] || '',
-          driveFolderId: row[3] || '',
-          driveFolderUrl: row[4] || '',
-          createdAt: row[5] || ''
-        });
-      }
-    }
+    // Convert areas data
+    const areas = (areasData.values || []).slice(1).map(row => ({
+      id: row[0] || '',
+      name: row[1] || '',
+      description: row[2] || '',
+      driveFolderId: row[3] || '',
+      driveFolderUrl: row[4] || '',
+      createdAt: row[5] || ''
+    })).filter(area => area.id);
 
-    // Convert projects data (optimized)
-    const projectsValues = projectsData.values || [];
-    const projects = [];
-    for (let i = 1; i < projectsValues.length; i++) {
-      const row = projectsValues[i];
-      if (row[0]) { // Only process rows with ID
-        projects.push({
-          id: row[0],
-          name: row[1] || '',
-          description: row[2] || '',
-          areaId: row[3] || null,
-          status: row[4] || 'Active',
-          driveFolderId: row[5] || '',
-          driveFolderUrl: row[6] || '',
-          createdAt: row[7] || ''
-        });
-      }
-    }
+    // Convert projects data
+    const projects = (projectsData.values || []).slice(1).map(row => ({
+      id: row[0] || '',
+      name: row[1] || '',
+      description: row[2] || '',
+      areaId: row[3] || null,
+      status: row[4] || 'Active',
+      driveFolderId: row[5] || '',
+      driveFolderUrl: row[6] || '',
+      createdAt: row[7] || ''
+    })).filter(project => project.id);
 
-    // Convert tasks data (optimized)
-    const tasksValues = tasksData.values || [];
-    const tasks = [];
-    for (let i = 1; i < tasksValues.length; i++) {
-      const row = tasksValues[i];
-      if (row[0]) { // Only process rows with ID
-        let attachments = [];
+    // Convert tasks data
+    const tasks = (tasksData.values || []).slice(1).map(row => ({
+      id: row[0] || '',
+      title: row[1] || '',
+      description: row[2] || '',
+      projectId: row[3] || null,
+      context: row[4] || '',
+      dueDate: row[5] || null,
+      isCompleted: row[6] === 'true' || row[6] === true,
+      sortOrder: parseInt(row[7]) || 0,
+      createdAt: row[8] || '',
+      attachments: (() => {
         try {
-          attachments = JSON.parse(row[9] || '[]');
+          return JSON.parse(row[9] || '[]');
         } catch {
-          // Keep empty array
+          return [];
         }
-        
-        tasks.push({
-          id: row[0],
-          title: row[1] || '',
-          description: row[2] || '',
-          projectId: row[3] || null,
-          context: row[4] || '',
-          dueDate: row[5] || null,
-          isCompleted: row[6] === 'true' || row[6] === true,
-          sortOrder: parseInt(row[7]) || 0,
-          createdAt: row[8] || '',
-          attachments
-        });
-      }
-    }
+      })()
+    })).filter(task => task.id);
 
-    console.log(`⚡ Data processing: ${Date.now() - processingStartTime}ms`);
+    const processingDuration = Date.now() - processingStartTime;
+    console.log(`⚡ Data processing: ${processingDuration}ms`);
 
     const duration = Date.now() - startTime;
     console.log(`⚡ Total app data loading: ${duration}ms: ${areas.length} areas, ${projects.length} projects, ${tasks.length} tasks`);
