@@ -22,7 +22,7 @@ function AppContent() {
       try {
         // Performance timing
         const startTime = performance.now();
-        console.log('🚀 Starting application...', new Date().toLocaleTimeString());
+        console.log('🚀 Starting application...', new Date().toLocaleTimeString(), 'v1.1');
         
         // Check backend health (skip if using edge functions for speed)
         const status = apiService.getBackendStatus();
