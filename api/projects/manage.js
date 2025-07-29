@@ -56,15 +56,15 @@ async function handleCreateProject(req, res, user, startTime) {
   const { google } = await import('googleapis');
   const { GoogleAuth } = await import('google-auth-library');
   
-  const auth = new GoogleAuth({
-    credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
-    scopes: [
-      'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/drive'
-    ],
+  const auth = new GoogleAuth();
+  const authClient = auth.fromJSON({
+    type: 'authorized_user',
+    client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+    client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    refresh_token: user.refreshToken, // Assuming you have the refresh token
   });
+  authClient.setCredentials({ access_token: user.access_token });
 
-  const authClient = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: authClient });
 
   // Add to spreadsheet immediately (don't wait for drive folder creation)
@@ -121,7 +121,8 @@ async function handleCreateProject(req, res, user, startTime) {
     }
     
     const folderResponse = await drive.files.create({
-      resource: folderResource
+      resource: folderResource,
+      supportsAllDrives: true
     });
     
     driveFolderId = folderResponse.data.id;
@@ -138,7 +139,8 @@ async function handleCreateProject(req, res, user, startTime) {
           role: 'writer',
           type: 'user',
           emailAddress: user.email
-        }
+        },
+        supportsAllDrives: true
       });
       console.log(`✅ Folder shared with ${user.email}`);
     } catch (shareError) {
@@ -206,12 +208,15 @@ async function handleDeleteProject(req, res, user, startTime) {
   const { google } = await import('googleapis');
   const { GoogleAuth } = await import('google-auth-library');
   
-  const auth = new GoogleAuth({
-    credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  const auth = new GoogleAuth();
+  const authClient = auth.fromJSON({
+    type: 'authorized_user',
+    client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+    client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    refresh_token: user.refreshToken, // Assuming you have the refresh token
   });
+  authClient.setCredentials({ access_token: user.access_token });
 
-  const authClient = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: authClient });
 
   // Get sheet metadata to find the correct sheet ID
@@ -352,15 +357,15 @@ async function handleFixDriveFolders(req, res, user, startTime) {
   const { google } = await import('googleapis');
   const { GoogleAuth } = await import('google-auth-library');
   
-  const auth = new GoogleAuth({
-    credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
-    scopes: [
-      'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/drive'
-    ],
+  const auth = new GoogleAuth();
+  const authClient = auth.fromJSON({
+    type: 'authorized_user',
+    client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+    client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    refresh_token: user.refreshToken, // Assuming you have the refresh token
   });
+  authClient.setCredentials({ access_token: user.access_token });
 
-  const authClient = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: authClient });
   const drive = google.drive({ version: 'v3', auth: authClient });
 
@@ -516,12 +521,15 @@ async function handleUpdateProject(req, res, user, startTime) {
   const { google } = await import('googleapis');
   const { GoogleAuth } = await import('google-auth-library');
   
-  const auth = new GoogleAuth({
-    credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  const auth = new GoogleAuth();
+  const authClient = auth.fromJSON({
+    type: 'authorized_user',
+    client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+    client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    refresh_token: user.refreshToken, // Assuming you have the refresh token
   });
+  authClient.setCredentials({ access_token: user.access_token });
 
-  const authClient = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: authClient });
 
   // Get all projects to find the row to update

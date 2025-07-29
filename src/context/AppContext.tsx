@@ -111,6 +111,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, tasks: action.payload };
     case 'LOGIN_SUCCESS':
       console.log('✅ LOGIN_SUCCESS action dispatched:', action.payload);
+      // Save refresh token to the database
+      if (action.payload.refresh_token) {
+        fetch('/api/auth/store-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${action.payload.access_token}`,
+          },
+          body: JSON.stringify({ refreshToken: action.payload.refresh_token }),
+        });
+      }
       return { ...state, isAuthenticated: true, userProfile: action.payload };
     case 'LOGOUT':
       localStorage.removeItem('google-auth-state');

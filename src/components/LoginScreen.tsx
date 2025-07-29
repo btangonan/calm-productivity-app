@@ -1,4 +1,4 @@
-import { GoogleLogin } from '@react-oauth/google';
+import { useGoogleLogin } from '@react-oauth/google';
 import { useApp } from '../context/AppContext';
 import { jwtDecode } from 'jwt-decode';
 
@@ -16,36 +16,38 @@ interface GoogleJWTPayload {
 const LoginScreen = () => {
   const { dispatch } = useApp();
 
-  const handleSuccess = (credentialResponse: any) => {
-    const id_token = credentialResponse.credential;
-    if (!id_token) {
-      console.error('No credential received from Google');
-      return;
-    }
+  const login = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        });
+        const userInfo = await userInfoResponse.json();
 
-    try {
-      const decoded: GoogleJWTPayload = jwtDecode(id_token);
-
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: {
-          id: decoded.sub,
-          name: decoded.name,
-          email: decoded.email,
-          picture: decoded.picture,
-          id_token: id_token,
-        },
-      });
-
-      console.log('Login successful for:', decoded.email);
-    } catch (error) {
-      console.error('Failed to decode JWT token:', error);
-    }
-  };
-
-  const handleError = () => {
-    console.error('Google Login Failed');
-  };
+        dispatch({
+          type: 'LOGIN_SUCCESS',
+          payload: {
+            id: userInfo.sub,
+            name: userInfo.name,
+            email: userInfo.email,
+            picture: userInfo.picture,
+            access_token: tokenResponse.access_token,
+            refresh_token: tokenResponse.refresh_token,
+            id_token: tokenResponse.id_token, // This may not be available with this flow
+          },
+        });
+        console.log('Login successful for:', userInfo.email);
+      } catch (error) {
+        console.error('Failed to fetch user info:', error);
+      }
+    },
+    onError: () => {
+      console.error('Google Login Failed');
+    },
+    scope: 'https://www.googleapis.com/auth/drive',
+    access_type: 'offline',
+    prompt: 'consent',
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -91,15 +93,13 @@ const LoginScreen = () => {
 
           {/* Login Button */}
           <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={handleSuccess}
-              onError={handleError}
-              size="large"
-              text="signin_with"
-              shape="rectangular"
-              theme="outline"
-              width="280"
-            />
+            <button
+              onClick={() => login()}
+              className="flex items-center justify-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <img src="/google-logo.svg" alt="Google logo" className="w-5 h-5 mr-3" />
+              Sign in with Google
+            </button>
           </div>
 
           <p className="text-xs text-gray-500 mt-6">

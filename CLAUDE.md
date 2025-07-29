@@ -2,14 +2,14 @@
 
 This document tracks the current application architecture, common issues, and deployment patterns.
 
-## 🚀 CURRENT ARCHITECTURE (JANUARY 2025)
+## 🚀 CURRENT ARCHITECTURE (JULY 2025)
 
 ### Tech Stack
 - **Frontend**: React/TypeScript hosted on Vercel
 - **Backend**: Node.js API routes on Vercel (`/api/*`)
-- **Authentication**: Google OAuth with service account for API access
+- **Authentication**: User-based Google OAuth. The application requests permission to access the user's Google Drive and uses their access token to perform operations on their behalf.
 - **Database**: Google Sheets (via Google Sheets API)
-- **Storage**: Google Drive (via Google Drive API)
+- **Storage**: Google Drive (via Google Drive API, using user-owned folders)
 - **Deployment**: Vercel (auto-deploys from GitHub main branch)
 
 ### Current API Endpoints
@@ -19,7 +19,8 @@ This document tracks the current application architecture, common issues, and de
 │   └── load-data.js          # Load all app data (areas, projects, tasks)
 ├── auth/
 │   ├── exchange-code.js      # OAuth code exchange
-│   └── validate.js           # Token validation
+│   ├── validate.js           # Token validation
+│   └── store-token.js        # Stores user's refresh token
 ├── drive/
 │   └── list-files.js         # Fast drive file listing (Edge Function)
 ├── projects/
@@ -54,6 +55,7 @@ This document tracks the current application architecture, common issues, and de
 - **Areas Sheet**: Project categories/areas
 - **Projects Sheet**: Project data with drive folder integration
 - **Tasks Sheet**: Task data with project relationships
+- **Users Sheet**: Stores user email and refresh token for Google API access
 
 ### Task Field Usage
 - **title**: Task name/description only
@@ -62,10 +64,9 @@ This document tracks the current application architecture, common issues, and de
 - **projectId**: Database relationship field
 
 ### Project Drive Integration
-- Each project has dedicated Google Drive folder
-- **Service Account**: `nowandlater@solid-study-467023-i3.iam.gserviceaccount.com`
-- Drive folders automatically shared with users
-- File operations use Google Drive API v3 directly
+- Each project has a dedicated Google Drive folder, created within the user's designated "Master Folder".
+- All file and folder operations are performed on behalf of the user, using their OAuth access token.
+- The service account is no longer used for file uploads.
 
 ## 🔍 DEBUGGING PATTERNS
 
@@ -80,15 +81,15 @@ This document tracks the current application architecture, common issues, and de
 ### Common Error Patterns
 - **404 on API routes**: Check if endpoint file exists and is properly named  
 - **500 Internal Server Error**: Check Vercel function logs for actual error
-- **Authentication failures**: Verify `GOOGLE_CREDENTIALS_JSON` base64 encoding
+- **Authentication failures**: Ensure the user has granted the correct Google Drive permissions. Check for valid access and refresh tokens.
 - **Empty responses**: Check Google Sheets/Drive API permissions
 
 ## ⚠️ KNOWN ISSUES & FIXES
 
-### File Upload Issues (January 2025)
-- **Problem**: 500 errors on file upload, 404 on project deletion
-- **Cause**: API routing or authentication issues
-- **Debug**: Check Vercel function logs for detailed error messages
+### File Upload Issues (July 2025)
+- **Problem**: 500 error on file upload with the error `Service Accounts do not have storage quota`.
+- **Cause**: The application was previously using a service account to upload files, which does not have its own Google Drive storage.
+- **Fix**: The application has been re-architected to use a user-centric OAuth flow. It now requests permission to access the user's Google Drive and performs all file operations on their behalf, using their storage space.
 
 ### Project Deletion Timing
 - Projects may require multiple deletion attempts  

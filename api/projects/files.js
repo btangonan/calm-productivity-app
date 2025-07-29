@@ -107,6 +107,8 @@ async function handleGetFiles(req, res) {
       q: `'${driveFolderId}' in parents and trashed=false`,
       fields: 'files(id,name,mimeType,size,createdTime,modifiedTime,thumbnailLink,webViewLink,parents)',
       orderBy: 'modifiedTime desc',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
     });
 
     console.log('Raw filesResponse.data.files:', filesResponse.data.files);
@@ -214,15 +216,15 @@ async function handleUploadFile(req, res) {
     const { google } = await import('googleapis');
     const { GoogleAuth } = await import('google-auth-library');
     
-    const auth = new GoogleAuth({
-      credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
-      scopes: [
-        'https://www.googleapis.com/auth/spreadsheets.readonly',
-        'https://www.googleapis.com/auth/drive'
-      ],
+    const auth = new GoogleAuth();
+    const authClient = auth.fromJSON({
+      type: 'authorized_user',
+      client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      refresh_token: user.refreshToken, // Assuming you have the refresh token
     });
+    authClient.setCredentials({ access_token: user.access_token });
 
-    const authClient = await auth.getClient();
     const sheets = google.sheets({ version: 'v4', auth: authClient });
     const drive = google.drive({ version: 'v3', auth: authClient });
 
@@ -280,7 +282,8 @@ async function handleUploadFile(req, res) {
     const fileResponse = await drive.files.create({
       resource: fileMetadata,
       media: media,
-      fields: 'id,name,mimeType,size,createdTime,modifiedTime,webViewLink'
+      fields: 'id,name,mimeType,size,createdTime,modifiedTime,webViewLink',
+      supportsAllDrives: true
     });
 
     const uploadedFile = fileResponse.data;
