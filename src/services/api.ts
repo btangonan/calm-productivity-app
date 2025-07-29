@@ -818,11 +818,31 @@ class ApiService {
   }
 
   async updateProjectName(projectId: string, newName: string, token: string): Promise<Project> {
-    const response = await this.executeGoogleScript<Project>(token, 'updateProjectName', [projectId, newName]);
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to update project name');
+    try {
+      const response = await fetch('/api/projects/manage', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          projectId, 
+          name: newName.trim()
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update project name');
+      }
+      
+      console.log('Project name updated successfully:', data);
+      return data.data;
+    } catch (error) {
+      console.error('Update project name error:', error);
+      throw error;
     }
-    return response.data;
   }
 
   async reorderTasks(taskIds: string[], token: string): Promise<void> {

@@ -14,6 +14,8 @@ export default async function handler(req, res) {
       return await handleFixDriveFolders(req, res, user, startTime);
     } else if (req.method === 'POST') {
       return await handleCreateProject(req, res, user, startTime);
+    } else if (req.method === 'PUT') {
+      return await handleUpdateProject(req, res, user, startTime);
     } else if (req.method === 'DELETE') {
       return await handleDeleteProject(req, res, user, startTime);
     } else {
@@ -119,6 +121,23 @@ async function handleCreateProject(req, res, user, startTime) {
     driveFolderUrl = `https://drive.google.com/drive/folders/${driveFolderId}`;
     
     console.log(`📁 Drive folder created: ${driveFolderId}`);
+    
+    // Share the folder with the user's email so they can access it
+    try {
+      console.log(`🔗 Sharing folder with user: ${user.email}`);
+      await drive.permissions.create({
+        fileId: driveFolderId,
+        resource: {
+          role: 'writer',
+          type: 'user',
+          emailAddress: user.email
+        }
+      });
+      console.log(`✅ Folder shared with ${user.email}`);
+    } catch (shareError) {
+      console.error('❌ Failed to share folder with user:', shareError);
+      // Continue anyway - folder still created
+    }
     
     // Update the spreadsheet with the folder information
     // Find the row we just added (last row)
@@ -349,6 +368,23 @@ async function handleFixDriveFolders(req, res, user, startTime) {
       const newFolderId = folderResponse.data.id;
       const newFolderUrl = `https://drive.google.com/drive/folders/${newFolderId}`;
       
+      // Share the folder with the user's email so they can access it
+      try {
+        console.log(`🔗 Sharing folder with user: ${user.email}`);
+        await drive.permissions.create({
+          fileId: newFolderId,
+          resource: {
+            role: 'writer',
+            type: 'user',
+            emailAddress: user.email
+          }
+        });
+        console.log(`✅ Folder shared with ${user.email}`);
+      } catch (shareError) {
+        console.error('❌ Failed to share folder with user:', shareError);
+        // Continue anyway - folder still created
+      }
+      
       // Update the row with new drive folder data
       const updatedRow = [...row];
       updatedRow[5] = newFolderId; // driveFolderId
@@ -390,6 +426,88 @@ async function handleFixDriveFolders(req, res, user, startTime) {
     total: dataRows.length,
     performance: {
       duration: `${duration}ms`
+    }
+  });
+}
+
+// UPDATE PROJECT
+async function handleUpdateProject(req, res, user, startTime) {
+  const { projectId, name } = req.body;
+
+  if (!projectId || !name || !name.trim()) {
+    return res.status(400).json({ error: 'Project ID and name are required' });
+  }
+
+  console.log(`✏️ Updating project name: ${projectId} to "${name}" for user: ${user.email}`);
+
+  // Use Google Sheets API directly with authentication
+  const { google } = await import('googleapis');
+  const { GoogleAuth } = await import('google-auth-library');
+  
+  const auth = new GoogleAuth({
+    credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: 'v4', auth: authClient });
+
+  // Get all projects to find the row to update
+  const projectsResponse = await sheets.spreadsheets.values.get({
+    spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+    range: 'Projects!A:H'
+  });
+
+  const projectRows = projectsResponse.data.values || [];
+  if (projectRows.length <= 1) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+
+  // Find project in data rows (excluding header)
+  const dataRows = projectRows.slice(1);
+  const projectIndex = dataRows.findIndex(row => row[0] === projectId);
+
+  if (projectIndex === -1) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+
+  const project = dataRows[projectIndex];
+  const oldName = project[1];
+  console.log(`📁 Found project "${oldName}" to update`);
+
+  // Update the project name in the spreadsheet  
+  const actualRowIndex = projectIndex + 2; // +1 for header, +1 for 0-based index
+  console.log(`📊 Updating project name in row ${actualRowIndex}`);
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+    range: `Projects!B${actualRowIndex}`, // Column B is the name column
+    valueInputOption: 'USER_ENTERED',
+    resource: {
+      values: [[name.trim()]]
+    }
+  });
+
+  const duration = Date.now() - startTime;
+  console.log(`⚡ Project name update completed in ${duration}ms`);
+
+  const updatedProject = {
+    id: projectId,
+    name: name.trim(),
+    description: project[2] || '',
+    areaId: project[3] || null,
+    status: project[4] || 'Active',
+    driveFolderId: project[5] || '',
+    driveFolderUrl: project[6] || '',
+    createdAt: project[7] || ''
+  };
+
+  return res.status(200).json({
+    success: true,
+    data: updatedProject,
+    performance: {
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString()
     }
   });
 }
