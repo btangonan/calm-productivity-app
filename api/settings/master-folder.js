@@ -7,7 +7,7 @@ const userMasterFolders = new Map();
 export { userMasterFolders as masterFolderMap };
 
 // Helper function to get master folder from Google Sheets
-async function getMasterFolderFromSheets(userEmail) {
+export async function getMasterFolderFromSheets(userEmail) {
   try {
     console.log(`📊 Getting master folder from sheets for: ${userEmail}`);
     const { google } = await import('googleapis');

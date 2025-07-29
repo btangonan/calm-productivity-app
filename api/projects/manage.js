@@ -123,33 +123,19 @@ async function handleCreateProject(req, res, user, startTime) {
       if (!parentFolderId) {
         console.log(`📁 Not in cache, checking persistent storage...`);
         
-        // Import the helper function to get from sheets
-        const masterFolderModule = await import('../settings/master-folder.js');
-        
-        // Call the internal function to get from sheets - we'll need to create this export
         try {
-          // Make a simple GET request to our own API to get the master folder
-          const authHeader = `Bearer ${user.accessToken}`;
-          const masterFolderResponse = await fetch(`${process.env.VERCEL_URL || 'https://nowandlater.vercel.app'}/api/settings/master-folder`, {
-            method: 'GET',
-            headers: {
-              'Authorization': authHeader,
-              'Content-Type': 'application/json'
-            }
-          });
+          // Import and directly call the helper function to get from sheets
+          const { getMasterFolderFromSheets } = await import('../settings/master-folder.js');
           
-          if (masterFolderResponse.ok) {
-            const data = await masterFolderResponse.json();
-            if (data.success && data.data.currentMasterFolderId) {
-              parentFolderId = data.data.currentMasterFolderId;
-              console.log(`✅ Retrieved master folder from persistent storage: ${parentFolderId}`);
-              
-              // Cache it for future use
-              masterFolderMap.set(user.email, parentFolderId);
-            }
+          parentFolderId = await getMasterFolderFromSheets(user.email);
+          
+          if (parentFolderId) {
+            console.log(`✅ Retrieved master folder from persistent storage: ${parentFolderId}`);
+            // Cache it for future use
+            masterFolderMap.set(user.email, parentFolderId);
           }
         } catch (fetchError) {
-          console.log(`❌ Failed to fetch master folder:`, fetchError.message);
+          console.log(`❌ Failed to get master folder from sheets:`, fetchError.message);
         }
       }
       
