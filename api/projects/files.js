@@ -226,54 +226,40 @@ async function handleUploadFile(req, res) {
 
     console.log(`📤 Uploading file: ${fileName} to project: ${projectId}`);
 
-    // Initialize Google APIs - first get service account for reading user's refresh token  
+    // Initialize Google APIs with proper authentication
     const { google } = await import('googleapis');
-    const { GoogleAuth } = await import('google-auth-library');
+    let userAuthClient, serviceAuthClient;
     
+    // Set up service account for sheets operations
+    const { GoogleAuth } = await import('google-auth-library');
     const serviceAuth = new GoogleAuth({
       credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
-
-    const serviceAuthClient = await serviceAuth.getClient();
-    const serviceSheets = google.sheets({ version: 'v4', auth: serviceAuthClient });
-
-    // Get user's refresh token from Users sheet
-    console.log('🔍 Looking up user refresh token...');
-    const usersResponse = await serviceSheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEETS_ID,
-      range: 'Users!A:B',
-    });
-
-    const users = (usersResponse.data.values || []).slice(1);
-    const userRow = users.find(row => row[0] === user.email);
+    serviceAuthClient = await serviceAuth.getClient();
     
-    if (!userRow || !userRow[1]) {
-      return res.status(400).json({ 
-        error: 'User refresh token not found. Please re-authenticate.',
-        debug: {
-          userEmail: user.email,
-          usersFound: users.length,
-          hasRefreshToken: false
-        }
+    // Set up user authentication for Drive operations
+    if (user.accessToken && !user.isJWT) {
+      // User has a real access token - create OAuth2 client directly
+      console.log('🔑 Using user access token for Drive operations');
+      const { OAuth2Client } = await import('google-auth-library');
+      userAuthClient = new OAuth2Client(
+        process.env.VITE_GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+      );
+      userAuthClient.setCredentials({ access_token: user.accessToken });
+    } else {
+      // Use service account for API calls (fallback)
+      console.log('🔑 Using service account for Drive operations');
+      const driveAuth = new GoogleAuth({
+        credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
+        scopes: ['https://www.googleapis.com/auth/drive'],
       });
+      userAuthClient = await driveAuth.getClient();
     }
 
-    const refreshToken = userRow[1];
-    console.log('✅ Found user refresh token');
-
-    // Now create user OAuth client for Drive operations
-    const userAuth = new GoogleAuth();
-    const userAuthClient = userAuth.fromJSON({
-      type: 'authorized_user',
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      refresh_token: refreshToken,
-    });
-    userAuthClient.setCredentials({ access_token: user.accessToken });
-
     const sheets = google.sheets({ version: 'v4', auth: serviceAuthClient }); // Use service account for sheets
-    const drive = google.drive({ version: 'v3', auth: userAuthClient }); // Use user account for drive
+    const drive = google.drive({ version: 'v3', auth: userAuthClient }); // Use appropriate auth for drive
 
     // Get the project's drive folder ID
     console.log('🔍 Looking up project drive folder...');
