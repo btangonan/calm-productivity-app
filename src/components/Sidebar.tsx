@@ -235,7 +235,11 @@ const Sidebar = () => {
           // Only sync with backend if this is not a temporary project
           if (!id.startsWith('temp_')) {
             try {
-              await apiService.updateProjectName(id, newName.trim(), userProfile.id_token);
+              const token = userProfile.access_token || userProfile.id_token;
+              if (!token) {
+                throw new Error('No authentication token available');
+              }
+              await apiService.updateProjectName(id, newName.trim(), token);
               console.log(`✅ Updated project name and synced Google Drive folder: "${newName.trim()}"`);
             } catch (apiError) {
               console.error('Failed to sync project name with backend:', apiError);
@@ -295,8 +299,14 @@ const Sidebar = () => {
       try {
         console.log(`🗑️ Deleting project: ${projectName}`);
         
+        // Get authentication token
+        const token = userProfile.access_token || userProfile.id_token;
+        if (!token) {
+          throw new Error('No authentication token available');
+        }
+
         // Call backend API to delete project
-        await apiService.deleteProject(projectId, userProfile.id_token);
+        await apiService.deleteProject(projectId, token);
         console.log(`✅ Backend deletion successful: ${projectName}`);
         
         // Wait a moment for backend to process the deletion
@@ -305,7 +315,7 @@ const Sidebar = () => {
         
         // Force reload app data to ensure deletion is reflected
         console.log('🔄 Reloading all data...');
-        const appData = await apiService.loadAppData(userProfile.id_token);
+        const appData = await apiService.loadAppData(token);
         dispatch({ type: 'SET_AREAS', payload: appData.areas });
         dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
         dispatch({ type: 'SET_TASKS', payload: appData.tasks });
@@ -341,8 +351,14 @@ const Sidebar = () => {
         throw new Error('Not authenticated');
       }
 
+      // Get authentication token
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      
       // Call backend API to delete area (this also moves projects to unorganized)
-      await apiService.deleteArea(areaId, userProfile.id_token);
+      await apiService.deleteArea(areaId, token);
       
       // Update local state after successful backend deletion
       // Move projects to unorganized (null areaId)
