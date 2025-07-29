@@ -109,21 +109,55 @@ async function handleCreateProject(req, res, user, startTime) {
     console.log('📁 Creating drive folder...');
     const drive = google.drive({ version: 'v3', auth: authClient });
     
-    // Get master folder ID - directly access the master folder storage
+    // Get master folder ID - check cache first, then persistent storage
     let parentFolderId = null;
     try {
       const { masterFolderMap } = await import('../settings/master-folder.js');
       
-      console.log(`📁 Checking master folder storage for ${user.email}`);
-      console.log(`📁 Current storage contents:`, Array.from(masterFolderMap.entries()));
+      console.log(`📁 Checking master folder cache for ${user.email}`);
+      console.log(`📁 Current cache contents:`, Array.from(masterFolderMap.entries()));
       
       parentFolderId = masterFolderMap.get(user.email);
       
+      // If not in cache, check persistent storage
+      if (!parentFolderId) {
+        console.log(`📁 Not in cache, checking persistent storage...`);
+        
+        // Import the helper function to get from sheets
+        const masterFolderModule = await import('../settings/master-folder.js');
+        
+        // Call the internal function to get from sheets - we'll need to create this export
+        try {
+          // Make a simple GET request to our own API to get the master folder
+          const authHeader = `Bearer ${user.accessToken}`;
+          const masterFolderResponse = await fetch(`${process.env.VERCEL_URL || 'https://nowandlater.vercel.app'}/api/settings/master-folder`, {
+            method: 'GET',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (masterFolderResponse.ok) {
+            const data = await masterFolderResponse.json();
+            if (data.success && data.data.currentMasterFolderId) {
+              parentFolderId = data.data.currentMasterFolderId;
+              console.log(`✅ Retrieved master folder from persistent storage: ${parentFolderId}`);
+              
+              // Cache it for future use
+              masterFolderMap.set(user.email, parentFolderId);
+            }
+          }
+        } catch (fetchError) {
+          console.log(`❌ Failed to fetch master folder:`, fetchError.message);
+        }
+      }
+      
       if (parentFolderId) {
-        console.log(`✅ Found master folder: ${parentFolderId}`);
+        console.log(`✅ Using master folder: ${parentFolderId}`);
         console.log(`📁 Master folder URL: https://drive.google.com/drive/folders/${parentFolderId}`);
       } else {
-        console.log('❌ No master folder found in storage for this user');
+        console.log('❌ No master folder configured for this user');
         console.log('📁 Creating project in root drive');
         console.log('💡 Tip: Set up a master folder in Settings to organize projects');
       }
