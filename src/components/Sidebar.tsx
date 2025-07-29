@@ -298,18 +298,6 @@ const Sidebar = () => {
         
       } catch (error) {
         console.error('Failed to delete project:', error);
-        
-        // Revert optimistic update by reloading data
-        console.log('Reverting optimistic delete due to error');
-        
-        try {
-          // Reload the full app data to restore the project
-          const appData = await apiService.loadAppData(userProfile.id_token);
-          dispatch({ type: 'LOAD_DATA', payload: appData });
-        } catch (reloadError) {
-          console.error('Failed to reload data after delete error:', reloadError);
-        }
-        
         dispatch({ 
           type: 'SET_ERROR', 
           payload: `Failed to delete project "${projectName}". Please try again.` 
