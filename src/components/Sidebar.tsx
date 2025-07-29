@@ -148,22 +148,46 @@ const Sidebar = () => {
   const createNewProject = async (areaId?: string) => {
     if (isCreating) return;
     setIsCreating(true);
-    const projectStartTime = performance.now();
-    console.log('🆕 Creating new project...', { areaId }, 'at', new Date().toLocaleTimeString());
+    console.log('🆕 Creating new project with optimistic update...', { areaId });
+    
+    // Create optimistic project immediately
+    const optimisticProject = {
+      id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: 'New Project',
+      description: '',
+      areaId: areaId || null,
+      status: 'Active' as const,
+      driveFolderId: '',
+      driveFolderUrl: '',
+      createdAt: new Date().toISOString()
+    };
+
+    // Add to UI immediately
+    dispatch({ type: 'ADD_PROJECT', payload: optimisticProject });
+    setEditingItem({ id: optimisticProject.id, type: 'project', name: optimisticProject.name });
+    if (areaId) {
+      setExpandedAreas(prev => new Set([...prev, areaId]));
+    }
+    
     try {
-      const newProject = await apiService.createProject('New Project', '', areaId);
-      const projectEndTime = performance.now();
-      console.log(`⚡ Project creation total time: ${(projectEndTime - projectStartTime).toFixed(1)}ms`);
-      console.log('Created project:', newProject);
-      dispatch({ type: 'ADD_PROJECT', payload: newProject });
-      setEditingItem({ id: newProject.id, type: 'project', name: newProject.name });
-      if (areaId) {
-        setExpandedAreas(prev => new Set([...prev, areaId]));
-      }
+      // Create real project in background
+      const realProject = await apiService.createProject('New Project', '', areaId);
+      
+      // Replace optimistic project with real one
+      dispatch({ type: 'DELETE_PROJECT', payload: optimisticProject.id });
+      dispatch({ type: 'ADD_PROJECT', payload: realProject });
+      setEditingItem({ id: realProject.id, type: 'project', name: realProject.name });
+      
+      console.log('✅ Project created successfully:', realProject);
     } catch (error) {
       console.error('Failed to create project:', error);
+      
+      // Remove optimistic project on error
+      dispatch({ type: 'DELETE_PROJECT', payload: optimisticProject.id });
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to create project' });
+      setEditingItem(null);
     } finally {
-      setTimeout(() => setIsCreating(false), 500);
+      setIsCreating(false);
     }
   };
 

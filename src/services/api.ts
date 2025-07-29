@@ -656,11 +656,32 @@ class ApiService {
   }
 
   async createProject(name: string, description: string, areaId: string | undefined, token: string): Promise<Project> {
-    const response = await this.executeGoogleScript<Project>(token, 'createProject', [name, description, areaId]);
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to create project');
+    try {
+      const response = await fetch('/api/projects/create', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          name: name.trim(), 
+          description: description.trim(), 
+          areaId: areaId || null 
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create project');
+      }
+      
+      console.log('Project created successfully:', data);
+      return data.data;
+    } catch (error) {
+      console.error('Create project error:', error);
+      throw error;
     }
-    return response.data;
   }
 
   async createTask(title: string, description: string, projectId: string | undefined, context: string | undefined, dueDate: string | undefined, attachments: TaskAttachment[] | undefined, token: string): Promise<Task> {
