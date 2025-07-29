@@ -109,16 +109,50 @@ async function handleCreateProject(req, res, user, startTime) {
     console.log('📁 Creating drive folder...');
     const drive = google.drive({ version: 'v3', auth: authClient });
     
-    // Get master folder ID if available (from master-folder API memory)
+    // Get master folder ID - check multiple sources
     let parentFolderId = null;
     try {
+      // First try the in-memory storage
       const { masterFolderMap } = await import('../settings/master-folder.js');
       parentFolderId = masterFolderMap.get(user.email);
+      
+      // If not found in memory, try localStorage pattern by checking for existing folders
+      if (!parentFolderId) {
+        console.log('📁 No master folder in memory, searching for existing master folder...');
+        
+        // Search for a folder that might be the master folder
+        // Look for folders with common names like "Productivity App", "Projects", etc.
+        const searchQueries = [
+          "name='Productivity App' and mimeType='application/vnd.google-apps.folder' and trashed=false",
+          "name='Projects' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        ];
+        
+        for (const query of searchQueries) {
+          const searchResponse = await drive.files.list({
+            q: query,
+            fields: 'files(id,name)',
+            pageSize: 1
+          });
+          
+          if (searchResponse.data.files && searchResponse.data.files.length > 0) {
+            parentFolderId = searchResponse.data.files[0].id;
+            console.log(`📁 Found existing master folder: ${searchResponse.data.files[0].name} (${parentFolderId})`);
+            
+            // Store in memory for future use
+            masterFolderMap.set(user.email, parentFolderId);
+            break;
+          }
+        }
+      }
+      
       if (parentFolderId) {
         console.log(`📁 Creating project folder inside master folder: ${parentFolderId}`);
+      } else {
+        console.log('📁 No master folder found, creating in root drive');
       }
-    } catch {
-      console.log('📁 No master folder configured, creating in root drive');
+    } catch (error) {
+      console.log('📁 Error getting master folder:', error.message);
+      console.log('📁 Creating project folder in root drive');
     }
     
     // Create the project folder
@@ -636,6 +670,30 @@ async function handleUpdateProject(req, res, user, startTime) {
       values: [[name.trim()]]
     }
   });
+
+  // Also update the Google Drive folder name if it exists
+  const driveFolderId = project[5]; // Column F contains driveFolderId
+  if (driveFolderId && driveFolderId.trim()) {
+    try {
+      console.log(`📁 Updating Drive folder name from "${oldName}" to "${name.trim()}" (${driveFolderId})`);
+      
+      const drive = google.drive({ version: 'v3', auth: authClient });
+      await drive.files.update({
+        fileId: driveFolderId,
+        resource: {
+          name: name.trim()
+        },
+        supportsAllDrives: true
+      });
+      
+      console.log(`✅ Drive folder renamed successfully: ${driveFolderId}`);
+    } catch (driveError) {
+      console.error(`❌ Failed to rename Drive folder ${driveFolderId}:`, driveError);
+      // Continue anyway - spreadsheet update was successful
+    }
+  } else {
+    console.log('📁 No Drive folder ID found, skipping folder rename');
+  }
 
   const duration = Date.now() - startTime;
   console.log(`⚡ Project name update completed in ${duration}ms`);
