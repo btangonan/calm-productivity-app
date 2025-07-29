@@ -188,18 +188,20 @@ async function handleGetFiles(req, res) {
 }
 
 async function handleUploadFile(req, res) {
+  let user, projectId, fileName, fileContent, mimeType;
+
   try {
     const startTime = Date.now();
     
     // Authenticate user
-    const user = await validateGoogleToken(req.headers.authorization);
+    user = await validateGoogleToken(req.headers.authorization);
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
     console.log(`📤 File upload request from user: ${user.email}`);
 
-    const { projectId, fileName, fileContent, mimeType } = req.body;
+    ({ projectId, fileName, fileContent, mimeType } = req.body);
 
     if (!projectId || !fileName || !fileContent) {
       return res.status(400).json({ error: 'Project ID, file name, and file content are required' });

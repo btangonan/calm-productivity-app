@@ -276,6 +276,13 @@ const Sidebar = () => {
 
   const handleDeleteProject = async (projectId: string, projectName: string, e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // Prevent deleting a project that is still being created
+    if (projectId.startsWith('temp_')) {
+      dispatch({ type: 'SET_ERROR', payload: 'This project is still being created. Please wait a moment and try again.' });
+      return;
+    }
+
     if (window.confirm(`Are you sure you want to delete the project "${projectName}"?`)) {
       const userProfile = state.userProfile;
       if (!userProfile) {
