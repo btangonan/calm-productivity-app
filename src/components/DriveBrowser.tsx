@@ -72,7 +72,8 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
   }, [clickTimer]);
 
   const loadDriveFiles = async (folderId: string = 'root') => {
-    if (!userProfile?.id_token) {
+    const token = userProfile?.access_token || userProfile?.id_token;
+    if (!token) {
       setError('Please sign in to access Google Drive');
       setIsLoading(false);
       return;
@@ -184,17 +185,16 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
       setSelectedFileId(file.id);
       
       // Get file path for search results
-      if (isGlobalSearch && userProfile?.id_token) {
-        try {
-          const token = userProfile.access_token || userProfile.id_token;
-          if (!token) {
-            throw new Error('No authentication token available');
+      if (isGlobalSearch) {
+        const token = userProfile?.access_token || userProfile?.id_token;
+        if (token) {
+          try {
+            const pathData = await apiService.getFilePath(file.id, token);
+            const pathString = pathData.map(p => p.name).join(' > ');
+            setSelectedFilePath(pathString);
+          } catch (error) {
+            setSelectedFilePath('My Drive > ...');
           }
-          const pathData = await apiService.getFilePath(file.id, token);
-          const pathString = pathData.map(p => p.name).join(' > ');
-          setSelectedFilePath(pathString);
-        } catch (error) {
-          setSelectedFilePath('My Drive > ...');
         }
       }
       
@@ -283,11 +283,8 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
       setIsGlobalSearch(true);
       
       try {
-        if (userProfile?.id_token) {
-          const token = userProfile.access_token || userProfile.id_token;
-          if (!token) {
-            throw new Error('No authentication token available');
-          }
+        const token = userProfile?.access_token || userProfile?.id_token;
+        if (token) {
           const searchResults = await apiService.searchDriveFiles(query, token);
           const convertedResults: DriveFile[] = searchResults.map((file: any) => ({
             id: file.id,
