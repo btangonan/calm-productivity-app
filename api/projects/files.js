@@ -196,10 +196,24 @@ async function handleUploadFile(req, res) {
   try {
     const startTime = Date.now();
     
+    console.log('🔍 FILE UPLOAD AUTH DEBUG:', {
+      hasAuthHeader: !!req.headers.authorization,
+      authHeaderPrefix: req.headers.authorization?.substring(0, 20),
+      timestamp: new Date().toISOString()
+    });
+    
     // Authenticate user
     user = await validateGoogleToken(req.headers.authorization);
     if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      console.log('❌ FILE UPLOAD: Token validation failed');
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        debug: {
+          hasAuthHeader: !!req.headers.authorization,
+          tokenPrefix: req.headers.authorization?.substring(0, 20),
+          timestamp: new Date().toISOString()
+        }
+      });
     }
 
     console.log(`📤 File upload request from user: ${user.email}`);
