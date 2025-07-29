@@ -283,6 +283,38 @@ async function handleDeleteProject(req, res, user, startTime) {
   console.log(`✅ batchUpdate result:`, deleteResult.data);
   console.log(`📊 batchUpdate status: ${deleteResult.status}`);
 
+  // Verify the deletion worked by checking if the project still exists
+  try {
+    console.log(`🔍 Verifying deletion by re-checking spreadsheet...`);
+    const verifyResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+      range: 'Projects!A:H'
+    });
+    
+    const newProjectRows = verifyResponse.data.values || [];
+    const newDataRows = newProjectRows.slice(1);
+    const stillExists = newDataRows.find(row => row[0] === projectId);
+    
+    if (stillExists) {
+      console.error(`❌ DELETION FAILED: Project ${projectId} still exists after batchUpdate!`);
+      console.error(`❌ Project data: ${JSON.stringify(stillExists)}`);
+      return res.status(500).json({
+        success: false,
+        error: 'Project deletion failed - project still exists after deletion attempt',
+        projectId,
+        debug: {
+          stillExists: true,
+          projectData: stillExists
+        }
+      });
+    }
+    
+    console.log(`✅ Verification successful: Project ${projectId} no longer exists in spreadsheet`);
+  } catch (verifyError) {
+    console.error(`❌ Failed to verify deletion:`, verifyError);
+    // Continue anyway - the batchUpdate might have worked
+  }
+
   console.log(`✅ Project "${projectName}" deleted from spreadsheet`);
 
   // TODO: Also delete associated tasks if needed

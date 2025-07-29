@@ -274,33 +274,27 @@ const Sidebar = () => {
         return;
       }
 
-      // Optimistic update - remove from UI immediately
-      console.log(`Optimistically deleting project: ${projectName}`);
-      dispatch({ type: 'DELETE_PROJECT', payload: projectId });
       setShowOptionsDropdown(null);
 
       try {
+        console.log(`🗑️ Deleting project: ${projectName}`);
+        
         // Call backend API to delete project
         await apiService.deleteProject(projectId, userProfile.id_token);
-        console.log(`Successfully deleted project: ${projectName}`);
+        console.log(`✅ Backend deletion successful: ${projectName}`);
         
-        // Show success message briefly
-        dispatch({ 
-          type: 'SET_ERROR', 
-          payload: `Project "${projectName}" deleted successfully` 
-        });
+        // Wait a moment for backend to process the deletion
+        console.log('⏳ Waiting for backend deletion to complete...');
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
         // Force reload app data to ensure deletion is reflected
-        console.log('🔄 Forcing data reload after deletion...');
+        console.log('🔄 Reloading all data...');
         const appData = await apiService.loadAppData(userProfile.id_token);
         dispatch({ type: 'SET_AREAS', payload: appData.areas });
         dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
         dispatch({ type: 'SET_TASKS', payload: appData.tasks });
         
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          dispatch({ type: 'CLEAR_ERROR' });
-        }, 3000);
+        console.log('✅ Project deletion and reload completed');
         
       } catch (error) {
         console.error('Failed to delete project:', error);
