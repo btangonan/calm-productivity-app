@@ -185,12 +185,19 @@ const Sidebar = () => {
       }
       const token = userProfile.access_token || userProfile.id_token;
       
-      // Get the current name from the optimistic project (user may have edited it)
-      const currentProject = projects.find(p => p.id === optimisticProject.id);
-      const projectName = currentProject?.name || 'New Project';
-      
       // Create real project in background
-      const realProject = await apiService.createProject(projectName, '', areaId, token);
+      // Note: We get the current name right before the API call to catch any user edits
+      const realProject = await apiService.createProject(
+        (() => {
+          const currentProject = projects.find(p => p.id === optimisticProject.id);
+          const currentName = currentProject?.name || 'New Project';
+          console.log(`📝 Using current project name for API call: "${currentName}"`);
+          return currentName;
+        })(),
+        '', 
+        areaId, 
+        token
+      );
       
       // Replace optimistic project with real one
       dispatch({ type: 'DELETE_PROJECT', payload: optimisticProject.id });
