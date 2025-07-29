@@ -85,12 +85,13 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
 
       console.log('🔍 Loading Drive files for folder:', folderId);
       
-      // Use the real API to get Google Drive files
+      // Use the enhanced API to get Google Drive files
       const token = userProfile.access_token || userProfile.id_token;
       if (!token) {
         throw new Error('No authentication token available');
       }
-      const driveFiles = await apiService.listDriveFiles(folderId, token);
+      const driveResponse = await apiService.listDriveFiles(folderId, token);
+      const driveFiles = driveResponse.files || driveResponse || []; // Handle both new and legacy response formats
       
       console.log('📁 Received Drive files:', driveFiles.length, 'files');
       
