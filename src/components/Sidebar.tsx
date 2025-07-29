@@ -22,6 +22,7 @@ const Sidebar = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showMasterFolderSetup, setShowMasterFolderSetup] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [deleteProjectModal, setDeleteProjectModal] = useState<{show: boolean, projectId: string, projectName: string} | null>(null);
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -156,9 +157,9 @@ const Sidebar = () => {
   const createNewProject = async (areaId?: string) => {
     if (isCreating) return;
     setIsCreating(true);
-    console.log('🆕 Creating new project with optimistic update...', { areaId });
+    console.log('🆕 Creating new project (API call happens when user finishes editing)...', { areaId });
     
-    // Create optimistic project immediately
+    // Create optimistic project immediately - API call deferred until user stops editing
     const optimisticProject = {
       id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: 'New Project',
@@ -170,57 +171,15 @@ const Sidebar = () => {
       createdAt: new Date().toISOString()
     };
 
-    // Add to UI immediately
+    // Add to UI immediately and start editing
     dispatch({ type: 'ADD_PROJECT', payload: optimisticProject });
     setEditingItem({ id: optimisticProject.id, type: 'project', name: optimisticProject.name });
     if (areaId) {
       setExpandedAreas(prev => new Set([...prev, areaId]));
     }
     
-    try {
-      // Get authentication token
-      const userProfile = state.userProfile;
-      if (!userProfile) {
-        throw new Error('Not authenticated');
-      }
-      const token = userProfile.access_token || userProfile.id_token;
-      
-      // Get the user's current input (this is the source of truth)
-      const userCurrentName = editingItem?.id === optimisticProject.id && editingItem?.type === 'project' 
-        ? editingItem.name 
-        : (projects.find(p => p.id === optimisticProject.id)?.name || 'New Project');
-      
-      console.log(`📝 Creating real project with user's current name: "${userCurrentName}"`);
-      
-      const realProject = await apiService.createProject(userCurrentName, '', areaId, token);
-      
-      // Replace optimistic project with real one using user's current name
-      dispatch({ type: 'DELETE_PROJECT', payload: optimisticProject.id });
-      
-      // Create the real project in state with the user's current name (not API result name)
-      const projectWithUserName = { ...realProject, name: userCurrentName };
-      dispatch({ type: 'ADD_PROJECT', payload: projectWithUserName });
-      
-      // Update editing state to point to real project ID, preserving user's current input
-      if (editingItem?.id === optimisticProject.id && editingItem?.type === 'project') {
-        console.log(`👤 User still editing - seamless transition to real project ID`);
-        setEditingItem({ id: realProject.id, type: 'project', name: editingItem.name });
-      } else {
-        console.log(`✅ User finished editing - using user's final name: "${userCurrentName}"`);
-        setEditingItem({ id: realProject.id, type: 'project', name: userCurrentName });
-      }
-      
-      console.log('✅ Project created successfully:', realProject);
-    } catch (error) {
-      console.error('Failed to create project:', error);
-      
-      // Remove optimistic project on error
-      dispatch({ type: 'DELETE_PROJECT', payload: optimisticProject.id });
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to create project' });
-      setEditingItem(null);
-    } finally {
-      setIsCreating(false);
-    }
+    // API call will happen in saveItemName when user finishes editing
+    setIsCreating(false);
   };
 
   const saveItemName = async (id: string, type: 'area' | 'project', newName: string) => {
@@ -245,8 +204,9 @@ const Sidebar = () => {
           const updatedProject = { ...project, name: newName.trim() };
           dispatch({ type: 'UPDATE_PROJECT', payload: updatedProject });
           
-          // Only sync with backend if this is not a temporary project
+          // Handle backend sync based on project type
           if (!id.startsWith('temp_')) {
+            // Regular project - update name in backend
             try {
               const token = userProfile.access_token || userProfile.id_token;
               if (!token) {
@@ -261,8 +221,28 @@ const Sidebar = () => {
               dispatch({ type: 'SET_ERROR', payload: 'Failed to update project name' });
             }
           } else {
-            console.log(`📝 Skipping backend sync for temporary project: ${id}`);
-            // The name will be used when the real project is created
+            // Temporary project - create real project now with user's chosen name
+            console.log(`🚀 Converting temp project to real project with name: "${newName.trim()}"`);
+            try {
+              const token = userProfile.access_token || userProfile.id_token;
+              if (!token) {
+                throw new Error('No authentication token available');
+              }
+              
+              // Create real project with user's chosen name (this is the source of truth)
+              const realProject = await apiService.createProject(newName.trim(), '', project.areaId, token);
+              
+              // Replace temp project with real one, preserving user's name as source of truth
+              dispatch({ type: 'DELETE_PROJECT', payload: id });
+              dispatch({ type: 'ADD_PROJECT', payload: { ...realProject, name: newName.trim() } });
+              
+              console.log(`✅ Successfully created real project: "${newName.trim()}"`);
+            } catch (apiError) {
+              console.error('Failed to create real project:', apiError);
+              // Keep temp project and show error
+              dispatch({ type: 'SET_ERROR', payload: 'Failed to create project. Please try again.' });
+              return; // Don't clear editing state on error
+            }
           }
         }
       }
@@ -300,53 +280,64 @@ const Sidebar = () => {
       return;
     }
 
-    if (window.confirm(`Are you sure you want to delete the project "${projectName}"?`)) {
+    // Show custom delete modal instead of browser confirm
+    setShowOptionsDropdown(null);
+    setDeleteProjectModal({ show: true, projectId, projectName });
+  };
+
+  const confirmDeleteProject = async () => {
+    if (!deleteProjectModal) return;
+    
+    const { projectId, projectName } = deleteProjectModal;
+    
+    try {
       const userProfile = state.userProfile;
       if (!userProfile) {
         dispatch({ type: 'SET_ERROR', payload: 'Not authenticated' });
+        setDeleteProjectModal(null);
         return;
       }
 
-      setShowOptionsDropdown(null);
-
-      try {
-        console.log(`🗑️ Deleting project: ${projectName}`);
-        
-        // Get authentication token
-        const token = userProfile.access_token || userProfile.id_token;
-        if (!token) {
-          throw new Error('No authentication token available');
-        }
-
-        // First dispatch the DELETE_PROJECT action to handle UI state immediately
-        // This will automatically redirect to inbox if the deleted project was selected
-        dispatch({ type: 'DELETE_PROJECT', payload: projectId });
-        console.log(`🔄 UI updated to remove project: ${projectName}`);
-        
-        // Call backend API to delete project
-        await apiService.deleteProject(projectId, token);
-        console.log(`✅ Backend deletion successful: ${projectName}`);
-        
-        // Wait a moment for backend to process the deletion
-        console.log('⏳ Waiting for backend deletion to complete...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Reload fresh data to ensure everything is in sync
-        console.log('🔄 Reloading fresh data...');
-        const appData = await apiService.loadAppData(token);
-        dispatch({ type: 'SET_AREAS', payload: appData.areas });
-        dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
-        dispatch({ type: 'SET_TASKS', payload: appData.tasks });
-        
-        console.log('✅ Project deletion and data refresh completed');
-        
-      } catch (error) {
-        console.error('Failed to delete project:', error);
-        dispatch({ 
-          type: 'SET_ERROR', 
-          payload: `Failed to delete project "${projectName}". Please try again.` 
-        });
+      console.log(`🗑️ Deleting project: ${projectName}`);
+      
+      // Get authentication token
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
       }
+
+      // Close modal first
+      setDeleteProjectModal(null);
+
+      // First dispatch the DELETE_PROJECT action to handle UI state immediately
+      // This will automatically redirect to inbox if the deleted project was selected
+      dispatch({ type: 'DELETE_PROJECT', payload: projectId });
+      console.log(`🔄 UI updated to remove project: ${projectName}`);
+      
+      // Call backend API to delete project
+      await apiService.deleteProject(projectId, token);
+      console.log(`✅ Backend deletion successful: ${projectName}`);
+      
+      // Wait a moment for backend to process the deletion
+      console.log('⏳ Waiting for backend deletion to complete...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Reload fresh data to ensure everything is in sync
+      console.log('🔄 Reloading fresh data...');
+      const appData = await apiService.loadAppData(token);
+      dispatch({ type: 'SET_AREAS', payload: appData.areas });
+      dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
+      dispatch({ type: 'SET_TASKS', payload: appData.tasks });
+      
+      console.log('✅ Project deletion and data refresh completed');
+      
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: `Failed to delete project "${projectName}". Please try again.` 
+      });
+      setDeleteProjectModal(null);
     }
   };
 
@@ -946,6 +937,43 @@ const Sidebar = () => {
                   className="flex-1 px-4 py-2 bg-red-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
                   Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Project Confirmation Modal */}
+      {deleteProjectModal?.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Project</h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Are you sure you want to delete the project "{deleteProjectModal.projectName}"? This action cannot be undone and will remove all associated tasks and files.
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setDeleteProjectModal(null)}
+                  className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteProject}
+                  className="flex-1 px-4 py-2 bg-red-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Delete Project
                 </button>
               </div>
             </div>
