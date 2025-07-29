@@ -185,28 +185,29 @@ const Sidebar = () => {
       }
       const token = userProfile.access_token || userProfile.id_token;
       
-      // Create real project in background using current name
-      const currentProject = projects.find(p => p.id === optimisticProject.id);
-      const projectName = currentProject?.name || 'New Project';
-      console.log(`📝 Creating real project with name: "${projectName}"`);
+      // Get the user's current input (this is the source of truth)
+      const userCurrentName = editingItem?.id === optimisticProject.id && editingItem?.type === 'project' 
+        ? editingItem.name 
+        : (projects.find(p => p.id === optimisticProject.id)?.name || 'New Project');
       
-      const realProject = await apiService.createProject(projectName, '', areaId, token);
+      console.log(`📝 Creating real project with user's current name: "${userCurrentName}"`);
       
-      // Replace optimistic project with real one, BUT preserve user's current edit state
+      const realProject = await apiService.createProject(userCurrentName, '', areaId, token);
+      
+      // Replace optimistic project with real one using user's current name
       dispatch({ type: 'DELETE_PROJECT', payload: optimisticProject.id });
-      dispatch({ type: 'ADD_PROJECT', payload: realProject });
       
-      // Check if user is still editing this project - if so, preserve their current input
+      // Create the real project in state with the user's current name (not API result name)
+      const projectWithUserName = { ...realProject, name: userCurrentName };
+      dispatch({ type: 'ADD_PROJECT', payload: projectWithUserName });
+      
+      // Update editing state to point to real project ID, preserving user's current input
       if (editingItem?.id === optimisticProject.id && editingItem?.type === 'project') {
-        console.log(`👤 User still editing - preserving current input: "${editingItem.name}"`);
-        // Update the editing state to point to the new real project ID but keep user's current name
+        console.log(`👤 User still editing - seamless transition to real project ID`);
         setEditingItem({ id: realProject.id, type: 'project', name: editingItem.name });
-        // Also update the project in state with user's current name (this is the source of truth)
-        const updatedProject = { ...realProject, name: editingItem.name };
-        dispatch({ type: 'UPDATE_PROJECT', payload: updatedProject });
       } else {
-        console.log(`✅ User finished editing - using API result name: "${realProject.name}"`);
-        setEditingItem({ id: realProject.id, type: 'project', name: realProject.name });
+        console.log(`✅ User finished editing - using user's final name: "${userCurrentName}"`);
+        setEditingItem({ id: realProject.id, type: 'project', name: userCurrentName });
       }
       
       console.log('✅ Project created successfully:', realProject);
