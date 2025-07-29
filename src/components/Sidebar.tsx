@@ -305,22 +305,27 @@ const Sidebar = () => {
           throw new Error('No authentication token available');
         }
 
+        // First dispatch the DELETE_PROJECT action to handle UI state immediately
+        // This will automatically redirect to inbox if the deleted project was selected
+        dispatch({ type: 'DELETE_PROJECT', payload: projectId });
+        console.log(`🔄 UI updated to remove project: ${projectName}`);
+        
         // Call backend API to delete project
         await apiService.deleteProject(projectId, token);
         console.log(`✅ Backend deletion successful: ${projectName}`);
         
         // Wait a moment for backend to process the deletion
         console.log('⏳ Waiting for backend deletion to complete...');
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Force reload app data to ensure deletion is reflected
-        console.log('🔄 Reloading all data...');
+        // Reload fresh data to ensure everything is in sync
+        console.log('🔄 Reloading fresh data...');
         const appData = await apiService.loadAppData(token);
         dispatch({ type: 'SET_AREAS', payload: appData.areas });
         dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
         dispatch({ type: 'SET_TASKS', payload: appData.tasks });
         
-        console.log('✅ Project deletion and reload completed');
+        console.log('✅ Project deletion and data refresh completed');
         
       } catch (error) {
         console.error('Failed to delete project:', error);
