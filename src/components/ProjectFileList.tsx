@@ -358,9 +358,12 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
     try {
       const newWindow = window.open(file.url, '_blank', 'noopener,noreferrer');
       if (!newWindow) {
-        // Fallback if popup blocked
-        console.warn('Popup blocked, trying direct navigation');
-        window.location.href = file.url;
+        // Popup blocked - show user message instead of navigating current page
+        console.warn('Popup blocked - unable to open file in new tab');
+        dispatch({ 
+          type: 'SET_ERROR', 
+          payload: `Popup blocked. Please allow popups or manually open: ${file.name}` 
+        });
       }
     } catch (error) {
       console.error('Failed to open file:', error);
