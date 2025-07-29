@@ -1,4 +1,5 @@
 import { validateGoogleToken } from '../utils/google-auth.js';
+import { Readable } from 'stream';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -273,7 +274,7 @@ async function handleUploadFile(req, res) {
 
     const media = {
       mimeType: mimeType || 'application/octet-stream',
-      body: buffer
+      body: Readable.from(buffer)
     };
 
     const fileResponse = await drive.files.create({
