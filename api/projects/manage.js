@@ -538,7 +538,23 @@ async function handleUpdateProject(req, res, user, startTime) {
   if (projectIndex === -1) {
     console.log(`❌ Project ${projectId} not found in data for update`);
     console.log(`🔍 All project IDs: ${dataRows.map(row => row[0]).join(', ')}`);
-    return res.status(404).json({ error: 'Project not found' });
+    
+    // Check if this is a temporary project ID (optimistic update)
+    if (projectId.startsWith('temp_')) {
+      console.log(`📝 Detected temporary project ID: ${projectId} - this may be an optimistic update`);
+      return res.status(202).json({ 
+        success: false,
+        error: 'Project is still being created. Please wait and try again.',
+        isTemporary: true,
+        projectId 
+      });
+    }
+    
+    return res.status(404).json({ 
+      error: 'Project not found',
+      projectId,
+      available: dataRows.map(row => row[0])
+    });
   }
 
   const project = dataRows[projectIndex];

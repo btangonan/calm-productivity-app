@@ -185,8 +185,12 @@ const Sidebar = () => {
       }
       const token = userProfile.access_token || userProfile.id_token;
       
+      // Get the current name from the optimistic project (user may have edited it)
+      const currentProject = projects.find(p => p.id === optimisticProject.id);
+      const projectName = currentProject?.name || 'New Project';
+      
       // Create real project in background
-      const realProject = await apiService.createProject('New Project', '', areaId, token);
+      const realProject = await apiService.createProject(projectName, '', areaId, token);
       
       // Replace optimistic project with real one
       dispatch({ type: 'DELETE_PROJECT', payload: optimisticProject.id });
@@ -228,15 +232,20 @@ const Sidebar = () => {
           const updatedProject = { ...project, name: newName.trim() };
           dispatch({ type: 'UPDATE_PROJECT', payload: updatedProject });
           
-          // Sync with backend and Google Drive
-          try {
-            await apiService.updateProjectName(id, newName.trim(), userProfile.id_token);
-            console.log(`✅ Updated project name and synced Google Drive folder: "${newName.trim()}"`);
-          } catch (apiError) {
-            console.error('Failed to sync project name with backend:', apiError);
-            // Revert optimistic update on error
-            dispatch({ type: 'UPDATE_PROJECT', payload: project });
-            dispatch({ type: 'SET_ERROR', payload: 'Failed to update project name' });
+          // Only sync with backend if this is not a temporary project
+          if (!id.startsWith('temp_')) {
+            try {
+              await apiService.updateProjectName(id, newName.trim(), userProfile.id_token);
+              console.log(`✅ Updated project name and synced Google Drive folder: "${newName.trim()}"`);
+            } catch (apiError) {
+              console.error('Failed to sync project name with backend:', apiError);
+              // Revert optimistic update on error
+              dispatch({ type: 'UPDATE_PROJECT', payload: project });
+              dispatch({ type: 'SET_ERROR', payload: 'Failed to update project name' });
+            }
+          } else {
+            console.log(`📝 Skipping backend sync for temporary project: ${id}`);
+            // The name will be used when the real project is created
           }
         }
       }
