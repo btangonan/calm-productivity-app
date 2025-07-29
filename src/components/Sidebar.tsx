@@ -23,6 +23,7 @@ const Sidebar = () => {
   const [showMasterFolderSetup, setShowMasterFolderSetup] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [deleteProjectModal, setDeleteProjectModal] = useState<{show: boolean, projectId: string, projectName: string} | null>(null);
+  const [processingTempProjects, setProcessingTempProjects] = useState<Set<string>>(new Set());
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -222,7 +223,17 @@ const Sidebar = () => {
             }
           } else {
             // Temporary project - create real project now with user's chosen name
+            // Guard against multiple API calls for the same temp project
+            if (processingTempProjects.has(id)) {
+              console.log(`⏭️ Skipping duplicate conversion for temp project: ${id}`);
+              return;
+            }
+            
             console.log(`🚀 Converting temp project to real project with name: "${newName.trim()}"`);
+            
+            // Mark this temp project as being processed
+            setProcessingTempProjects(prev => new Set([...prev, id]));
+            
             try {
               const token = userProfile.access_token || userProfile.id_token;
               if (!token) {
@@ -237,8 +248,22 @@ const Sidebar = () => {
               dispatch({ type: 'ADD_PROJECT', payload: { ...realProject, name: newName.trim() } });
               
               console.log(`✅ Successfully created real project: "${newName.trim()}"`);
+              
+              // Remove from processing set
+              setProcessingTempProjects(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(id);
+                return newSet;
+              });
+              
             } catch (apiError) {
               console.error('Failed to create real project:', apiError);
+              // Remove from processing set on error
+              setProcessingTempProjects(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(id);
+                return newSet;
+              });
               // Keep temp project and show error
               dispatch({ type: 'SET_ERROR', payload: 'Failed to create project. Please try again.' });
               return; // Don't clear editing state on error
