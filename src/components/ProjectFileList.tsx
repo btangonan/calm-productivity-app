@@ -520,13 +520,9 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
                       {getFileIcon(file.mimeType, file.name)}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <button
-                        onClick={() => handleFileOpen(file)}
-                        className="text-sm font-medium text-gray-900 hover:text-primary-600 truncate block text-left w-full"
-                        title={`Click to open ${file.name}`}
-                      >
+                      <div className="text-sm font-medium text-gray-900 truncate">
                         {file.name}
-                      </button>
+                      </div>
                       <div className="flex items-center mt-1 text-xs text-gray-500 space-x-2">
                         <span>{formatFileSize(file.size)}</span>
                         <span>•</span>
@@ -536,7 +532,10 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => handleFileOpen(file)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFileOpen(file);
+                      }}
                       className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-600 transition-opacity"
                       title="Open file"
                     >
@@ -545,7 +544,10 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleFileDelete(file.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFileDelete(file.id);
+                      }}
                       className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
                       title="Delete file"
                     >
@@ -570,28 +572,30 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
                       </span>
                     </div>
                   )}
-                  <button
-                    onClick={() => handleFileOpen(file)}
-                    className="text-sm font-medium text-gray-900 hover:text-primary-600 truncate block text-left w-full"
-                    title={`Click to open ${file.name}`}
-                  >
+                  <div className="text-sm font-medium text-gray-900 truncate text-center">
                     {file.name}
-                  </button>
+                  </div>
                   <div className="text-xs text-gray-500 mt-1">
                     {formatFileSize(file.size)}
                   </div>
                   <div className="flex items-center justify-center space-x-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={() => handleFileOpen(file)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFileOpen(file);
+                      }}
                       className="p-1 text-gray-400 hover:text-primary-600"
                       title="Open file"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleFileDelete(file.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFileDelete(file.id);
+                      }}
                       className="p-1 text-gray-400 hover:text-red-600"
                       title="Delete file"
                     >
