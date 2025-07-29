@@ -225,17 +225,35 @@ async function handleUploadFile(req, res) {
 
     // Get the project's drive folder ID
     console.log('🔍 Looking up project drive folder...');
+    console.log('🔍 SHEETS_ID:', process.env.GOOGLE_SHEETS_ID ? 'Present' : 'Missing');
+    
     const projectsResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEETS_ID,
       range: 'Projects!A:H',
     });
 
+    console.log('🔍 Projects response rows:', projectsResponse.data.values?.length || 0);
     const projects = (projectsResponse.data.values || []).slice(1);
     const project = projects.find(row => row[0] === projectId);
+    
+    console.log('🔍 Found project:', project ? 'Yes' : 'No');
+    console.log('🔍 Project drive data:', project ? { 
+      driveFolderId: project[5], 
+      driveFolderUrl: project[6] 
+    } : 'N/A');
 
     if (!project || !project[5]) {
       console.log(`❌ No Drive folder found for project: ${projectId}`);
-      return res.status(400).json({ error: 'No Drive folder configured for this project' });
+      console.log(`❌ Available projects: ${projects.map(p => p[0]).join(', ')}`);
+      return res.status(400).json({ 
+        error: 'No Drive folder configured for this project',
+        debug: {
+          projectId,
+          availableProjects: projects.map(p => p[0]),
+          projectFound: !!project,
+          hasDriveFolder: !!(project && project[5])
+        }
+      });
     }
 
     const driveFolderId = getDriveFolderIdFromUrl(project[5]) || project[5];
@@ -292,17 +310,33 @@ async function handleUploadFile(req, res) {
     });
 
   } catch (error) {
-    console.error('Upload file error:', error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('❌ DETAILED UPLOAD ERROR:', {
+      errorName: error.name,
+      errorMessage: error.message,
+      errorStack: error.stack,
+      projectId,
+      fileName,
+      fileContentLength: fileContent?.length,
+      mimeType,
+      userEmail: user.email,
+      timestamp: new Date().toISOString()
+    });
     
+    // Return detailed error for debugging
     return res.status(500).json({
       success: false,
       error: 'Failed to upload file',
-      errorType: error.name,
-      errorMessage: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      debug: {
+        errorType: error.name,
+        errorMessage: error.message,
+        projectId,
+        fileName,
+        fileSize: fileContent?.length,
+        userEmail: user.email,
+        timestamp: new Date().toISOString(),
+        // Include stack trace in development
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      }
     });
   }
 }

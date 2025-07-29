@@ -1033,6 +1033,13 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('🔥 DETAILED UPLOAD ERROR RESPONSE:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          projectId,
+          fileName: file.name
+        });
         throw new Error(errorData.error || `HTTP ${response.status}: Failed to upload file`);
       }
 

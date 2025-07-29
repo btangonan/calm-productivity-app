@@ -1,13 +1,20 @@
 import { validateGoogleToken } from '../utils/google-auth.js';
 
 export default async function handler(req, res) {
+  console.log(`🔍 PROJECTS/MANAGE REQUEST: ${req.method} ${req.url}`);
+  console.log(`🔍 Headers:`, req.headers.authorization ? 'Auth Present' : 'No Auth');
+  console.log(`🔍 Query:`, req.query);
+  console.log(`🔍 Body:`, req.body);
+
   try {
     // Authenticate user for all operations
     const user = await validateGoogleToken(req.headers.authorization);
     if (!user) {
+      console.log(`❌ Authentication failed for ${req.method} request`);
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    console.log(`✅ User authenticated: ${user.email}`);
     const startTime = Date.now();
 
     if (req.method === 'POST' && req.query.action === 'fix-drive-folders') {
