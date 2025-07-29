@@ -220,19 +220,24 @@ async function handleDeleteProject(req, res, user, startTime) {
 
   // Find project in data rows (excluding header)
   const dataRows = projectRows.slice(1);
+  console.log(`🔍 Looking for project ${projectId} in ${dataRows.length} rows`);
+  console.log(`🔍 First few project IDs: ${dataRows.slice(0, 3).map(row => row[0]).join(', ')}`);
+  
   const projectIndex = dataRows.findIndex(row => row[0] === projectId);
 
   if (projectIndex === -1) {
+    console.log(`❌ Project ${projectId} not found in data`);
+    console.log(`🔍 All project IDs: ${dataRows.map(row => row[0]).join(', ')}`);
     return res.status(404).json({ error: 'Project not found' });
   }
 
   const project = dataRows[projectIndex];
   const projectName = project[1];
-  console.log(`📁 Found project "${projectName}" to delete`);
+  console.log(`📁 Found project "${projectName}" at index ${projectIndex} to delete`);
 
   // Delete the project row from the spreadsheet  
   const actualRowIndex = projectIndex + 2; // +1 for header, +1 for 0-based index
-  console.log(`📊 Deleting project row ${actualRowIndex}`);
+  console.log(`📊 Deleting project row ${actualRowIndex} (projectIndex: ${projectIndex} + 2)`);
 
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: process.env.GOOGLE_SHEETS_ID,
@@ -465,15 +470,20 @@ async function handleUpdateProject(req, res, user, startTime) {
 
   // Find project in data rows (excluding header)
   const dataRows = projectRows.slice(1);
+  console.log(`🔍 Looking for project ${projectId} in ${dataRows.length} rows for update`);
+  console.log(`🔍 First few project IDs: ${dataRows.slice(0, 3).map(row => row[0]).join(', ')}`);
+  
   const projectIndex = dataRows.findIndex(row => row[0] === projectId);
 
   if (projectIndex === -1) {
+    console.log(`❌ Project ${projectId} not found in data for update`);
+    console.log(`🔍 All project IDs: ${dataRows.map(row => row[0]).join(', ')}`);
     return res.status(404).json({ error: 'Project not found' });
   }
 
   const project = dataRows[projectIndex];
   const oldName = project[1];
-  console.log(`📁 Found project "${oldName}" to update`);
+  console.log(`📁 Found project "${oldName}" at index ${projectIndex} to update`);
 
   // Update the project name in the spreadsheet  
   const actualRowIndex = projectIndex + 2; // +1 for header, +1 for 0-based index
