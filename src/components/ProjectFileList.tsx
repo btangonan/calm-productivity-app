@@ -189,12 +189,33 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
         }
       }
 
-      // Refresh file list after upload with a small delay to ensure files are indexed
-      console.log('Refreshing file list after upload...');
-      setTimeout(async () => {
+      console.log(`✅ Successfully uploaded ${files.length} files`);
+
+      // Refresh file list after upload - try immediately and with delay as fallback  
+      console.log('🔄 Refreshing file list after upload...');
+      
+      // Immediate refresh
+      try {
         await fetchProjectFiles();
-        console.log('File list refreshed');
-      }, 1000);
+        console.log('✅ File list refreshed immediately after upload');
+      } catch (immediateRefreshError) {
+        console.warn('⚠️ Immediate refresh failed, trying delayed refresh:', immediateRefreshError);
+        
+        // Fallback: delayed refresh
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Starting delayed file list refresh after upload...');
+            await fetchProjectFiles();
+            console.log('✅ File list refreshed successfully after delayed refresh');
+          } catch (delayedRefreshError) {
+            console.error('❌ Both immediate and delayed refresh failed:', delayedRefreshError);
+            dispatch({ 
+              type: 'SET_ERROR', 
+              payload: 'Files uploaded but failed to refresh list. Please refresh the page.' 
+            });
+          }
+        }, 2000);
+      }
       
       // Clear progress after a brief delay
       setTimeout(() => {

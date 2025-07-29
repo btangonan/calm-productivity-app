@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useProjectTabs } from '../hooks/useProjectTabs';
 import DraggableTaskList from './DraggableTaskList';
 import ProjectFileList from './ProjectFileList';
@@ -11,6 +11,7 @@ interface ProjectTabsProps {
 export default function ProjectTabs({ projectId }: ProjectTabsProps) {
   const { activeTab, changeTab, error, clearError } = useProjectTabs(projectId);
   const { state } = useApp();
+  const [fileRefreshTrigger, setFileRefreshTrigger] = useState(0);
   
   const project = state.projects.find(p => p.id === projectId);
   
@@ -66,7 +67,7 @@ export default function ProjectTabs({ projectId }: ProjectTabsProps) {
           <div className="p-6">
             <ProjectFileList 
               projectId={projectId}
-              refreshTrigger={0}
+              refreshTrigger={fileRefreshTrigger}
             />
           </div>
         )}
