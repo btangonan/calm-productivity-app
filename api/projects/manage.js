@@ -207,6 +207,24 @@ async function handleDeleteProject(req, res, user, startTime) {
   const authClient = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: authClient });
 
+  // Get sheet metadata to find the correct sheet ID
+  const sheetResponse = await sheets.spreadsheets.get({
+    spreadsheetId: process.env.GOOGLE_SHEETS_ID
+  });
+  
+  const projectsSheet = sheetResponse.data.sheets.find(sheet => 
+    sheet.properties.title === 'Projects'
+  );
+  
+  if (!projectsSheet) {
+    console.error(`❌ Projects sheet not found! Available sheets:`, 
+      sheetResponse.data.sheets.map(s => s.properties.title));
+    return res.status(500).json({ error: 'Projects sheet not found' });
+  }
+  
+  const projectsSheetId = projectsSheet.properties.sheetId;
+  console.log(`📊 Found Projects sheet with ID: ${projectsSheetId}`);
+
   // Get all projects to find the row to delete
   const projectsResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEETS_ID,
@@ -239,13 +257,20 @@ async function handleDeleteProject(req, res, user, startTime) {
   const actualRowIndex = projectIndex + 2; // +1 for header, +1 for 0-based index
   console.log(`📊 Deleting project row ${actualRowIndex} (projectIndex: ${projectIndex} + 2)`);
 
-  await sheets.spreadsheets.batchUpdate({
+  console.log(`📊 About to delete row with batchUpdate:`, {
+    spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+    sheetId: projectsSheetId,
+    startIndex: actualRowIndex - 1,
+    endIndex: actualRowIndex
+  });
+
+  const deleteResult = await sheets.spreadsheets.batchUpdate({
     spreadsheetId: process.env.GOOGLE_SHEETS_ID,
     resource: {
       requests: [{
         deleteDimension: {
           range: {
-            sheetId: 0, // Assuming Projects is the first sheet
+            sheetId: projectsSheetId, // Use the correct sheet ID
             dimension: 'ROWS',
             startIndex: actualRowIndex - 1,
             endIndex: actualRowIndex
@@ -254,6 +279,9 @@ async function handleDeleteProject(req, res, user, startTime) {
       }]
     }
   });
+
+  console.log(`✅ batchUpdate result:`, deleteResult.data);
+  console.log(`📊 batchUpdate status: ${deleteResult.status}`);
 
   console.log(`✅ Project "${projectName}" deleted from spreadsheet`);
 
