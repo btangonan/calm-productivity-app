@@ -130,7 +130,12 @@ const DraggableTaskList = () => {
           {currentView !== 'logbook' && (
             <button 
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              onClick={() => setShowTaskForm(true)}
+              onClick={() => {
+                console.log('🖱️ Add Task button clicked in DraggableTaskList - zero tasks view');
+                console.log('Current state:', { currentView, selectedProjectId, showTaskForm });
+                setShowTaskForm(true);
+                console.log('✅ setShowTaskForm(true) called');
+              }}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -170,10 +175,17 @@ const DraggableTaskList = () => {
       
       {showTaskForm && (
         <TaskForm 
-          onClose={() => setShowTaskForm(false)}
-          onSubmit={() => setShowTaskForm(false)}
+          onClose={() => {
+            console.log('📝 TaskForm onClose called in DraggableTaskList');
+            setShowTaskForm(false);
+          }}
+          onSubmit={() => {
+            console.log('📝 TaskForm onSubmit called in DraggableTaskList');
+            setShowTaskForm(false);
+          }}
         />
       )}
+      {console.log('🔍 DraggableTaskList render - showTaskForm:', showTaskForm)}
     </>
   );
 };

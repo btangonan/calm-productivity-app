@@ -105,6 +105,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
         );
         
         dispatch({ type: 'UPDATE_TASK', payload: backendUpdatedTask });
+        
+        // Close form immediately for better UX
+        onSubmit?.();
+        onClose();
       } else {
         // Create new task
         const userProfile = state.userProfile;
