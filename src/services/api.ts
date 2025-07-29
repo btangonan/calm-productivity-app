@@ -1009,18 +1009,49 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
   }
 
   async uploadFileToProject(projectId: string, file: File, token: string): Promise<ProjectFile> {
-    // Convert File to base64 for Google Apps Script
-    const fileContent = await this.fileToBase64(file);
-    const response = await this.executeGoogleScript<ProjectFile>(token, 'uploadFileToProject', [
-      projectId, 
-      file.name, 
-      fileContent, 
-      file.type
-    ]);
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to upload file');
+    const startTime = performance.now();
+    console.log(`📤 Starting file upload: ${file.name} to project: ${projectId}`);
+
+    try {
+      // Convert File to base64
+      const fileContent = await this.fileToBase64(file);
+      
+      // Use Vercel API endpoint instead of Google Apps Script
+      const response = await fetch(`/api/projects/files`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          projectId,
+          fileName: file.name,
+          fileContent,
+          mimeType: file.type
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to upload file`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to upload file');
+      }
+
+      const duration = performance.now() - startTime;
+      console.log(`⚡ uploadFileToProject execution time: ${duration.toFixed(1)}ms`);
+      
+      return result.data;
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      console.log(`⚡ uploadFileToProject execution time: ${duration.toFixed(1)}ms`);
+      console.error(`Failed to upload ${file.name}:`, error);
+      throw error;
     }
-    return response.data;
   }
 
   private fileToBase64(file: File): Promise<string> {

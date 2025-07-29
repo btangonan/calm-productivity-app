@@ -1,9 +1,16 @@
 import { validateGoogleToken } from '../utils/google-auth.js';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
+  if (req.method === 'GET') {
+    return await handleGetFiles(req, res);
+  } else if (req.method === 'POST') {
+    return await handleUploadFile(req, res);
+  } else {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+}
+
+async function handleGetFiles(req, res) {
 
   try {
     const startTime = Date.now();
@@ -173,6 +180,126 @@ export default async function handler(req, res) {
     return res.status(500).json({
       success: false,
       error: 'Failed to fetch project files',
+      errorType: error.name,
+      errorMessage: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+}
+
+async function handleUploadFile(req, res) {
+  try {
+    const startTime = Date.now();
+    
+    // Authenticate user
+    const user = await validateGoogleToken(req.headers.authorization);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    console.log(`📤 File upload request from user: ${user.email}`);
+
+    const { projectId, fileName, fileContent, mimeType } = req.body;
+
+    if (!projectId || !fileName || !fileContent) {
+      return res.status(400).json({ error: 'Project ID, file name, and file content are required' });
+    }
+
+    console.log(`📤 Uploading file: ${fileName} to project: ${projectId}`);
+
+    // Initialize Google APIs
+    const { google } = await import('googleapis');
+    const { GoogleAuth } = await import('google-auth-library');
+    
+    const auth = new GoogleAuth({
+      credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
+      scopes: [
+        'https://www.googleapis.com/auth/spreadsheets.readonly',
+        'https://www.googleapis.com/auth/drive'
+      ],
+    });
+
+    const authClient = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: authClient });
+    const drive = google.drive({ version: 'v3', auth: authClient });
+
+    // Get the project's drive folder ID
+    console.log('🔍 Looking up project drive folder...');
+    const projectsResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+      range: 'Projects!A:H',
+    });
+
+    const projects = (projectsResponse.data.values || []).slice(1);
+    const project = projects.find(row => row[0] === projectId);
+
+    if (!project || !project[5]) {
+      console.log(`❌ No Drive folder found for project: ${projectId}`);
+      return res.status(400).json({ error: 'No Drive folder configured for this project' });
+    }
+
+    const driveFolderId = getDriveFolderIdFromUrl(project[5]) || project[5];
+    console.log(`📁 Using Drive folder: ${driveFolderId}`);
+
+    // Convert base64 content to buffer
+    const buffer = Buffer.from(fileContent, 'base64');
+    
+    // Create file in Drive
+    console.log(`📤 Creating file in Drive...`);
+    const fileMetadata = {
+      name: fileName,
+      parents: [driveFolderId]
+    };
+
+    const media = {
+      mimeType: mimeType || 'application/octet-stream',
+      body: buffer
+    };
+
+    const fileResponse = await drive.files.create({
+      resource: fileMetadata,
+      media: media,
+      fields: 'id,name,mimeType,size,createdTime,modifiedTime,webViewLink'
+    });
+
+    const uploadedFile = fileResponse.data;
+    console.log(`✅ File uploaded successfully: ${uploadedFile.id}`);
+
+    // Format response to match expected ProjectFile interface
+    const projectFile = {
+      id: uploadedFile.id,
+      name: uploadedFile.name,
+      type: getFileType(uploadedFile.mimeType),
+      mimeType: uploadedFile.mimeType,
+      size: parseInt(uploadedFile.size) || buffer.length,
+      createdAt: uploadedFile.createdTime || new Date().toISOString(),
+      modifiedAt: uploadedFile.modifiedTime || new Date().toISOString(),
+      webViewLink: uploadedFile.webViewLink,
+      downloadUrl: `https://drive.google.com/uc?id=${uploadedFile.id}&export=download`,
+      isFolder: false
+    };
+
+    const duration = Date.now() - startTime;
+    console.log(`⚡ File upload completed in ${duration}ms`);
+
+    return res.status(201).json({
+      success: true,
+      data: projectFile,
+      performance: {
+        duration: `${duration}ms`,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Upload file error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to upload file',
       errorType: error.name,
       errorMessage: error.message,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
