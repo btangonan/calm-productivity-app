@@ -290,6 +290,13 @@ const Sidebar = () => {
           payload: `Project "${projectName}" deleted successfully` 
         });
         
+        // Force reload app data to ensure deletion is reflected
+        console.log('🔄 Forcing data reload after deletion...');
+        const appData = await apiService.loadAppData(userProfile.id_token);
+        dispatch({ type: 'SET_AREAS', payload: appData.areas });
+        dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
+        dispatch({ type: 'SET_TASKS', payload: appData.tasks });
+        
         // Clear success message after 3 seconds
         setTimeout(() => {
           dispatch({ type: 'CLEAR_ERROR' });
