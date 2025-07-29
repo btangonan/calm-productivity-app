@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   try {
     const startTime = Date.now();
-    const { projectId } = req.query;
+    const { projectId, folderId } = req.query;
 
     if (!projectId) {
       return res.status(400).json({ error: 'Project ID is required' });
@@ -21,57 +21,77 @@ export default async function handler(req, res) {
 
     console.log(`🔐 Fetching files for project: ${projectId} for user: ${user.email}`);
 
-    // Use Google APIs directly
-    console.log('🔍 Initializing Google APIs...');
+    let driveFolderId = folderId;
+    
+    // If no folder ID provided, fall back to looking it up (slower path)
+    if (!driveFolderId) {
+      console.log('⚠️ No folderId provided, falling back to Sheets lookup (slower)');
+      
+      // Use Google APIs directly
+      const { google } = await import('googleapis');
+      const { GoogleAuth } = await import('google-auth-library');
+      
+      const auth = new GoogleAuth({
+        credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
+        scopes: [
+          'https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/drive.readonly'
+        ],
+      });
+
+      const authClient = await auth.getClient();
+      const sheets = google.sheets({ version: 'v4', auth: authClient });
+
+      // Get the project to find its Drive folder ID
+      console.log('🔍 Fetching project data from Sheets...');
+      const projectsResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+        range: 'Projects!A:H',
+      });
+
+      const projects = (projectsResponse.data.values || []).slice(1);
+      const project = projects.find(row => row[0] === projectId);
+
+      if (!project || !project[5]) {
+        console.log(`No Drive folder found for project: ${projectId}`);
+        return res.status(200).json({
+          success: true,
+          data: [],
+          count: 0,
+          performance: {
+            duration: `${Date.now() - startTime}ms`,
+            timestamp: new Date().toISOString(),
+            note: 'No Drive folder configured for project'
+          }
+        });
+      }
+
+      const driveFolderUrl = project[5];
+      driveFolderId = getDriveFolderIdFromUrl(driveFolderUrl);
+
+      if (!driveFolderId) {
+        console.log(`Invalid Drive folder URL for project: ${projectId}`);
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid Drive folder URL',
+        });
+      }
+    }
+    
+    console.log(`📁 Using Drive folder: ${driveFolderId}`);
+
+    // Initialize Drive API only 
+    console.log('⚡ Initializing Drive API...');
     const { google } = await import('googleapis');
     const { GoogleAuth } = await import('google-auth-library');
     
     const auth = new GoogleAuth({
-      credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
-      scopes: [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive.readonly'
-      ],
+      credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')), 
+      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
     });
 
     const authClient = await auth.getClient();
-    const sheets = google.sheets({ version: 'v4', auth: authClient });
     const drive = google.drive({ version: 'v3', auth: authClient });
-
-    // First, get the project to find its Drive folder ID
-    console.log('🔍 Fetching project data from Sheets...');
-    const projectsResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEETS_ID,
-      range: 'Projects!A:H',
-    });
-
-    const projects = (projectsResponse.data.values || []).slice(1);
-    const project = projects.find(row => row[0] === projectId);
-
-    if (!project || !project[5]) {
-      console.log(`No Drive folder found for project: ${projectId}`);
-      return res.status(200).json({
-        success: true,
-        data: [],
-        count: 0,
-        performance: {
-          duration: `${Date.now() - startTime}ms`,
-          timestamp: new Date().toISOString()
-        }
-      });
-    }
-
-    const driveFolderUrl = project[5];
-    const driveFolderId = getDriveFolderIdFromUrl(driveFolderUrl);
-
-    if (!driveFolderId) {
-      console.log(`Invalid Drive folder URL for project: ${projectId}`);
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid Drive folder URL',
-      });
-    }
-    console.log(`📁 Found Drive folder: ${driveFolderId}`);
 
     // Get files from Google Drive API (much faster than Apps Script)
     console.log('🔍 Fetching files from Drive API...');

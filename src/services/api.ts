@@ -921,14 +921,22 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
   }
 
   // File Management Methods
-  async getProjectFiles(projectId: string, token: string): Promise<ProjectFile[]> {
+  async getProjectFiles(projectId: string, token: string, driveFolderId?: string): Promise<ProjectFile[]> {
     const startTime = performance.now();
     
     try {
       // Try Edge Functions first if enabled
       if (this.useEdgeFunctions) {
         console.log(`🔑 Calling Edge Function getProjectFiles with token: ${token.substring(0, 20)}...`);
-        const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/projects/files?projectId=${encodeURIComponent(projectId)}`, {
+        
+        // Build URL with optional folderId parameter for faster lookup
+        let url = `${this.EDGE_FUNCTIONS_URL}/projects/files?projectId=${encodeURIComponent(projectId)}`;
+        if (driveFolderId) {
+          url += `&folderId=${encodeURIComponent(driveFolderId)}`;
+          console.log('⚡ Using direct folder ID to skip Sheets lookup');
+        }
+        
+        const response = await fetch(url, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`

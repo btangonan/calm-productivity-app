@@ -118,10 +118,20 @@ const DraggableTaskList = () => {
     }
   };
 
+  console.log('🔍 DraggableTaskList render state:', { 
+    filteredTasksLength: filteredTasks.length, 
+    currentView, 
+    selectedProjectId,
+    showTaskForm,
+    tasksTotal: tasks.length 
+  });
+
   if (filteredTasks.length === 0) {
     const emptyMessage = currentView === 'logbook' 
       ? 'No completed tasks yet'
       : 'No tasks found';
+      
+    console.log('📭 Rendering zero tasks view with Add Task button');
       
     return (
       <div className="flex-1 flex items-center justify-center min-h-0">
@@ -130,12 +140,21 @@ const DraggableTaskList = () => {
           {currentView !== 'logbook' && (
             <button 
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              onClick={() => {
+              onClick={(e) => {
                 console.log('🖱️ Add Task button clicked in DraggableTaskList - zero tasks view');
-                console.log('Current state:', { currentView, selectedProjectId, showTaskForm });
+                console.log('📊 Event details:', { 
+                  type: e.type, 
+                  target: e.target, 
+                  currentTarget: e.currentTarget,
+                  bubbles: e.bubbles
+                });
+                console.log('📋 Current state:', { currentView, selectedProjectId, showTaskForm });
+                console.log('⚡ About to call setShowTaskForm(true)');
                 setShowTaskForm(true);
-                console.log('✅ setShowTaskForm(true) called');
+                console.log('✅ setShowTaskForm(true) called successfully');
               }}
+              onMouseDown={() => console.log('👆 Add Task button mouse down')}
+              onMouseUp={() => console.log('👆 Add Task button mouse up')}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
