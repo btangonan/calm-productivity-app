@@ -111,6 +111,15 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, tasks: action.payload };
     case 'LOGIN_SUCCESS':
       console.log('✅ LOGIN_SUCCESS action dispatched:', action.payload);
+      
+      // Save authentication state to localStorage for persistence
+      try {
+        localStorage.setItem('google-auth-state', JSON.stringify(action.payload));
+        console.log('💾 Authentication state saved to localStorage');
+      } catch (error) {
+        console.error('Failed to save auth state to localStorage:', error);
+      }
+      
       // Save refresh token to the database
       if (action.payload.refresh_token) {
         fetch('/api/auth/store-token', {
@@ -153,9 +162,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (savedAuth) {
           const authData = JSON.parse(savedAuth);
           
-          // Check if token is still valid (not expired)
-          const tokenPayload = JSON.parse(atob(authData.id_token.split('.')[1]));
-          const isExpired = tokenPayload.exp * 1000 < Date.now();
+          // Check if tokens are still valid
+          let isExpired = false;
+          try {
+            // Try to check ID token expiration if available
+            if (authData.id_token && authData.id_token.includes('.')) {
+              const tokenPayload = JSON.parse(atob(authData.id_token.split('.')[1]));
+              isExpired = tokenPayload.exp * 1000 < Date.now();
+            }
+            // For access tokens, we'll rely on the server to validate them
+          } catch (tokenError) {
+            console.warn('Could not parse token for expiration check:', tokenError);
+            // If we can't parse the token, assume it might still be valid and let the server decide
+          }
           
           if (!isExpired) {
             console.log('🔄 Restoring authentication for:', authData.email);
