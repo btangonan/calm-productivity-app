@@ -161,14 +161,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const savedAuth = localStorage.getItem('google-auth-state');
         if (savedAuth) {
           const authData = JSON.parse(savedAuth);
+          console.log('🔍 Restoring auth debug:', {
+            hasAccessToken: !!authData.access_token,
+            hasIdToken: !!authData.id_token,
+            hasRefreshToken: !!authData.refresh_token,
+            email: authData.email,
+            accessTokenType: typeof authData.access_token,
+            idTokenType: typeof authData.id_token
+          });
           
           // Check if tokens are still valid
           let isExpired = false;
           try {
             // Try to check ID token expiration if available
-            if (authData.id_token && authData.id_token.includes('.')) {
-              const tokenPayload = JSON.parse(atob(authData.id_token.split('.')[1]));
-              isExpired = tokenPayload.exp * 1000 < Date.now();
+            if (authData.id_token && typeof authData.id_token === 'string' && authData.id_token.includes('.')) {
+              const tokenParts = authData.id_token.split('.');
+              if (tokenParts.length === 3) {
+                const tokenPayload = JSON.parse(atob(tokenParts[1]));
+                isExpired = tokenPayload.exp * 1000 < Date.now();
+              }
             }
             // For access tokens, we'll rely on the server to validate them
           } catch (tokenError) {
