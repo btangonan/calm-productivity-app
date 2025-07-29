@@ -79,7 +79,11 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
       });
 
       // Then update backend
-      await apiService.updateTaskCompletion(taskId, isCompleted, userProfile.id_token);
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      await apiService.updateTaskCompletion(taskId, isCompleted, token);
       
     } catch (error) {
       console.error('Failed to update task:', error);
@@ -110,7 +114,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   const handleDeleteConfirm = async () => {
     setIsDeleting(true);
     try {
-      const token = state.userProfile?.id_token;
+      const token = state.userProfile?.access_token || state.userProfile?.id_token;
       if (!token) {
         throw new Error('User not authenticated');
       }

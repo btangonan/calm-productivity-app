@@ -90,7 +90,11 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
       setFiles(files.filter(file => file.id !== fileId));
       
       // Delete from backend
-      await apiService.deleteProjectFile(projectId, fileId, userProfile.id_token);
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      await apiService.deleteProjectFile(projectId, fileId, token);
       
     } catch (error) {
       console.error('Failed to delete file:', error);
@@ -167,7 +171,11 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
           setUploadProgress({...progressTracker});
 
           // Use the legacy uploadFileToProject method which handles folder creation automatically
-          const uploadResult = await apiService.uploadFileToProject(projectId, file, userProfile.id_token);
+          const token = userProfile.access_token || userProfile.id_token;
+          if (!token) {
+            throw new Error('No authentication token available');
+          }
+          const uploadResult = await apiService.uploadFileToProject(projectId, file, token);
           console.log('Upload result:', uploadResult);
 
           progressTracker[file.name] = 100;
@@ -244,11 +252,16 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
       const userProfile = state.userProfile;
       if (!userProfile) throw new Error('Not authenticated');
 
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      
       let result;
       if (type === 'doc') {
-        result = await apiService.createGoogleDoc(projectId, fileName, null, userProfile.id_token);
+        result = await apiService.createGoogleDoc(projectId, fileName, null, token);
       } else {
-        result = await apiService.createGoogleSheet(projectId, fileName, null, userProfile.id_token);
+        result = await apiService.createGoogleSheet(projectId, fileName, null, token);
       }
 
       if (result && result.data && result.data.documentUrl) {

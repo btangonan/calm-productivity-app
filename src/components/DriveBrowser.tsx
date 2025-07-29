@@ -85,7 +85,11 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
       console.log('🔍 Loading Drive files for folder:', folderId);
       
       // Use the real API to get Google Drive files
-      const driveFiles = await apiService.listDriveFiles(folderId, userProfile.id_token);
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      const driveFiles = await apiService.listDriveFiles(folderId, token);
       
       console.log('📁 Received Drive files:', driveFiles.length, 'files');
       
@@ -182,7 +186,11 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
       // Get file path for search results
       if (isGlobalSearch && userProfile?.id_token) {
         try {
-          const pathData = await apiService.getFilePath(file.id, userProfile.id_token);
+          const token = userProfile.access_token || userProfile.id_token;
+          if (!token) {
+            throw new Error('No authentication token available');
+          }
+          const pathData = await apiService.getFilePath(file.id, token);
           const pathString = pathData.map(p => p.name).join(' > ');
           setSelectedFilePath(pathString);
         } catch (error) {
@@ -276,7 +284,11 @@ const DriveBrowser: React.FC<DriveBrowserProps> = ({ className = '' }) => {
       
       try {
         if (userProfile?.id_token) {
-          const searchResults = await apiService.searchDriveFiles(query, userProfile.id_token);
+          const token = userProfile.access_token || userProfile.id_token;
+          if (!token) {
+            throw new Error('No authentication token available');
+          }
+          const searchResults = await apiService.searchDriveFiles(query, token);
           const convertedResults: DriveFile[] = searchResults.map((file: any) => ({
             id: file.id,
             name: file.name,

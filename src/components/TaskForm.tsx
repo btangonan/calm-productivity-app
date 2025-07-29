@@ -94,6 +94,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           throw new Error('User not authenticated');
         }
         
+        const token = userProfile.access_token || userProfile.id_token;
+        if (!token) {
+          throw new Error('No authentication token available');
+        }
+        
         const backendUpdatedTask = await apiService.updateTask(
           editingTask.id,
           formData.title,
@@ -101,7 +106,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           newProjectId || undefined,
           taskContext,
           formData.dueDate || undefined,
-          userProfile.id_token
+          token
         );
         
         dispatch({ type: 'UPDATE_TASK', payload: backendUpdatedTask });
@@ -157,6 +162,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
         
         // Create actual task in background
         try {
+          const token = userProfile.access_token || userProfile.id_token;
+          if (!token) {
+            throw new Error('No authentication token available');
+          }
+          
           const newTask = await apiService.createTask(
             formData.title,
             formData.description,
@@ -164,7 +174,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
             taskContext,
             formData.dueDate || undefined,
             attachments,
-            userProfile.id_token
+            token
           );
 
           const taskEndTime = performance.now();

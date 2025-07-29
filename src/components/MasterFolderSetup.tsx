@@ -23,7 +23,11 @@ const MasterFolderSetup: React.FC = () => {
       
       // Get service account email
       try {
-        const emailData = await apiService.getServiceAccountEmail(state.userProfile.id_token);
+        const token = state.userProfile.access_token || state.userProfile.id_token;
+        if (!token) {
+          throw new Error('No authentication token available');
+        }
+        const emailData = await apiService.getServiceAccountEmail(token);
         console.log('Email data received:', emailData);
         setServiceAccountEmail(emailData.email);
       } catch (emailError) {
@@ -35,7 +39,11 @@ const MasterFolderSetup: React.FC = () => {
       // Get current master folder ID
       let masterFolderId = '';
       try {
-        const folderData = await apiService.getMasterFolderId(state.userProfile.id_token);
+        const token = state.userProfile.access_token || state.userProfile.id_token;
+        if (!token) {
+          throw new Error('No authentication token available');
+        }
+        const folderData = await apiService.getMasterFolderId(token);
         console.log('Folder data received:', folderData);
         masterFolderId = folderData.folderId || '';
       } catch (folderError) {
@@ -151,7 +159,11 @@ const MasterFolderSetup: React.FC = () => {
       setMessage('Sharing folder with service account...');
       setMessageType('info');
 
-      const result = await apiService.shareFolderWithServiceAccount(currentMasterFolderId, state.userProfile.id_token);
+      const token = state.userProfile.access_token || state.userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      const result = await apiService.shareFolderWithServiceAccount(currentMasterFolderId, token);
       setMessage(result.message);
       setMessageType('info');
     } catch (error) {
