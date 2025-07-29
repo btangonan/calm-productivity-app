@@ -102,8 +102,14 @@ const MasterFolderSetup: React.FC = () => {
       setMessage('Setting master folder...');
       setMessageType('info');
 
+      // Get authentication token
+      const token = state.userProfile.access_token || state.userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
       // Set the new master folder
-      const result = await apiService.setMasterFolderId(folderId, state.userProfile.id_token);
+      const result = await apiService.setMasterFolderId(folderId, token);
       console.log('API result:', result);
       
       // Store in localStorage as backup
