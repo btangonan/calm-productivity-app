@@ -178,20 +178,8 @@ const Header = () => {
                         return;
                       }
 
-                      const result = await apiService.setupDriveFolder(selectedProject.id, userProfile.id_token);
-                      
-                      // Update the project in state
-                      dispatch({
-                        type: 'UPDATE_PROJECT',
-                        payload: {
-                          ...selectedProject,
-                          driveFolderId: result.driveFolderId,
-                          driveFolderUrl: result.driveFolderUrl
-                        }
-                      });
-                      
-                      // Open the newly created folder
-                      window.open(result.driveFolderUrl, '_blank', 'noopener,noreferrer');
+                      // For now, show a message instead of automatic setup to reduce API endpoints
+                      alert('Please set up the master folder in your user menu to enable drive folder integration for this project.');
                       
                     } catch (error) {
                       console.error('Failed to setup drive folder:', error);

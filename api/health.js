@@ -3,6 +3,21 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Handle both /api/health and /api/health/status routes
+  const isStatusRoute = req.url?.includes('/status');
+
+  if (isStatusRoute) {
+    // Simple status check (legacy route)
+    return res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      migration_phase: process.env.MIGRATION_PHASE || '1'
+    });
+  }
+
+  // Detailed health check
   return res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
