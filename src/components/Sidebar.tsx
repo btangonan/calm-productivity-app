@@ -185,29 +185,29 @@ const Sidebar = () => {
       }
       const token = userProfile.access_token || userProfile.id_token;
       
-      // Give user a moment to rename the project before making API call
-      // This prevents race condition between user typing and API call
-      console.log('⏳ Waiting 1.5 seconds for user to finish renaming before API call...');
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Create real project in background using current name
+      const currentProject = projects.find(p => p.id === optimisticProject.id);
+      const projectName = currentProject?.name || 'New Project';
+      console.log(`📝 Creating real project with name: "${projectName}"`);
       
-      // Create real project in background
-      // Note: We get the current name after the delay to catch any user edits
-      const realProject = await apiService.createProject(
-        (() => {
-          const currentProject = projects.find(p => p.id === optimisticProject.id);
-          const currentName = currentProject?.name || 'New Project';
-          console.log(`📝 Using current project name for API call after delay: "${currentName}"`);
-          return currentName;
-        })(),
-        '', 
-        areaId, 
-        token
-      );
+      const realProject = await apiService.createProject(projectName, '', areaId, token);
       
-      // Replace optimistic project with real one
+      // Replace optimistic project with real one, BUT preserve user's current edit state
       dispatch({ type: 'DELETE_PROJECT', payload: optimisticProject.id });
       dispatch({ type: 'ADD_PROJECT', payload: realProject });
-      setEditingItem({ id: realProject.id, type: 'project', name: realProject.name });
+      
+      // Check if user is still editing this project - if so, preserve their current input
+      if (editingItem?.id === optimisticProject.id && editingItem?.type === 'project') {
+        console.log(`👤 User still editing - preserving current input: "${editingItem.name}"`);
+        // Update the editing state to point to the new real project ID but keep user's current name
+        setEditingItem({ id: realProject.id, type: 'project', name: editingItem.name });
+        // Also update the project in state with user's current name (this is the source of truth)
+        const updatedProject = { ...realProject, name: editingItem.name };
+        dispatch({ type: 'UPDATE_PROJECT', payload: updatedProject });
+      } else {
+        console.log(`✅ User finished editing - using API result name: "${realProject.name}"`);
+        setEditingItem({ id: realProject.id, type: 'project', name: realProject.name });
+      }
       
       console.log('✅ Project created successfully:', realProject);
     } catch (error) {
