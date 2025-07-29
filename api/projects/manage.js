@@ -109,49 +109,26 @@ async function handleCreateProject(req, res, user, startTime) {
     console.log('📁 Creating drive folder...');
     const drive = google.drive({ version: 'v3', auth: authClient });
     
-    // Get master folder ID - check multiple sources
+    // Get master folder ID - directly access the master folder storage
     let parentFolderId = null;
     try {
-      // First try the in-memory storage
       const { masterFolderMap } = await import('../settings/master-folder.js');
+      
+      console.log(`📁 Checking master folder storage for ${user.email}`);
+      console.log(`📁 Current storage contents:`, Array.from(masterFolderMap.entries()));
+      
       parentFolderId = masterFolderMap.get(user.email);
       
-      // If not found in memory, try localStorage pattern by checking for existing folders
-      if (!parentFolderId) {
-        console.log('📁 No master folder in memory, searching for existing master folder...');
-        
-        // Search for a folder that might be the master folder
-        // Look for folders with common names like "Productivity App", "Projects", etc.
-        const searchQueries = [
-          "name='Productivity App' and mimeType='application/vnd.google-apps.folder' and trashed=false",
-          "name='Projects' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-        ];
-        
-        for (const query of searchQueries) {
-          const searchResponse = await drive.files.list({
-            q: query,
-            fields: 'files(id,name)',
-            pageSize: 1
-          });
-          
-          if (searchResponse.data.files && searchResponse.data.files.length > 0) {
-            parentFolderId = searchResponse.data.files[0].id;
-            console.log(`📁 Found existing master folder: ${searchResponse.data.files[0].name} (${parentFolderId})`);
-            
-            // Store in memory for future use
-            masterFolderMap.set(user.email, parentFolderId);
-            break;
-          }
-        }
-      }
-      
       if (parentFolderId) {
-        console.log(`📁 Creating project folder inside master folder: ${parentFolderId}`);
+        console.log(`✅ Found master folder: ${parentFolderId}`);
+        console.log(`📁 Master folder URL: https://drive.google.com/drive/folders/${parentFolderId}`);
       } else {
-        console.log('📁 No master folder found, creating in root drive');
+        console.log('❌ No master folder found in storage for this user');
+        console.log('📁 Creating project in root drive');
+        console.log('💡 Tip: Set up a master folder in Settings to organize projects');
       }
     } catch (error) {
-      console.log('📁 Error getting master folder:', error.message);
+      console.log('📁 Error accessing master folder storage:', error.message);
       console.log('📁 Creating project folder in root drive');
     }
     
