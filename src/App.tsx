@@ -24,14 +24,18 @@ function AppContent() {
         const startTime = performance.now();
         console.log('🚀 Starting application...', new Date().toLocaleTimeString());
         
-        // Check backend health first
-        const healthStartTime = performance.now();
-        await apiService.checkBackendHealth();
-        const healthEndTime = performance.now();
-        console.log(`⚡ Backend health check: ${(healthEndTime - healthStartTime).toFixed(1)}ms`);
-        
+        // Check backend health (skip if using edge functions for speed)
         const status = apiService.getBackendStatus();
         console.log('📊 Backend Status:', status);
+        
+        if (!status.useEdgeFunctions) {
+          const healthStartTime = performance.now();
+          await apiService.checkBackendHealth();
+          const healthEndTime = performance.now();
+          console.log(`⚡ Backend health check: ${(healthEndTime - healthStartTime).toFixed(1)}ms`);
+        } else {
+          console.log('⚡ Skipping health check (edge functions enabled for faster startup)');
+        }
         if (status.usingMockData) {
           console.warn('⚠️ Using mock data - check Google Apps Script deployment');
         }
