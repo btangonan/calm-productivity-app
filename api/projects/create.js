@@ -62,23 +62,85 @@ export default async function handler(req, res) {
 
     console.log(`✅ Project "${name}" added to spreadsheet`);
 
-    // Create the project object to return immediately
+    // Create drive folder immediately
+    let driveFolderId = '';
+    let driveFolderUrl = '';
+    
+    try {
+      console.log('📁 Creating drive folder...');
+      const drive = google.drive({ version: 'v3', auth: authClient });
+      
+      // Get master folder ID if available (from master-folder API memory)
+      let parentFolderId = null;
+      try {
+        const { masterFolderMap } = await import('../settings/master-folder.js');
+        parentFolderId = masterFolderMap.get(user.email);
+        if (parentFolderId) {
+          console.log(`📁 Creating project folder inside master folder: ${parentFolderId}`);
+        }
+      } catch {
+        console.log('📁 No master folder configured, creating in root drive');
+      }
+      
+      // Create the project folder
+      const folderResource = {
+        name: name.trim(),
+        mimeType: 'application/vnd.google-apps.folder'
+      };
+      
+      // Add parent folder if master folder is configured
+      if (parentFolderId) {
+        folderResource.parents = [parentFolderId];
+      }
+      
+      const folderResponse = await drive.files.create({
+        resource: folderResource
+      });
+      
+      driveFolderId = folderResponse.data.id;
+      driveFolderUrl = `https://drive.google.com/drive/folders/${driveFolderId}`;
+      
+      console.log(`📁 Drive folder created: ${driveFolderId}`);
+      
+      // Update the spreadsheet with the folder information
+      // Find the row we just added (last row)
+      const projectsResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+        range: 'Projects!A:A',
+      });
+      const lastRowIndex = (projectsResponse.data.values || []).length;
+      
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+        range: `Projects!F${lastRowIndex}:G${lastRowIndex}`,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+          values: [[driveFolderId, driveFolderUrl]]
+        }
+      });
+      
+      console.log(`📁 Updated spreadsheet with folder info`);
+    } catch (folderError) {
+      console.error('❌ Failed to create drive folder:', folderError);
+      // Don't fail the entire request, just log and continue without folder
+    }
+
+    // Create the project object to return
     const project = {
       id: projectId,
       name: name.trim(),
       description: description.trim(),
       areaId: areaId || null,
       status: 'Active',
-      driveFolderId: '',
-      driveFolderUrl: '',
+      driveFolderId,
+      driveFolderUrl,
       createdAt
     };
 
     const duration = Date.now() - startTime;
     console.log(`⚡ Project created in ${duration}ms`);
 
-    // TODO: Create drive folder in background (don't wait for it)
-    // This keeps the response fast while still creating the folder
+    // Drive folder created above with error handling
 
     return res.status(200).json({
       success: true,

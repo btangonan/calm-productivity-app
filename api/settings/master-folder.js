@@ -4,6 +4,9 @@ import { validateGoogleToken } from '../utils/google-auth.js';
 // TODO: Replace with proper database storage
 const userMasterFolders = new Map();
 
+// Export the map so other modules can access it
+export { userMasterFolders as masterFolderMap };
+
 export default async function handler(req, res) {
   try {
     // Authenticate user
