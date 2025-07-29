@@ -26,10 +26,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onClose, onSubmit, preselecte
 
     setLoading(true);
     try {
+      // Get authentication token
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        throw new Error('Not authenticated');
+      }
+      const token = userProfile.access_token || userProfile.id_token;
+      
       const newProject = await apiService.createProject(
         formData.name,
         formData.description,
-        formData.areaId || undefined
+        formData.areaId || undefined,
+        token
       );
 
       dispatch({ type: 'ADD_PROJECT', payload: newProject });

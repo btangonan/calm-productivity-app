@@ -178,8 +178,15 @@ const Sidebar = () => {
     }
     
     try {
+      // Get authentication token
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        throw new Error('Not authenticated');
+      }
+      const token = userProfile.access_token || userProfile.id_token;
+      
       // Create real project in background
-      const realProject = await apiService.createProject('New Project', '', areaId);
+      const realProject = await apiService.createProject('New Project', '', areaId, token);
       
       // Replace optimistic project with real one
       dispatch({ type: 'DELETE_PROJECT', payload: optimisticProject.id });

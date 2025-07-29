@@ -65,16 +65,39 @@ export default async function handler(req, res) {
     })).filter(area => area.id);
 
     // Convert projects data
-    const projects = (projectsData.values || []).slice(1).map(row => ({
-      id: row[0] || '',
-      name: row[1] || '',
-      description: row[2] || '',
-      areaId: row[3] || null,
-      status: row[4] || 'Active',
-      driveFolderId: row[5] || '',
-      driveFolderUrl: row[6] || '',
-      createdAt: row[7] || ''
-    })).filter(project => project.id);
+    const projects = (projectsData.values || []).slice(1).map(row => {
+      let driveFolderId = row[5] || '';
+      let driveFolderUrl = row[6] || '';
+      
+      // Fix swapped drive folder data (if ID contains URL and URL contains timestamp/ID)
+      if (driveFolderId.startsWith('https://drive.google.com/drive/folders/')) {
+        // Swap them - the "ID" field actually contains the URL
+        const temp = driveFolderId;
+        driveFolderId = driveFolderUrl; // This might be empty or a timestamp
+        driveFolderUrl = temp;
+        
+        // If we now have a URL but no ID, extract the ID from the URL
+        if (driveFolderUrl && !driveFolderId) {
+          const match = driveFolderUrl.match(/\/folders\/([a-zA-Z0-9-_]+)/);
+          if (match) {
+            driveFolderId = match[1];
+          }
+        }
+        
+        console.log(`🔧 Fixed swapped drive folder data for project: ${row[1]} - ID: ${driveFolderId}, URL: ${driveFolderUrl}`);
+      }
+      
+      return {
+        id: row[0] || '',
+        name: row[1] || '',
+        description: row[2] || '',
+        areaId: row[3] || null,
+        status: row[4] || 'Active',
+        driveFolderId,
+        driveFolderUrl,
+        createdAt: row[7] || ''
+      };
+    }).filter(project => project.id);
 
     // Convert tasks data
     const tasks = (tasksData.values || []).slice(1).map(row => ({
