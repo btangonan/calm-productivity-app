@@ -21,6 +21,7 @@ const Sidebar = () => {
   const [showOptionsDropdown, setShowOptionsDropdown] = useState<string | null>(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showMasterFolderSetup, setShowMasterFolderSetup] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -56,10 +57,17 @@ const Sidebar = () => {
   };
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to sign out?')) {
-      googleLogout();
-      dispatch({ type: 'LOGOUT' });
-    }
+    setShowSignOutModal(true);
+  };
+
+  const confirmSignOut = () => {
+    googleLogout();
+    dispatch({ type: 'LOGOUT' });
+    setShowSignOutModal(false);
+  };
+
+  const cancelSignOut = () => {
+    setShowSignOutModal(false);
   };
 
   const getTaskCountForView = (view: ViewType): number => {
@@ -857,6 +865,43 @@ const Sidebar = () => {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sign Out Confirmation Modal */}
+      {showSignOutModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </div>
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Sign Out</h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Are you sure you want to sign out? You'll need to sign in again to access your tasks and projects.
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelSignOut}
+                  className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSignOut}
+                  className="flex-1 px-4 py-2 bg-red-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         </div>
