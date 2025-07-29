@@ -1253,6 +1253,32 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
       serviceAccountEmail: 'nowandlater@solid-study-467023-i3.iam.gserviceaccount.com'
     };
   }
+
+  async fixMissingDriveFolders(token: string): Promise<{ message: string; fixed: number; total: number }> {
+    try {
+      const response = await fetch('/api/projects/fix-drive-folders', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fix drive folders');
+      }
+      
+      return {
+        message: data.message,
+        fixed: data.fixed,
+        total: data.total
+      };
+    } catch (error) {
+      console.error('Failed to fix drive folders:', error);
+      throw error;
+    }
+  }
 }
 
 export const apiService = new ApiService();

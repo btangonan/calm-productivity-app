@@ -153,7 +153,7 @@ const Header = () => {
 
           {selectedProject && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 console.log('Drive folder URL:', selectedProject.driveFolderUrl);
                 console.log('Drive folder ID:', selectedProject.driveFolderId);
                 
@@ -168,7 +168,30 @@ const Header = () => {
                 // Check if we have a valid URL now
                 if (!driveUrl || !driveUrl.startsWith('http')) {
                   console.log('❌ No drive folder configured for project:', selectedProject.name);
-                  alert('Drive folder not configured for this project yet. You can still view and manage project files in the "Project Files" section below. To set up drive folder integration, check the master folder settings in your user menu.');
+                  
+                  // Offer to automatically fix missing drive folders
+                  if (confirm('Drive folder not configured for this project yet. Would you like me to automatically create drive folders for all your projects now? This will take a moment.')) {
+                    try {
+                      console.log('🔧 Attempting to fix missing drive folders...');
+                      const token = state.userProfile?.access_token || state.userProfile?.id_token;
+                      if (!token) {
+                        alert('Authentication error. Please refresh the page and try again.');
+                        return;
+                      }
+                      
+                      const result = await apiService.fixMissingDriveFolders(token);
+                      console.log('✅ Drive folder fix result:', result);
+                      
+                      if (result.fixed > 0) {
+                        alert(`Success! Created drive folders for ${result.fixed} projects. Please refresh the page to see the changes.`);
+                      } else {
+                        alert('No projects needed drive folder fixes. If you still see this error, check the master folder settings in your user menu.');
+                      }
+                    } catch (error) {
+                      console.error('❌ Failed to fix drive folders:', error);
+                      alert('Failed to create drive folders automatically. You can still view and manage project files in the "Project Files" section below. To set up drive folder integration, check the master folder settings in your user menu.');
+                    }
+                  }
                   return;
                 }
                 
