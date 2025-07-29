@@ -1085,7 +1085,60 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
 
   // Google Drive Browser Methods
   async listDriveFiles(folderId: string = 'root', token: string): Promise<any[]> {
+    const startTime = performance.now();
+    
+    try {
+      // Try Edge Functions first for much faster performance
+      if (this.useEdgeFunctions) {
+        console.log(`🔑 Calling fast Edge Function listDriveFiles for folder: ${folderId}`);
+        const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/drive/list-files?folderId=${encodeURIComponent(folderId)}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const duration = performance.now() - startTime;
+          console.log(`⚡ Edge Function listDriveFiles: ${duration.toFixed(1)}ms for ${result.data?.length || 0} files`);
+          return result.data || [];
+        }
+
+        // Log the error details
+        const errorText = await response.text();
+        console.error(`Edge Function listDriveFiles failed: ${response.status} ${response.statusText}`, errorText);
+
+        // If Edge Function fails and fallback is enabled
+        if (this.enableFallback) {
+          console.warn('Edge Function failed, falling back to Apps Script');
+          return await this.listDriveFilesLegacy(folderId, token);
+        }
+
+        throw new Error(`Edge Function failed: ${response.status}`);
+      }
+
+      // Use legacy Apps Script
+      return await this.listDriveFilesLegacy(folderId, token);
+
+    } catch (error) {
+      console.error('List drive files failed:', error);
+      
+      // Fallback to legacy if enabled
+      if (this.useEdgeFunctions && this.enableFallback) {
+        console.warn('Falling back to Apps Script due to error');
+        return await this.listDriveFilesLegacy(folderId, token);
+      }
+      
+      throw error;
+    }
+  }
+
+  private async listDriveFilesLegacy(folderId: string, token: string): Promise<any[]> {
+    const startTime = performance.now();
     const response = await this.executeGoogleScript<any[]>(token, 'listDriveFiles', [folderId], 'GET');
+    const duration = performance.now() - startTime;
+    console.log(`🔄 Legacy listDriveFiles: ${duration.toFixed(1)}ms`);
     return response.data || [];
   }
 
