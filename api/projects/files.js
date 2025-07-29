@@ -151,11 +151,31 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Get project files error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    // Handle specific error types
+    if (error.message && error.message.includes('File not found')) {
+      console.log(`⚠️ Drive folder not found for project: ${req.query.projectId}`);
+      return res.status(200).json({
+        success: true,
+        data: [],
+        count: 0,
+        performance: {
+          duration: `${Date.now() - (req.startTime || Date.now())}ms`,
+          timestamp: new Date().toISOString(),
+          note: 'Drive folder not found - returning empty results'
+        }
+      });
+    }
     
     return res.status(500).json({
       success: false,
       error: 'Failed to fetch project files',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      errorType: error.name,
+      errorMessage: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }

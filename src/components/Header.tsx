@@ -167,14 +167,39 @@ const Header = () => {
                 
                 // Check if we have a valid URL now
                 if (!driveUrl || !driveUrl.startsWith('http')) {
-                  const hasFiles = true; // Assume project might have files even without folder URL
+                  // Automatically set up drive folder for this project
+                  console.log('🔧 Setting up drive folder for project automatically...');
                   
-                  if (hasFiles) {
-                    // Navigate to the project files view instead
-                    alert(`Drive folder not configured for this project yet. You can still view and manage project files in the "Project Files" section below. To set up drive folder integration, check the master folder settings in your user menu.`);
-                  } else {
-                    alert('Drive folder is not ready yet. Please check the master folder settings in your user menu to configure drive integration.');
-                  }
+                  const setupDriveFolder = async () => {
+                    try {
+                      const userProfile = state.userProfile;
+                      if (!userProfile) {
+                        alert('Please sign in to set up drive folder');
+                        return;
+                      }
+
+                      const result = await apiService.setupDriveFolder(selectedProject.id, userProfile.id_token);
+                      
+                      // Update the project in state
+                      dispatch({
+                        type: 'UPDATE_PROJECT',
+                        payload: {
+                          ...selectedProject,
+                          driveFolderId: result.driveFolderId,
+                          driveFolderUrl: result.driveFolderUrl
+                        }
+                      });
+                      
+                      // Open the newly created folder
+                      window.open(result.driveFolderUrl, '_blank', 'noopener,noreferrer');
+                      
+                    } catch (error) {
+                      console.error('Failed to setup drive folder:', error);
+                      alert(`Failed to setup drive folder. Please check the master folder settings in your user menu or try again later.`);
+                    }
+                  };
+                  
+                  setupDriveFolder();
                   return;
                 }
                 

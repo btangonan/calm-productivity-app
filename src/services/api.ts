@@ -795,6 +795,36 @@ class ApiService {
     }
   }
 
+  async setupDriveFolder(projectId: string, token: string): Promise<{driveFolderId: string, driveFolderUrl: string}> {
+    try {
+      const response = await fetch('/api/projects/setup-drive-folder', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ projectId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to setup drive folder: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to setup drive folder');
+      }
+
+      return {
+        driveFolderId: result.data.driveFolderId,
+        driveFolderUrl: result.data.driveFolderUrl
+      };
+    } catch (error) {
+      console.error('Setup drive folder failed:', error);
+      throw error;
+    }
+  }
+
   async deleteArea(areaId: string, token: string): Promise<void> {
     const response = await this.executeGoogleScript<void>(token, 'deleteArea', [areaId]);
     if (!response.success) {
