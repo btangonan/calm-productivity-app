@@ -126,6 +126,8 @@ const DraggableTaskList = () => {
     tasksTotal: tasks.length 
   });
 
+  let content;
+  
   if (filteredTasks.length === 0) {
     const emptyMessage = currentView === 'logbook' 
       ? 'No completed tasks yet'
@@ -133,7 +135,7 @@ const DraggableTaskList = () => {
       
     console.log('📭 Rendering zero tasks view with Add Task button');
       
-    return (
+    content = (
       <div className="flex-1 flex items-center justify-center min-h-0">
         <div className="text-center">
           <p className="text-gray-500 text-lg mb-4">{emptyMessage}</p>
@@ -165,10 +167,8 @@ const DraggableTaskList = () => {
         </div>
       </div>
     );
-  }
-
-  return (
-    <>
+  } else {
+    content = (
       <div className="flex-1 overflow-y-auto">
         <DndContext
           sensors={sensors}
@@ -191,6 +191,12 @@ const DraggableTaskList = () => {
           </SortableContext>
         </DndContext>
       </div>
+    );
+  }
+
+  return (
+    <>
+      {content}
       
       {showTaskForm && (
         <TaskForm 

@@ -135,12 +135,14 @@ const TaskList = () => {
     return 'text-gray-500'; // Future dates
   };
 
+  let content;
+  
   if (filteredTasks.length === 0) {
     const emptyMessage = currentView === 'logbook' 
       ? 'No completed tasks yet'
       : 'No tasks found';
       
-    return (
+    content = (
       <div className="flex-1 flex items-center justify-center min-h-0">
         <div className="text-center">
           <p className="text-gray-500 text-lg mb-4">{emptyMessage}</p>
@@ -158,10 +160,8 @@ const TaskList = () => {
         </div>
       </div>
     );
-  }
-
-  return (
-    <>
+  } else {
+    content = (
       <div className="flex-1 overflow-y-auto">
         <div className="divide-y divide-gray-100">
           {filteredTasks.map((task) => {
@@ -248,6 +248,12 @@ const TaskList = () => {
           })}
         </div>
       </div>
+    );
+  }
+
+  return (
+    <>
+      {content}
       
       {showTaskForm && (
         <TaskForm 
