@@ -751,9 +751,26 @@ class ApiService {
   }
 
   async deleteProject(projectId: string, token: string): Promise<void> {
-    const response = await this.executeGoogleScript<void>(token, 'deleteProject', [projectId]);
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to delete project');
+    try {
+      const response = await fetch('/api/projects/delete', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ projectId }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete project');
+      }
+      
+      console.log('Project deleted successfully:', data);
+    } catch (error) {
+      console.error('Delete project error:', error);
+      throw error;
     }
   }
 

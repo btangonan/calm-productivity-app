@@ -229,21 +229,51 @@ const Sidebar = () => {
   const handleDeleteProject = async (projectId: string, projectName: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm(`Are you sure you want to delete the project "${projectName}"?`)) {
-      try {
-        const userProfile = state.userProfile;
-        if (!userProfile) {
-          throw new Error('Not authenticated');
-        }
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        dispatch({ type: 'SET_ERROR', payload: 'Not authenticated' });
+        return;
+      }
 
+      // Optimistic update - remove from UI immediately
+      console.log(`Optimistically deleting project: ${projectName}`);
+      dispatch({ type: 'DELETE_PROJECT', payload: projectId });
+      setShowOptionsDropdown(null);
+
+      try {
         // Call backend API to delete project
         await apiService.deleteProject(projectId, userProfile.id_token);
+        console.log(`Successfully deleted project: ${projectName}`);
         
-        // Update local state after successful backend deletion
-        dispatch({ type: 'DELETE_PROJECT', payload: projectId });
-        setShowOptionsDropdown(null);
+        // Show success message briefly
+        dispatch({ 
+          type: 'SET_ERROR', 
+          payload: `Project "${projectName}" deleted successfully` 
+        });
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          dispatch({ type: 'CLEAR_ERROR' });
+        }, 3000);
+        
       } catch (error) {
         console.error('Failed to delete project:', error);
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to delete project' });
+        
+        // Revert optimistic update by reloading data
+        console.log('Reverting optimistic delete due to error');
+        
+        try {
+          // Reload the full app data to restore the project
+          const appData = await apiService.loadAppData(userProfile.id_token);
+          dispatch({ type: 'LOAD_DATA', payload: appData });
+        } catch (reloadError) {
+          console.error('Failed to reload data after delete error:', reloadError);
+        }
+        
+        dispatch({ 
+          type: 'SET_ERROR', 
+          payload: `Failed to delete project "${projectName}". Please try again.` 
+        });
       }
     }
   };
@@ -467,7 +497,7 @@ const Sidebar = () => {
 
               {/* Dropdown menu */}
               {showUserDropdown && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="py-1">
                     <button
                       onClick={() => {
