@@ -185,13 +185,18 @@ const Sidebar = () => {
       }
       const token = userProfile.access_token || userProfile.id_token;
       
+      // Give user a moment to rename the project before making API call
+      // This prevents race condition between user typing and API call
+      console.log('⏳ Waiting 1.5 seconds for user to finish renaming before API call...');
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       // Create real project in background
-      // Note: We get the current name right before the API call to catch any user edits
+      // Note: We get the current name after the delay to catch any user edits
       const realProject = await apiService.createProject(
         (() => {
           const currentProject = projects.find(p => p.id === optimisticProject.id);
           const currentName = currentProject?.name || 'New Project';
-          console.log(`📝 Using current project name for API call: "${currentName}"`);
+          console.log(`📝 Using current project name for API call after delay: "${currentName}"`);
           return currentName;
         })(),
         '', 
