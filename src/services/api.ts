@@ -657,7 +657,7 @@ class ApiService {
 
   async createProject(name: string, description: string, areaId: string | undefined, token: string): Promise<Project> {
     try {
-      const response = await fetch('/api/projects/create', {
+      const response = await fetch('/api/projects/manage', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -773,8 +773,8 @@ class ApiService {
 
   async deleteProject(projectId: string, token: string): Promise<void> {
     try {
-      const response = await fetch('/api/projects/delete', {
-        method: 'POST',
+      const response = await fetch('/api/projects/manage', {
+        method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -1256,7 +1256,7 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
 
   async fixMissingDriveFolders(token: string): Promise<{ message: string; fixed: number; total: number }> {
     try {
-      const response = await fetch('/api/projects/fix-drive-folders', {
+      const response = await fetch('/api/projects/manage?action=fix-drive-folders', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
