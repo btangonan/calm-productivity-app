@@ -88,17 +88,31 @@ async function handleGetFiles(req, res) {
     
     console.log(`📁 Using Drive folder: ${driveFolderId}`);
 
-    // Initialize Drive API only 
+    // Initialize Drive API with user authentication (same as upload)
     console.log('⚡ Initializing Drive API...');
     const { google } = await import('googleapis');
-    const { GoogleAuth } = await import('google-auth-library');
+    let authClient;
     
-    const auth = new GoogleAuth({
-      credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')), 
-      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-    });
+    if (user.accessToken && !user.isJWT) {
+      // User has a real access token - create OAuth2 client directly
+      console.log('🔑 Using user access token for Drive file listing');
+      const { OAuth2Client } = await import('google-auth-library');
+      authClient = new OAuth2Client(
+        process.env.VITE_GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+      );
+      authClient.setCredentials({ access_token: user.accessToken });
+    } else {
+      // Use service account for API calls (fallback)
+      console.log('🔑 Using service account for Drive file listing');
+      const { GoogleAuth } = await import('google-auth-library');
+      const auth = new GoogleAuth({
+        credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')), 
+        scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+      });
+      authClient = await auth.getClient();
+    }
 
-    const authClient = await auth.getClient();
     const drive = google.drive({ version: 'v3', auth: authClient });
 
     // Get files from Google Drive API (much faster than Apps Script)
