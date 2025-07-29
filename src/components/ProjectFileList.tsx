@@ -354,21 +354,8 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
     console.log(`🔗 Opening file: ${file.name} (${file.mimeType})`);
     console.log(`🔗 Using URL: ${file.url}`);
 
-    // Open file in new tab to avoid navigating away from the app
-    try {
-      const newWindow = window.open(file.url, '_blank', 'noopener,noreferrer');
-      if (!newWindow) {
-        // Popup blocked - show user message instead of navigating current page
-        console.warn('Popup blocked - unable to open file in new tab');
-        dispatch({ 
-          type: 'SET_ERROR', 
-          payload: `Popup blocked. Please allow popups or manually open: ${file.name}` 
-        });
-      }
-    } catch (error) {
-      console.error('Failed to open file:', error);
-      dispatch({ type: 'SET_ERROR', payload: `Failed to open ${file.name}` });
-    }
+    // Open file in new tab - let browser handle it without intervention
+    window.open(file.url, '_blank', 'noopener,noreferrer');
   };
 
   if (loading) {
