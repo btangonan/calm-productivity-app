@@ -6,12 +6,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('[ENV_DEBUG] GOOGLE_PRIVATE_KEY_BASE64 exists:', !!process.env.GOOGLE_PRIVATE_KEY_BASE64);
+    console.log('[ENV_DEBUG] GOOGLE_CREDENTIALS_JSON exists:', !!process.env.GOOGLE_CREDENTIALS_JSON);
+    console.log('[ENV_DEBUG] GOOGLE_SHEETS_ID exists:', !!process.env.GOOGLE_SHEETS_ID);
     const startTime = Date.now();
     
     // Authenticate user
     console.log('🔍 Validating token...');
-    const user = await validateGoogleToken(req.headers.authorization);
+    const authHeader = req.headers.authorization;
+    console.log('🔑 Auth header present:', !!authHeader);
+    
+    const user = await validateGoogleToken(authHeader);
     if (!user) {
       console.log('❌ Token validation failed');
       return res.status(401).json({ error: 'Unauthorized' });
