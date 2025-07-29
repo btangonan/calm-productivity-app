@@ -58,6 +58,17 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ projectId, onFilesUploaded 
         throw new Error('Project not found');
       }
 
+      // Get authentication token
+      const userProfile = state.userProfile;
+      if (!userProfile) {
+        throw new Error('User not authenticated');
+      }
+
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
       // Initialize progress tracking
       const progressTracker: Record<string, number> = {};
       files.forEach(file => {
@@ -74,9 +85,9 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ projectId, onFilesUploaded 
 
           // Upload to project's Drive folder if available, otherwise use legacy method
           if (project.driveFolderId) {
-            await apiService.uploadFileToFolder(project.driveFolderId, file);
+            await apiService.uploadFileToFolder(project.driveFolderId, file, token);
           } else {
-            await apiService.uploadFileToProject(projectId, file);
+            await apiService.uploadFileToProject(projectId, file, token);
           }
 
           progressTracker[file.name] = 100;
