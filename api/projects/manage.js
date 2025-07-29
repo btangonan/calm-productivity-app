@@ -52,18 +52,33 @@ async function handleCreateProject(req, res, user, startTime) {
   const projectId = `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const createdAt = new Date().toISOString();
 
-  // Use Google APIs directly for speed
+  // Use Google APIs - check if we have a real access token or need service account
   const { google } = await import('googleapis');
-  const { GoogleAuth } = await import('google-auth-library');
+  let authClient;
   
-  const auth = new GoogleAuth();
-  const authClient = auth.fromJSON({
-    type: 'authorized_user',
-    client_id: process.env.VITE_GOOGLE_CLIENT_ID,
-    client_secret: process.env.GOOGLE_CLIENT_SECRET,
-    refresh_token: user.refreshToken, // Assuming you have the refresh token
-  });
-  authClient.setCredentials({ access_token: user.access_token });
+  if (user.accessToken && !user.isJWT) {
+    // User has a real access token - create auth client directly
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth();
+    authClient = auth.fromJSON({
+      type: 'authorized_user',
+      client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    });
+    authClient.setCredentials({ access_token: user.accessToken });
+  } else {
+    // Use service account for API calls
+    const { getServiceAccountToken } = await import('../utils/google-auth.js');
+    const serviceToken = await getServiceAccountToken(user.email);
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth();
+    authClient = auth.fromJSON({
+      type: 'authorized_user',
+      client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    });
+    authClient.setCredentials({ access_token: serviceToken });
+  }
 
   const sheets = google.sheets({ version: 'v4', auth: authClient });
 
@@ -204,18 +219,33 @@ async function handleDeleteProject(req, res, user, startTime) {
 
   console.log(`🗑️ Deleting project: ${projectId} for user: ${user.email}`);
 
-  // Use Google Sheets API directly with authentication
+  // Use Google Sheets API - check if we have a real access token or need service account
   const { google } = await import('googleapis');
-  const { GoogleAuth } = await import('google-auth-library');
+  let authClient;
   
-  const auth = new GoogleAuth();
-  const authClient = auth.fromJSON({
-    type: 'authorized_user',
-    client_id: process.env.VITE_GOOGLE_CLIENT_ID,
-    client_secret: process.env.GOOGLE_CLIENT_SECRET,
-    refresh_token: user.refreshToken, // Assuming you have the refresh token
-  });
-  authClient.setCredentials({ access_token: user.access_token });
+  if (user.accessToken && !user.isJWT) {
+    // User has a real access token - create auth client directly
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth();
+    authClient = auth.fromJSON({
+      type: 'authorized_user',
+      client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    });
+    authClient.setCredentials({ access_token: user.accessToken });
+  } else {
+    // Use service account for API calls
+    const { getServiceAccountToken } = await import('../utils/google-auth.js');
+    const serviceToken = await getServiceAccountToken(user.email);
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth();
+    authClient = auth.fromJSON({
+      type: 'authorized_user',
+      client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    });
+    authClient.setCredentials({ access_token: serviceToken });
+  }
 
   const sheets = google.sheets({ version: 'v4', auth: authClient });
 
@@ -353,18 +383,33 @@ async function handleDeleteProject(req, res, user, startTime) {
 async function handleFixDriveFolders(req, res, user, startTime) {
   console.log(`🔧 Fixing missing drive folders for user: ${user.email}`);
 
-  // Use Google APIs with authentication
+  // Use Google APIs - check if we have a real access token or need service account
   const { google } = await import('googleapis');
-  const { GoogleAuth } = await import('google-auth-library');
+  let authClient;
   
-  const auth = new GoogleAuth();
-  const authClient = auth.fromJSON({
-    type: 'authorized_user',
-    client_id: process.env.VITE_GOOGLE_CLIENT_ID,
-    client_secret: process.env.GOOGLE_CLIENT_SECRET,
-    refresh_token: user.refreshToken, // Assuming you have the refresh token
-  });
-  authClient.setCredentials({ access_token: user.access_token });
+  if (user.accessToken && !user.isJWT) {
+    // User has a real access token - create auth client directly
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth();
+    authClient = auth.fromJSON({
+      type: 'authorized_user',
+      client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    });
+    authClient.setCredentials({ access_token: user.accessToken });
+  } else {
+    // Use service account for API calls
+    const { getServiceAccountToken } = await import('../utils/google-auth.js');
+    const serviceToken = await getServiceAccountToken(user.email);
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth();
+    authClient = auth.fromJSON({
+      type: 'authorized_user',
+      client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    });
+    authClient.setCredentials({ access_token: serviceToken });
+  }
 
   const sheets = google.sheets({ version: 'v4', auth: authClient });
   const drive = google.drive({ version: 'v3', auth: authClient });
@@ -517,18 +562,33 @@ async function handleUpdateProject(req, res, user, startTime) {
 
   console.log(`✏️ Updating project name: ${projectId} to "${name}" for user: ${user.email}`);
 
-  // Use Google Sheets API directly with authentication
+  // Use Google Sheets API - check if we have a real access token or need service account
   const { google } = await import('googleapis');
-  const { GoogleAuth } = await import('google-auth-library');
+  let authClient;
   
-  const auth = new GoogleAuth();
-  const authClient = auth.fromJSON({
-    type: 'authorized_user',
-    client_id: process.env.VITE_GOOGLE_CLIENT_ID,
-    client_secret: process.env.GOOGLE_CLIENT_SECRET,
-    refresh_token: user.refreshToken, // Assuming you have the refresh token
-  });
-  authClient.setCredentials({ access_token: user.access_token });
+  if (user.accessToken && !user.isJWT) {
+    // User has a real access token - create auth client directly
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth();
+    authClient = auth.fromJSON({
+      type: 'authorized_user',
+      client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    });
+    authClient.setCredentials({ access_token: user.accessToken });
+  } else {
+    // Use service account for API calls
+    const { getServiceAccountToken } = await import('../utils/google-auth.js');
+    const serviceToken = await getServiceAccountToken(user.email);
+    const { GoogleAuth } = await import('google-auth-library');
+    const auth = new GoogleAuth();
+    authClient = auth.fromJSON({
+      type: 'authorized_user',
+      client_id: process.env.VITE_GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    });
+    authClient.setCredentials({ access_token: serviceToken });
+  }
 
   const sheets = google.sheets({ version: 'v4', auth: authClient });
 
