@@ -38,6 +38,19 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
         throw new Error('User not authenticated');
       }
       
+      console.log('🔍 UserProfile debug:', {
+        hasUserProfile: !!userProfile,
+        hasIdToken: !!userProfile.id_token,
+        hasAccessToken: !!userProfile.access_token,
+        email: userProfile.email
+      });
+      
+      // Use access_token or id_token, whichever is available
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      
       // Get project data to extract drive folder ID for faster API call
       const project = state.projects.find(p => p.id === projectId);
       const driveFolderId = project?.driveFolderId;
@@ -48,7 +61,7 @@ const ProjectFileList: React.FC<ProjectFileListProps> = ({ projectId, refreshTri
         console.log('⚠️ No cached drive folder ID, API will use slower Sheets lookup');
       }
       
-      const projectFiles = await apiService.getProjectFiles(projectId, userProfile.id_token, driveFolderId);
+      const projectFiles = await apiService.getProjectFiles(projectId, token, driveFolderId);
       console.log('Received project files:', projectFiles);
       setFiles(projectFiles);
     } catch (error) {

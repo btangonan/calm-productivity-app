@@ -948,7 +948,7 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     try {
       // Try Edge Functions first if enabled
       if (this.useEdgeFunctions) {
-        console.log(`🔑 Calling Edge Function getProjectFiles with token: ${token.substring(0, 20)}...`);
+        console.log(`🔑 Calling Edge Function getProjectFiles with token: ${token ? token.substring(0, 20) + '...' : 'undefined'}`);
         
         // Build URL with optional folderId parameter for faster lookup
         let url = `${this.EDGE_FUNCTIONS_URL}/projects/files?projectId=${encodeURIComponent(projectId)}`;
