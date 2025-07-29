@@ -167,27 +167,8 @@ const Header = () => {
                 
                 // Check if we have a valid URL now
                 if (!driveUrl || !driveUrl.startsWith('http')) {
-                  // Automatically set up drive folder for this project
-                  console.log('🔧 Setting up drive folder for project automatically...');
-                  
-                  const setupDriveFolder = async () => {
-                    try {
-                      const userProfile = state.userProfile;
-                      if (!userProfile) {
-                        alert('Please sign in to set up drive folder');
-                        return;
-                      }
-
-                      // For now, show a message instead of automatic setup to reduce API endpoints
-                      alert('Please set up the master folder in your user menu to enable drive folder integration for this project.');
-                      
-                    } catch (error) {
-                      console.error('Failed to setup drive folder:', error);
-                      alert(`Failed to setup drive folder. Please check the master folder settings in your user menu or try again later.`);
-                    }
-                  };
-                  
-                  setupDriveFolder();
+                  console.log('❌ No drive folder configured for project:', selectedProject.name);
+                  alert('Drive folder not configured for this project yet. You can still view and manage project files in the "Project Files" section below. To set up drive folder integration, check the master folder settings in your user menu.');
                   return;
                 }
                 

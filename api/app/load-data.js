@@ -24,6 +24,7 @@ export default async function handler(req, res) {
     console.log(`🔐 Loading app data for user: ${user.email}`);
 
     // Use Google Sheets API directly with authentication
+    const authStartTime = Date.now();
     console.log('🔍 Initializing Google Sheets API...');
     const { google } = await import('googleapis');
     const { GoogleAuth } = await import('google-auth-library');
@@ -34,60 +35,91 @@ export default async function handler(req, res) {
     });
 
     const authClient = await auth.getClient();
+    console.log(`⚡ Auth setup: ${Date.now() - authStartTime}ms`);
+    
     const sheets = google.sheets({ version: 'v4', auth: authClient });
 
+    const apiStartTime = Date.now();
     console.log('🔍 Making batch API call to Google Sheets...');
     const batchResponse = await sheets.spreadsheets.values.batchGet({
       spreadsheetId: process.env.GOOGLE_SHEETS_ID,
       ranges: ['Areas!A:F', 'Projects!A:H', 'Tasks!A:J'],
     });
+    console.log(`⚡ Sheets API call: ${Date.now() - apiStartTime}ms`);
 
     const [areasData, projectsData, tasksData] = batchResponse.data.valueRanges;
 
-    // Convert areas data
-    const areas = (areasData.values || []).slice(1).map(row => ({
-      id: row[0] || '',
-      name: row[1] || '',
-      description: row[2] || '',
-      driveFolderId: row[3] || '',
-      driveFolderUrl: row[4] || '',
-      createdAt: row[5] || ''
-    })).filter(area => area.id);
+    const processingStartTime = Date.now();
+    console.log('🔄 Processing data...');
 
-    // Convert projects data
-    const projects = (projectsData.values || []).slice(1).map(row => ({
-      id: row[0] || '',
-      name: row[1] || '',
-      description: row[2] || '',
-      areaId: row[3] || null,
-      status: row[4] || 'Active',
-      driveFolderId: row[5] || '',
-      driveFolderUrl: row[6] || '',
-      createdAt: row[7] || ''
-    })).filter(project => project.id);
+    // Convert areas data (optimized)
+    const areasValues = areasData.values || [];
+    const areas = [];
+    for (let i = 1; i < areasValues.length; i++) {
+      const row = areasValues[i];
+      if (row[0]) { // Only process rows with ID
+        areas.push({
+          id: row[0],
+          name: row[1] || '',
+          description: row[2] || '',
+          driveFolderId: row[3] || '',
+          driveFolderUrl: row[4] || '',
+          createdAt: row[5] || ''
+        });
+      }
+    }
 
-    // Convert tasks data
-    const tasks = (tasksData.values || []).slice(1).map(row => ({
-      id: row[0] || '',
-      title: row[1] || '',
-      description: row[2] || '',
-      projectId: row[3] || null,
-      context: row[4] || '',
-      dueDate: row[5] || null,
-      isCompleted: row[6] === 'true' || row[6] === true,
-      sortOrder: parseInt(row[7]) || 0,
-      createdAt: row[8] || '',
-      attachments: (() => {
+    // Convert projects data (optimized)
+    const projectsValues = projectsData.values || [];
+    const projects = [];
+    for (let i = 1; i < projectsValues.length; i++) {
+      const row = projectsValues[i];
+      if (row[0]) { // Only process rows with ID
+        projects.push({
+          id: row[0],
+          name: row[1] || '',
+          description: row[2] || '',
+          areaId: row[3] || null,
+          status: row[4] || 'Active',
+          driveFolderId: row[5] || '',
+          driveFolderUrl: row[6] || '',
+          createdAt: row[7] || ''
+        });
+      }
+    }
+
+    // Convert tasks data (optimized)
+    const tasksValues = tasksData.values || [];
+    const tasks = [];
+    for (let i = 1; i < tasksValues.length; i++) {
+      const row = tasksValues[i];
+      if (row[0]) { // Only process rows with ID
+        let attachments = [];
         try {
-          return JSON.parse(row[9] || '[]');
+          attachments = JSON.parse(row[9] || '[]');
         } catch {
-          return [];
+          // Keep empty array
         }
-      })()
-    })).filter(task => task.id);
+        
+        tasks.push({
+          id: row[0],
+          title: row[1] || '',
+          description: row[2] || '',
+          projectId: row[3] || null,
+          context: row[4] || '',
+          dueDate: row[5] || null,
+          isCompleted: row[6] === 'true' || row[6] === true,
+          sortOrder: parseInt(row[7]) || 0,
+          createdAt: row[8] || '',
+          attachments
+        });
+      }
+    }
+
+    console.log(`⚡ Data processing: ${Date.now() - processingStartTime}ms`);
 
     const duration = Date.now() - startTime;
-    console.log(`⚡ Loaded app data in ${duration}ms: ${areas.length} areas, ${projects.length} projects, ${tasks.length} tasks`);
+    console.log(`⚡ Total app data loading: ${duration}ms: ${areas.length} areas, ${projects.length} projects, ${tasks.length} tasks`);
 
     return res.status(200).json({
       success: true,
