@@ -436,9 +436,9 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
   };
 
   return (
-    <div className="py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0" onClick={onSelect}>
+    <div className="group py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 relative">
+      <div className="flex items-start">
+        <div className="flex-1 min-w-0 pr-12" onClick={onSelect}>
           {/* Line 1: Sender, subject, and date/time */}
           <div className="flex items-center mb-1">
             <div className="flex items-center space-x-2 flex-shrink-0">
@@ -463,15 +463,16 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
           </div>
         </div>
         
+        {/* Hover-only task conversion button */}
         <button
           onClick={(e) => { 
             e.stopPropagation(); 
             onConvert(); 
           }}
-          className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 flex-shrink-0"
+          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 shadow-sm"
           title="Convert to task"
         >
-          →Task
+          + Task
         </button>
       </div>
     </div>
