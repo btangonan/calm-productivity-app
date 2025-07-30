@@ -43,82 +43,71 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     setError(null);
     
     try {
-      // For now, use mock data for UI testing
-      const mockEmails: GmailMessage[] = [
-        {
-          id: '1',
-          threadId: 'thread1',
-          sender: 'john@company.com',
-          subject: 'Project Review Meeting Tomorrow',
-          snippet: 'Hi team, just a reminder about our project review meeting scheduled for tomorrow at 2 PM. Please bring your status updates...',
-          date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-          unread: true,
-          labelIds: ['INBOX', 'IMPORTANT']
-        },
-        {
-          id: '2',
-          threadId: 'thread2',
-          sender: 'sarah@client.com',
-          subject: 'Quick question about the proposal',
-          snippet: 'Thanks for sending the proposal! I have a quick question about the timeline section. Could we hop on a call this week?',
-          date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
-          unread: true,
-          labelIds: ['INBOX']
-        },
-        {
-          id: '3',
-          threadId: 'thread3',
-          sender: 'notifications@github.com',
-          subject: '[GitHub] Pull request approved',
-          snippet: 'Your pull request "Add user authentication" has been approved and merged into main branch.',
-          date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-          unread: false,
-          labelIds: ['INBOX']
-        },
-        {
-          id: '4',
-          threadId: 'thread4',
-          sender: 'team@design.com',
-          subject: 'Design assets ready for review',
-          snippet: 'The new design assets for the dashboard are ready for your review. Please check the Figma file and let us know your thoughts.',
-          date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-          unread: false,
-          labelIds: ['INBOX', 'STARRED']
-        },
-        {
-          id: '5',
-          threadId: 'thread5',
-          sender: 'calendar@google.com',
-          subject: 'Meeting reminder: Daily standup',
-          snippet: 'This is a reminder that you have "Daily standup" scheduled for tomorrow at 9:00 AM.',
-          date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-          unread: false,
-          labelIds: ['INBOX']
-        }
-      ];
+      console.log('📧 Loading real emails from Gmail API...');
+      
+      // Build query parameters
+      const queryParams = new URLSearchParams({
+        maxResults: '10',
+        dateRange: '7', // Last 7 days
+        includeSpamTrash: 'false'
+      });
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setEmails(mockEmails);
-      
-      // TODO: Replace with actual API call when backend is ready
-      /*
-      const response = await apiService.fetchWithAuth('/api/gmail/messages', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      }, 'Gmail messages fetch');
+      // Add label filter if selected
+      if (selectedLabel && selectedLabel !== 'INBOX') {
+        queryParams.append('labelIds', selectedLabel);
+      }
+
+      // Add search query if provided
+      if (searchQuery.trim()) {
+        queryParams.append('query', searchQuery.trim());
+      }
+
+      const response = await apiService.fetchWithAuth(
+        `/api/gmail/messages?${queryParams.toString()}`, 
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }, 
+        'Gmail messages fetch'
+      );
 
       if (response.ok) {
         const data = await response.json();
-        setEmails(data.messages || []);
+        console.log('📧 Gmail API response:', data);
+        
+        if (data.success && data.data?.messages) {
+          // Transform Gmail API response to our format
+          const transformedEmails: GmailMessage[] = data.data.messages.map((msg: any) => ({
+            id: msg.id,
+            threadId: msg.threadId,
+            sender: msg.from || 'Unknown Sender',
+            subject: msg.subject || '(No Subject)',
+            snippet: msg.snippet || msg.body?.substring(0, 150) || '',
+            date: msg.date || new Date().toISOString(),
+            unread: msg.isUnread || false,
+            labelIds: msg.labels || ['INBOX'],
+            body: msg.body || msg.snippet || ''
+          }));
+          
+          setEmails(transformedEmails);
+          console.log(`✅ Loaded ${transformedEmails.length} real emails`);
+        } else {
+          throw new Error(data.error || 'No emails returned from API');
+        }
       } else {
-        throw new Error('Failed to load emails');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load emails');
       }
-      */
     } catch (error) {
       console.error('Failed to load emails:', error);
       setError(error instanceof Error ? error.message : 'Failed to load emails');
+      
+      // Show user-friendly error message
+      if (error instanceof Error && error.message.includes('Unauthorized')) {
+        setError('Please sign in again to access your Gmail');
+      } else if (error instanceof Error && error.message.includes('Gmail access')) {
+        setError('Gmail access requires proper authentication. Please refresh and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -133,62 +122,41 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     if (!userProfile?.access_token) return;
 
     try {
-      // For now, create a mock task for UI testing
-      const newTask = {
-        id: `task_${Date.now()}`,
-        title: `Email: ${email.subject}`,
-        description: `From: ${email.sender}\n\n${email.snippet}`,
-        projectId: state.selectedProjectId || null,
-        context: '@email',
-        dueDate: null,
-        isCompleted: false,
-        sortOrder: Date.now(),
-        createdAt: new Date().toISOString(),
-        attachments: []
-      };
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('🔄 Converting email to task via real API...', email.id);
       
-      dispatch({ type: 'ADD_TASK', payload: newTask });
-      
-      // Show success feedback
-      setError(null);
-      console.log('✅ Email converted to task successfully (mock)');
-      
-      // Close modal if open
-      setShowEmailModal(false);
-      
-      // TODO: Replace with actual API call when backend is ready
-      /*
-      const response = await apiService.fetchWithAuth('/api/gmail/messages?action=convert-to-task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messageId: email.id,
-          taskData: {
-            title: `Email: ${email.subject}`,
-            description: `From: ${email.sender}\n\n${email.snippet}`,
-            context: '@email',
-            projectId: state.selectedProjectId || null
-          }
-        })
-      }, 'Convert email to task');
+      const response = await apiService.fetchWithAuth(
+        '/api/gmail/messages?action=convert-to-task', 
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messageId: email.id,
+            projectId: state.selectedProjectId || null,
+            context: '@email'
+          })
+        }, 
+        'Convert email to task'
+      );
 
       if (response.ok) {
-        const newTask = await response.json();
-        dispatch({ type: 'ADD_TASK', payload: newTask });
+        const result = await response.json();
+        console.log('✅ Email converted to task successfully:', result);
         
-        // Show success feedback
-        setError(null);
-        console.log('✅ Email converted to task successfully');
-        
-        // Close modal if open
-        setShowEmailModal(false);
+        if (result.success && result.data?.task) {
+          dispatch({ type: 'ADD_TASK', payload: result.data.task });
+          
+          // Show success feedback
+          setError(null);
+          
+          // Close modal if open
+          setShowEmailModal(false);
+        } else {
+          throw new Error(result.error || 'Invalid response format');
+        }
       } else {
-        throw new Error('Failed to convert email to task');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to convert email to task');
       }
-      */
     } catch (error) {
       console.error('Failed to convert email:', error);
       setError(error instanceof Error ? error.message : 'Failed to convert email');
