@@ -26,6 +26,7 @@ type AppAction =
   | { type: 'DELETE_PROJECT'; payload: string }
   | { type: 'REORDER_TASKS'; payload: Task[] }
   | { type: 'LOGIN_SUCCESS'; payload: UserProfile }
+  | { type: 'UPDATE_USER_PROFILE'; payload: UserProfile }
   | { type: 'LOGOUT' };
 
 const initialState: AppState = {
@@ -133,6 +134,18 @@ function appReducer(state: AppState, action: AppAction): AppState {
         });
       }
       return { ...state, isAuthenticated: true, userProfile: action.payload };
+    case 'UPDATE_USER_PROFILE':
+      console.log('🔄 UPDATE_USER_PROFILE action dispatched:', action.payload);
+      
+      // Update localStorage with new profile data
+      try {
+        localStorage.setItem('google-auth-state', JSON.stringify(action.payload));
+        console.log('💾 Updated authentication state saved to localStorage');
+      } catch (error) {
+        console.error('Failed to update auth state in localStorage:', error);
+      }
+      
+      return { ...state, userProfile: action.payload };
     case 'LOGOUT':
       localStorage.removeItem('google-auth-state');
       return { 
@@ -215,14 +228,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.isAuthenticated, state.userProfile]);
 
-  // Set up API service auth error callback
+  // Set up API service auth error callback and token refresh callback
   useEffect(() => {
     const handleAuthError = () => {
       console.log('🚪 API service triggered auth error - forcing logout');
       dispatch({ type: 'LOGOUT' });
     };
 
+    const handleTokenRefresh = (newProfile: any) => {
+      console.log('🔄 Token refreshed, updating context');
+      dispatch({ type: 'UPDATE_USER_PROFILE', payload: newProfile });
+    };
+
     apiService.setAuthErrorCallback(handleAuthError);
+    apiService.setTokenRefreshCallback(handleTokenRefresh);
   }, []);
 
   return (

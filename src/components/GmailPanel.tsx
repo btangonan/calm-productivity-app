@@ -325,24 +325,32 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
   };
 
   return (
-    <div className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+    <div className="p-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0" onClick={onSelect}>
-          <div className="flex items-center space-x-2 mb-1">
-            <span className={`text-sm truncate ${email.unread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-              {email.sender}
+          {/* Line 1: Subject and date */}
+          <div className="flex items-center justify-between mb-1">
+            <p className={`text-sm font-medium truncate flex-1 mr-2 ${email.unread ? 'text-gray-900' : 'text-gray-700'}`}>
+              {email.subject}
+            </p>
+            <span className="text-xs text-gray-400 flex-shrink-0">
+              {formatDate(email.date)}
             </span>
-            {email.unread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>}
           </div>
-          <p className={`text-sm truncate mb-1 ${email.unread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-            {email.subject}
-          </p>
-          <p className="text-sm text-gray-500 truncate mb-2">
-            {email.snippet}
-          </p>
-          <p className="text-xs text-gray-400">
-            {formatDate(email.date)}
-          </p>
+          
+          {/* Line 2: Sender, unread indicator, and snippet */}
+          <div className="flex items-baseline space-x-2">
+            <div className="flex items-center space-x-1 flex-shrink-0">
+              <span className={`text-sm truncate max-w-[120px] ${email.unread ? 'font-semibold text-gray-700' : 'font-medium text-gray-600'}`}>
+                {email.sender}
+              </span>
+              {email.unread && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
+            </div>
+            <span className="text-gray-400 flex-shrink-0">•</span>
+            <p className="text-sm text-gray-500 truncate flex-1">
+              {email.snippet}
+            </p>
+          </div>
         </div>
         
         <button

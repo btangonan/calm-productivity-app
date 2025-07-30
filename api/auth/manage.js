@@ -1,4 +1,4 @@
-import { validateGoogleToken } from '../utils/google-auth.js';
+import { validateGoogleToken, refreshGoogleToken } from '../utils/google-auth.js';
 
 export default async function handler(req, res) {
   // Handle different actions based on query parameter
@@ -12,9 +12,11 @@ export default async function handler(req, res) {
         return await handleExchangeCode(req, res);
       case 'store-token':
         return await handleStoreToken(req, res);
+      case 'refresh':
+        return await handleRefreshToken(req, res);
       default:
         return res.status(400).json({ 
-          error: 'Invalid action. Use: validate, exchange-code, or store-token' 
+          error: 'Invalid action. Use: validate, exchange-code, store-token, or refresh' 
         });
     }
   } catch (error) {
@@ -192,4 +194,45 @@ async function handleStoreToken(req, res) {
     success: true,
     message: 'Refresh token stored successfully'
   });
+}
+
+// Refresh access token
+async function handleRefreshToken(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { refreshToken } = req.body;
+  
+  if (!refreshToken) {
+    return res.status(400).json({ error: 'Refresh token is required' });
+  }
+
+  try {
+    console.log('🔄 Refreshing access token...');
+    
+    const newTokens = await refreshGoogleToken(refreshToken);
+    
+    console.log('✅ Token refresh successful');
+    
+    return res.status(200).json({
+      success: true,
+      tokens: {
+        access_token: newTokens.access_token,
+        expires_in: newTokens.expires_in,
+        token_type: newTokens.token_type,
+        // Keep the same refresh token if a new one wasn't provided
+        refresh_token: newTokens.refresh_token || refreshToken
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Token refresh failed:', error);
+    
+    return res.status(401).json({
+      success: false,
+      error: 'Failed to refresh token',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 }

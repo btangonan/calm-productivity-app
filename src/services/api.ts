@@ -68,9 +68,19 @@ class ApiService {
   }
 
   // Handle 401 unauthorized errors
-  private handleAuthError(context: string) {
+  private async handleAuthError(context: string) {
     console.error(`🔐 Authentication failed in ${context} - token likely expired`);
-    console.log('🚪 Triggering automatic logout due to token expiration');
+    console.log('🔄 Attempting automatic token refresh...');
+    
+    // Try to refresh the token before logging out
+    const refreshResult = await this.attemptTokenRefresh();
+    
+    if (refreshResult.success) {
+      console.log('✅ Token refresh successful, retrying original request');
+      return true; // Indicate that the request should be retried
+    }
+    
+    console.log('🚪 Token refresh failed, triggering logout');
     
     // Show user-friendly notification
     if (typeof window !== 'undefined') {
@@ -110,8 +120,76 @@ class ApiService {
     }
   }
 
-  // Enhanced fetch with automatic 401 handling
-  async fetchWithAuth(url: string, options: RequestInit = {}, context: string = 'API call', token?: string): Promise<Response> {
+  // Attempt to refresh the access token
+  private async attemptTokenRefresh(): Promise<{ success: boolean; newToken?: string }> {
+    try {
+      // Get current user profile from local storage (using correct key)
+      const userProfile = JSON.parse(localStorage.getItem('google-auth-state') || '{}');
+      
+      if (!userProfile.refresh_token) {
+        console.error('❌ No refresh token available');
+        return { success: false };
+      }
+
+      console.log('🔄 Calling token refresh API...');
+      
+      const response = await fetch('/api/auth/manage?action=refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refreshToken: userProfile.refresh_token
+        })
+      });
+
+      if (!response.ok) {
+        console.error('❌ Token refresh API failed:', response.status);
+        return { success: false };
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.tokens?.access_token) {
+        console.log('✅ New access token received');
+        
+        // Update the stored user profile with new tokens
+        const updatedProfile = {
+          ...userProfile,
+          access_token: result.tokens.access_token,
+          expires_in: result.tokens.expires_in,
+          token_type: result.tokens.token_type,
+          // Keep existing refresh token or use new one if provided
+          refresh_token: result.tokens.refresh_token || userProfile.refresh_token
+        };
+        
+        localStorage.setItem('google-auth-state', JSON.stringify(updatedProfile));
+        
+        // Trigger context update if available
+        if (this.onTokenRefresh) {
+          this.onTokenRefresh(updatedProfile);
+        }
+        
+        return { success: true, newToken: result.tokens.access_token };
+      }
+      
+      return { success: false };
+      
+    } catch (error) {
+      console.error('❌ Token refresh error:', error);
+      return { success: false };
+    }
+  }
+
+  // Callback for token refresh (to be set by context)
+  private onTokenRefresh?: (newProfile: any) => void;
+  
+  setTokenRefreshCallback(callback: (newProfile: any) => void) {
+    this.onTokenRefresh = callback;
+  }
+
+  // Enhanced fetch with automatic 401 handling and retry
+  async fetchWithAuth(url: string, options: RequestInit = {}, context: string = 'API call', token?: string, isRetry: boolean = false): Promise<Response> {
     // Automatically add Authorization header if token is provided
     if (token) {
       options = {
@@ -135,8 +213,28 @@ class ApiService {
       ok: response.ok
     });
     
-    if (response.status === 401) {
-      this.handleAuthError(context);
+    if (response.status === 401 && !isRetry) {
+      console.log('🔐 Got 401, attempting token refresh...');
+      
+      const shouldRetry = await this.handleAuthError(context);
+      
+      if (shouldRetry) {
+        console.log('🔄 Retrying request with refreshed token...');
+        // Get the new token from localStorage (using correct key)
+        const userProfile = JSON.parse(localStorage.getItem('google-auth-state') || '{}');
+        const newToken = userProfile.access_token;
+        
+        if (newToken) {
+          // Retry the request with the new token
+          return this.fetchWithAuth(url, options, context, newToken, true);
+        }
+      }
+      
+      // If refresh failed or no retry, trigger logout
+      throw new Error('Authentication expired - please sign in again');
+    } else if (response.status === 401 && isRetry) {
+      // If retry also failed, give up
+      console.error('❌ Retry with refreshed token also failed');
       throw new Error('Authentication expired - please sign in again');
     }
     
