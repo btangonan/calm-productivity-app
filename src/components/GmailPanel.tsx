@@ -62,13 +62,19 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
         queryParams.append('query', searchQuery.trim());
       }
 
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
       const response = await apiService.fetchWithAuth(
         `/api/gmail/messages?${queryParams.toString()}`, 
         {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         }, 
-        'Gmail messages fetch'
+        'Gmail messages fetch',
+        token
       );
 
       if (response.ok) {
@@ -124,6 +130,11 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     try {
       console.log('🔄 Converting email to task via real API...', email.id);
       
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
       const response = await apiService.fetchWithAuth(
         '/api/gmail/messages?action=convert-to-task', 
         {
@@ -135,7 +146,8 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
             context: '@email'
           })
         }, 
-        'Convert email to task'
+        'Convert email to task',
+        token
       );
 
       if (response.ok) {

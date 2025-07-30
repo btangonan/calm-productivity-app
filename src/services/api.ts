@@ -111,8 +111,29 @@ class ApiService {
   }
 
   // Enhanced fetch with automatic 401 handling
-  private async fetchWithAuth(url: string, options: RequestInit = {}, context: string = 'API call'): Promise<Response> {
+  async fetchWithAuth(url: string, options: RequestInit = {}, context: string = 'API call', token?: string): Promise<Response> {
+    // Automatically add Authorization header if token is provided
+    if (token) {
+      options = {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`
+        }
+      };
+    }
+    
+    console.log(`🔗 Making ${context} request to: ${url}`);
+    console.log('🔑 Authorization header:', options.headers?.['Authorization'] ? 'Present' : 'Missing');
+    
     const response = await fetch(url, options);
+    
+    console.log(`📊 ${context} response:`, {
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
     
     if (response.status === 401) {
       this.handleAuthError(context);
