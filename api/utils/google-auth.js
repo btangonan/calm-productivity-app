@@ -6,10 +6,20 @@ export async function validateGoogleToken(authHeader) {
 
   const token = authHeader.substring(7);
   console.log('🔍 Validating token:', token.substring(0, 20) + '...');
+  console.log('🔍 Environment check:', {
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? 'Present' : 'Missing',
+    VITE_GOOGLE_CLIENT_ID: process.env.VITE_GOOGLE_CLIENT_ID ? 'Present' : 'Missing',
+    NODE_ENV: process.env.NODE_ENV
+  });
   
   try {
     // Try validating as access token first (for the new OAuth flow)
     const accessTokenResponse = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
+    console.log('🔍 Access token validation response:', {
+      status: accessTokenResponse.status,
+      statusText: accessTokenResponse.statusText,
+      ok: accessTokenResponse.ok
+    });
     
     if (accessTokenResponse.ok) {
       const tokenInfo = await accessTokenResponse.json();
@@ -43,6 +53,8 @@ export async function validateGoogleToken(authHeader) {
       
       if (!response.ok) {
         console.error(`JWT validation failed: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('JWT validation error details:', errorText);
         return null;
       }
 
@@ -72,9 +84,11 @@ export async function validateGoogleToken(authHeader) {
     }
 
     console.error('Token validation failed for both access token and ID token');
+    console.error('Access token response was not ok, and token does not start with eyJ (not a JWT)');
     return null;
   } catch (error) {
     console.error('Token validation error:', error);
+    console.error('Error during token validation process:', error.message);
     return null;
   }
 }
