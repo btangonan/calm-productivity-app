@@ -142,6 +142,7 @@ function AppContent() {
 
   return (
     <div className="h-screen flex bg-gray-50">
+      {/* Left Sidebar */}
       <div 
         ref={sidebarRef}
         className="relative flex-shrink-0 bg-white border-r border-gray-200 h-full"
@@ -155,6 +156,8 @@ function AppContent() {
           style={{ right: '-1px' }}
         />
       </div>
+      
+      {/* Main Content Area */}
       <MainContent />
     </div>
   );

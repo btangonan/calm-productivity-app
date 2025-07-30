@@ -7,6 +7,7 @@ import ProjectFileList from './ProjectFileList';
 import ProjectTabs from './ProjectTabs';
 import TaskForm from './TaskForm';
 import DriveBrowser from './DriveBrowser';
+import GmailPanel from './GmailPanel';
 import { useApp } from '../context/AppContext';
 import { useState, useEffect } from 'react';
 
@@ -18,7 +19,7 @@ const MainContent = () => {
   const [rightSidebarWidth, setRightSidebarWidth] = useState(384); // 24rem = 384px
   const [isResizingRight, setIsResizingRight] = useState(false);
   const [useEnhancedProjectView, setUseEnhancedProjectView] = useState(
-    localStorage.getItem('enhanced-project-view') === 'true'
+    localStorage.getItem('enhanced-project-view') !== 'false' // Default to true
   );
 
   const showProjectFeatures = currentView === 'project' && selectedProjectId;
@@ -91,51 +92,38 @@ const MainContent = () => {
         />
         
         {/* All content in a single scrollable container */}
-        <div className="p-4 space-y-4">
-          {/* Project features section */}
-          {showProjectFeatures && (
-            <div className="space-y-4">
-              {/* Feature flag toggle for testing */}
-              <div className="text-xs text-gray-500 flex items-center space-x-2">
-                <label className="inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={useEnhancedProjectView}
-                    onChange={(e) => {
-                      setUseEnhancedProjectView(e.target.checked);
-                      localStorage.setItem('enhanced-project-view', e.target.checked.toString());
-                    }}
-                    className="form-checkbox h-3 w-3 text-primary-600"
-                  />
-                  <span className="ml-2">Enhanced Project View (Beta)</span>
-                </label>
-              </div>
-
-              {/* Show legacy sidebar content when not using enhanced view */}
-              {!useEnhancedProjectView && (
-                <>
-                  <FileDropzone 
-                    projectId={selectedProjectId!} 
-                    onFilesUploaded={handleFilesUploaded}
-                  />
-                  <ProjectFileList 
-                    projectId={selectedProjectId!}
-                    refreshTrigger={fileRefreshTrigger}
-                  />
-                  <div className="bg-white rounded-lg">
-                    <AISuggestions />
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+        <div className="flex flex-col h-full">
+          {/* Gmail Panel - Always at the top */}
+          <div className="border-b border-gray-200">
+            <GmailPanel />
+          </div>
           
-          {/* Google integrations - always visible */}
-          {showGoogleIntegrations && (
-            <div className={showProjectFeatures ? "border-t border-gray-200 pt-4" : ""}>
-              <GoogleIntegrations />
-            </div>
-          )}
+          {/* Scrollable content below Gmail */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Project features section - only show when not using enhanced view */}
+            {showProjectFeatures && !useEnhancedProjectView && (
+              <div className="space-y-4">
+                <FileDropzone 
+                  projectId={selectedProjectId!} 
+                  onFilesUploaded={handleFilesUploaded}
+                />
+                <ProjectFileList 
+                  projectId={selectedProjectId!}
+                  refreshTrigger={fileRefreshTrigger}
+                />
+                <div className="bg-white rounded-lg">
+                  <AISuggestions />
+                </div>
+              </div>
+            )}
+            
+            {/* Google integrations - always visible */}
+            {showGoogleIntegrations && (
+              <div className={showProjectFeatures && !useEnhancedProjectView ? "border-t border-gray-200 pt-4" : ""}>
+                <GoogleIntegrations />
+              </div>
+            )}
+          </div>
         </div>
       </div>
       
