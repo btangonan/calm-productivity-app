@@ -429,6 +429,12 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
     }
   };
 
+  const decodeHtmlEntities = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
   return (
     <div className="py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
       <div className="flex items-start justify-between">
@@ -437,13 +443,12 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
           <div className="flex items-center mb-1">
             <div className="flex items-center space-x-2 flex-shrink-0">
               <span className={`text-sm font-medium ${email.unread ? 'text-gray-900' : 'text-gray-700'}`}>
-                {email.sender}
+                {decodeHtmlEntities(email.sender)}
               </span>
-              {email.unread && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
             </div>
             <span className="text-gray-400 mx-2">•</span>
             <p className={`text-sm truncate flex-1 mr-2 ${email.unread ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
-              {email.subject}
+              {decodeHtmlEntities(email.subject)}
             </p>
             <span className="text-xs text-gray-400 flex-shrink-0">
               {formatDate(email.date)}
@@ -453,7 +458,7 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
           {/* Line 2: Email preview */}
           <div>
             <p className="text-sm text-gray-500 truncate">
-              {email.snippet}
+              {decodeHtmlEntities(email.snippet)}
             </p>
           </div>
         </div>
@@ -473,7 +478,7 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
   );
 };
 
-// Email Detail Modal Component
+// Enhanced Email Detail Modal Component
 interface EmailDetailModalProps {
   email: GmailMessage;
   isOpen: boolean;
@@ -481,11 +486,95 @@ interface EmailDetailModalProps {
   onConvertToTask: (email: GmailMessage) => void;
 }
 
+interface FullEmailContent {
+  id: string;
+  subject: string;
+  from: string;
+  to: string;
+  cc: string;
+  bcc: string;
+  date: string;
+  replyTo: string;
+  plainBody: string;
+  htmlBody: string;
+  attachments: Array<{
+    filename: string;
+    mimeType: string;
+    size: number;
+    attachmentId: string;
+  }>;
+}
+
 const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask }: EmailDetailModalProps) => {
+  const [fullEmail, setFullEmail] = useState<FullEmailContent | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { state } = useApp();
+  const { userProfile } = state;
+
+  // Load full email content when modal opens, reset when closes
+  useEffect(() => {
+    if (isOpen && !fullEmail) {
+      loadFullEmail();
+    } else if (!isOpen) {
+      // Reset state when modal closes
+      setFullEmail(null);
+      setError(null);
+    }
+  }, [isOpen, email.id]);
+
+  const loadFullEmail = async () => {
+    if (!userProfile?.access_token) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const token = userProfile.access_token || userProfile.id_token;
+      const response = await apiService.fetchWithAuth(
+        `/api/gmail/messages?action=get-full&messageId=${email.id}`,
+        { method: 'GET' },
+        'Load full email',
+        token
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setFullEmail(data.data);
+        } else {
+          throw new Error(data.error || 'Failed to load full email');
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load full email');
+      }
+    } catch (error) {
+      console.error('Failed to load full email:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load full email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   if (!isOpen) return null;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const decodeHtmlEntities = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
   };
 
   return (
@@ -514,39 +603,114 @@ const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask }: EmailDeta
           </div>
           
           {/* Content */}
-          <div className="p-4 overflow-y-auto max-h-96">
-            <div className="space-y-3">
-              <div>
-                <span className="text-sm font-medium text-gray-700">From:</span>
-                <span className="ml-2 text-sm text-gray-900">{email.sender}</span>
+          <div className="p-4 overflow-y-auto max-h-[70vh]">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-gray-500">Loading full email content...</div>
               </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Subject:</span>
-                <span className="ml-2 text-sm text-gray-900">{email.subject}</span>
+            ) : error ? (
+              <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
+                <p className="text-sm text-red-700">{error}</p>
+                <button 
+                  onClick={loadFullEmail}
+                  className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                >
+                  Retry
+                </button>
               </div>
-              <div>
-                <span className="text-sm font-medium text-gray-700">Date:</span>
-                <span className="ml-2 text-sm text-gray-900">{formatDate(email.date)}</span>
-              </div>
-              {email.labelIds && email.labelIds.length > 0 && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Labels:</span>
-                  <div className="ml-2 flex flex-wrap gap-1 mt-1">
-                    {email.labelIds.map(label => (
-                      <span key={label} className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                        {label}
-                      </span>
-                    ))}
+            ) : (
+              <div className="space-y-4">
+                {/* Email Headers */}
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">From:</span>
+                    <span className="ml-2 text-sm text-gray-900">{decodeHtmlEntities(fullEmail?.from || email.sender)}</span>
+                  </div>
+                  {fullEmail?.to && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">To:</span>
+                      <span className="ml-2 text-sm text-gray-900">{decodeHtmlEntities(fullEmail.to)}</span>
+                    </div>
+                  )}
+                  {fullEmail?.cc && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">CC:</span>
+                      <span className="ml-2 text-sm text-gray-900">{decodeHtmlEntities(fullEmail.cc)}</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Subject:</span>
+                    <span className="ml-2 text-sm text-gray-900">{decodeHtmlEntities(fullEmail?.subject || email.subject)}</span>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Date:</span>
+                    <span className="ml-2 text-sm text-gray-900">{formatDate(fullEmail?.date || email.date)}</span>
                   </div>
                 </div>
-              )}
-              <div className="border-t border-gray-200 pt-3">
-                <span className="text-sm font-medium text-gray-700 block mb-2">Content:</span>
-                <div className="text-sm text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded">
-                  {email.body || email.snippet}
+
+                {/* Attachments */}
+                {fullEmail?.attachments && fullEmail.attachments.length > 0 && (
+                  <div className="border-t border-gray-200 pt-3">
+                    <span className="text-sm font-medium text-gray-700 block mb-2">
+                      Attachments ({fullEmail.attachments.length})
+                    </span>
+                    <div className="space-y-2">
+                      {fullEmail.attachments.map((attachment, index) => (
+                        <div key={index} className="flex items-center space-x-3 p-2 bg-gray-50 rounded">
+                          <div className="flex-shrink-0">
+                            📎
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {attachment.filename}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {attachment.mimeType} • {formatFileSize(attachment.size)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Labels */}
+                {email.labelIds && email.labelIds.length > 0 && (
+                  <div className="border-t border-gray-200 pt-3">
+                    <span className="text-sm font-medium text-gray-700">Labels:</span>
+                    <div className="ml-2 flex flex-wrap gap-1 mt-1">
+                      {email.labelIds.map(label => (
+                        <span key={label} className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Email Body */}
+                <div className="border-t border-gray-200 pt-3">
+                  <span className="text-sm font-medium text-gray-700 block mb-2">Content:</span>
+                  <div className="bg-gray-50 p-4 rounded max-h-96 overflow-y-auto">
+                    {fullEmail?.htmlBody && fullEmail.htmlBody !== fullEmail.plainBody ? (
+                      <div 
+                        className="text-sm text-gray-900 prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ 
+                          __html: fullEmail.htmlBody
+                            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove scripts
+                            .replace(/<link[^>]*>/gi, '') // Remove external links
+                            .replace(/javascript:/gi, '') // Remove javascript: links
+                        }}
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-900 whitespace-pre-wrap">
+                        {fullEmail?.plainBody || email.body || email.snippet}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

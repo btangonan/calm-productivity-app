@@ -18,7 +18,12 @@ export default async function handler(req, res) {
 
     // Route based on method and action
     if (req.method === 'GET') {
-      return await handleSearchMessages(req, res, user);
+      const { messageId, action } = req.query;
+      if (action === 'get-full' && messageId) {
+        return await handleGetFullMessage(req, res, user);
+      } else {
+        return await handleSearchMessages(req, res, user);
+      }
     } else if (req.method === 'POST') {
       const { action } = req.query;
       if (action === 'convert-to-task') {
@@ -316,4 +321,122 @@ async function handleConvertToTask(req, res, user) {
     },
     message: 'Email successfully converted to task'
   });
+}
+
+// Handle GET with action=get-full - Get full email content
+async function handleGetFullMessage(req, res, user) {
+  const { messageId } = req.query;
+
+  console.log(`📧 Getting full message content for: ${messageId}`);
+
+  // Set up Gmail API with user authentication
+  const { google } = await import('googleapis');
+  let authClient;
+  
+  if (user.accessToken && !user.isJWT) {
+    const { OAuth2Client } = await import('google-auth-library');
+    authClient = new OAuth2Client(
+      process.env.VITE_GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+    authClient.setCredentials({ access_token: user.accessToken });
+  } else {
+    return res.status(400).json({
+      success: false,
+      error: 'Gmail access requires user OAuth token.'
+    });
+  }
+
+  const gmail = google.gmail({ version: 'v1', auth: authClient });
+
+  try {
+    // Get full message content
+    const messageResponse = await gmail.users.messages.get({
+      userId: 'me',
+      id: messageId,
+      format: 'full'
+    });
+
+    const msg = messageResponse.data;
+    const headers = msg.payload.headers || [];
+
+    // Extract headers
+    const getHeader = (name) => headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+    
+    const subject = getHeader('Subject');
+    const from = getHeader('From');
+    const to = getHeader('To');
+    const cc = getHeader('Cc');
+    const bcc = getHeader('Bcc');
+    const date = getHeader('Date');
+    const replyTo = getHeader('Reply-To');
+
+    // Extract full body content (both plain and HTML)
+    let plainBody = '';
+    let htmlBody = '';
+    let attachments = [];
+
+    const extractContent = (payload) => {
+      if (payload.body?.data) {
+        const content = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+        if (payload.mimeType === 'text/plain') {
+          plainBody = content;
+        } else if (payload.mimeType === 'text/html') {
+          htmlBody = content;
+        }
+      }
+
+      if (payload.parts) {
+        payload.parts.forEach(part => {
+          if (part.filename && part.filename.length > 0) {
+            // This is an attachment
+            attachments.push({
+              filename: part.filename,
+              mimeType: part.mimeType,
+              size: part.body?.size || 0,
+              attachmentId: part.body?.attachmentId
+            });
+          } else {
+            // Recursively extract content from parts
+            extractContent(part);
+          }
+        });
+      }
+    };
+
+    extractContent(msg.payload);
+
+    const fullMessage = {
+      id: messageId,
+      threadId: msg.threadId,
+      subject,
+      from,
+      to,
+      cc,
+      bcc,
+      date,
+      replyTo,
+      plainBody,
+      htmlBody: htmlBody || plainBody, // Fallback to plain if no HTML
+      snippet: msg.snippet,
+      attachments,
+      labelIds: msg.labelIds || [],
+      unread: msg.labelIds?.includes('UNREAD') || false
+    };
+
+    console.log(`✅ Retrieved full message with ${attachments.length} attachments`);
+
+    return res.status(200).json({
+      success: true,
+      data: fullMessage
+    });
+
+  } catch (error) {
+    console.error('Failed to get full message:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve full email content',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 }
