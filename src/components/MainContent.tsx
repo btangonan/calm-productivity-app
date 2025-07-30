@@ -1,7 +1,7 @@
 import Header from './Header';
 import DraggableTaskList from './DraggableTaskList';
 import AISuggestions from './AISuggestions';
-import GoogleIntegrations from './GoogleIntegrations';
+import CalendarPanel from './CalendarPanel';
 import FileDropzone from './FileDropzone';
 import ProjectFileList from './ProjectFileList';
 import ProjectTabs from './ProjectTabs';
@@ -23,7 +23,6 @@ const MainContent = () => {
   );
 
   const showProjectFeatures = currentView === 'project' && selectedProjectId;
-  const showGoogleIntegrations = true; // Always show Google integrations
 
   const handleFilesUploaded = (files: File[]) => {
     // Refresh the file list when new files are uploaded
@@ -117,12 +116,10 @@ const MainContent = () => {
               </div>
             )}
             
-            {/* Google integrations - always visible */}
-            {showGoogleIntegrations && (
-              <div className={showProjectFeatures && !useEnhancedProjectView ? "border-t border-gray-200 pt-4" : ""}>
-                <GoogleIntegrations />
-              </div>
-            )}
+            {/* Google Calendar - always visible */}
+            <div className={showProjectFeatures && !useEnhancedProjectView ? "border-t border-gray-200 pt-4" : ""}>
+              <CalendarPanel />
+            </div>
           </div>
         </div>
       </div>
