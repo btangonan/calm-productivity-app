@@ -41,6 +41,8 @@ export default async function handler(req, res) {
 
 // Handle GET - Get Google Calendar events
 async function handleGetCalendarEvents(req, res, user) {
+  const startTime = Date.now();
+  
   const {
     maxResults = '10',
     timeRange = '7', // days
