@@ -109,23 +109,35 @@ export default async function handler(req, res) {
     }).filter(project => project.id);
 
     // Convert tasks data
-    const tasks = (tasksData.values || []).slice(1).map(row => ({
-      id: row[0] || '',
-      title: row[1] || '',
-      description: row[2] || '',
-      projectId: row[3] || null,
-      context: row[4] || '',
-      dueDate: row[5] || null,
-      isCompleted: row[6] === 'true' || row[6] === true,
-      sortOrder: parseInt(row[7]) || 0,
-      createdAt: row[8] || '',
-      attachments: (() => {
-        try {
-          return JSON.parse(row[9] || '[]');
-        } catch {
-          return [];
-        }
-      })()
+    console.log('🔍 Raw tasks data from Google Sheets:', tasksData.values?.length || 0, 'rows');
+    
+    const tasks = (tasksData.values || []).slice(1).map((row, index) => {
+      // Debug logging for each row
+      console.log(`📋 Task row ${index + 2}:`, {
+        id: row[0],
+        title: row[1],
+        isCompletedRaw: row[6],
+        isCompletedParsed: row[6] === 'true' || row[6] === true,
+        fullRow: row
+      });
+      
+      return {
+        id: row[0] || '',
+        title: row[1] || '',
+        description: row[2] || '',
+        projectId: row[3] || null,
+        context: row[4] || '',
+        dueDate: row[5] || null,
+        isCompleted: row[6] === 'true' || row[6] === true,
+        sortOrder: parseInt(row[7]) || 0,
+        createdAt: row[8] || '',
+        attachments: (() => {
+          try {
+            return JSON.parse(row[9] || '[]');
+          } catch {
+            return [];
+          }
+        })()
     })).filter(task => task.id);
 
     const processingDuration = Date.now() - processingStartTime;

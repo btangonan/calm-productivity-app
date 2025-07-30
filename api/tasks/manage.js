@@ -248,13 +248,30 @@ async function handleUpdateTask(req, res, user) {
     }
 
     // Find the task row (assuming first column contains task IDs)
-    const taskRowIndex = rows.findIndex((row, index) => index > 0 && row[0] === taskId);
+    console.log(`🔍 Searching for task ${taskId} in ${rows.length} rows`);
+    
+    const taskRowIndex = rows.findIndex((row, index) => {
+      console.log(`   Row ${index}: ID = "${row[0]}", matches = ${row[0] === taskId}`);
+      return index > 0 && row[0] === taskId;
+    });
     
     if (taskRowIndex === -1) {
+      console.error(`❌ Task ${taskId} not found in spreadsheet`);
+      console.error('Available task IDs:', rows.slice(1).map(row => row[0]).filter(Boolean));
       throw new Error(`Task ${taskId} not found in spreadsheet`);
     }
 
     const actualRowNumber = taskRowIndex + 1; // +1 because spreadsheet rows are 1-indexed
+    console.log(`✅ Found task ${taskId} at row ${actualRowNumber} (index ${taskRowIndex})`);
+    
+    // Show current row data before update
+    const currentRow = rows[taskRowIndex];
+    console.log('📊 Current row data:', {
+      id: currentRow[0],
+      title: currentRow[1],
+      isCompleted: currentRow[6],
+      fullRow: currentRow
+    });
     
     // Update the specific fields
     const updates = [];
