@@ -1527,6 +1527,91 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     };
   }
 
+  // Gmail Integration Methods
+  async searchGmailMessages(token: string, options: {
+    query?: string;
+    maxResults?: number;
+    labelIds?: string[];
+    includeSpamTrash?: boolean;
+    dateRange?: number; // days
+  } = {}): Promise<any[]> {
+    const startTime = performance.now();
+    
+    try {
+      const params = new URLSearchParams();
+      if (options.query) params.append('query', options.query);
+      if (options.maxResults) params.append('maxResults', options.maxResults.toString());
+      if (options.labelIds) options.labelIds.forEach(label => params.append('labelIds', label));
+      if (options.includeSpamTrash) params.append('includeSpamTrash', options.includeSpamTrash.toString());
+      if (options.dateRange) params.append('dateRange', options.dateRange.toString());
+
+      console.log(`📧 Searching Gmail messages with query: "${options.query || 'all'}"`);
+      
+      const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/gmail/messages?${params}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Gmail search failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const duration = performance.now() - startTime;
+      console.log(`⚡ Gmail search completed: ${duration.toFixed(1)}ms for ${result.data?.messages?.length || 0} messages`);
+      
+      return result.data?.messages || [];
+    } catch (error) {
+      console.error('Gmail search failed:', error);
+      throw error;
+    }
+  }
+
+  async convertEmailToTask(token: string, messageId: string, options: {
+    projectId?: string;
+    context?: string;
+    customTitle?: string;
+    customDescription?: string;
+  } = {}): Promise<any> {
+    const startTime = performance.now();
+    
+    try {
+      console.log(`🔄 Converting Gmail message ${messageId} to task`);
+      
+      const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/gmail/messages?action=convert-to-task`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          messageId,
+          ...options
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Email conversion failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const duration = performance.now() - startTime;
+      console.log(`⚡ Email to task conversion completed: ${duration.toFixed(1)}ms`);
+      
+      // Invalidate tasks cache since we created a new task
+      await this.invalidateTasksCache(token);
+      
+      return result.data;
+    } catch (error) {
+      console.error('Email to task conversion failed:', error);
+      throw error;
+    }
+  }
+
   async fixMissingDriveFolders(token: string): Promise<{ message: string; fixed: number; total: number }> {
     try {
       const response = await fetch('/api/projects/manage?action=fix-drive-folders', {
