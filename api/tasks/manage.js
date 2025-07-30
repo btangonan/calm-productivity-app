@@ -260,9 +260,9 @@ async function handleUpdateTask(req, res, user) {
     const updates = [];
     
     if (isCompleted !== undefined) {
-      // Assuming isCompleted is in column F (index 5)
+      // isCompleted is in column G (index 6) - matches load-data.js row[6]
       updates.push({
-        range: `Tasks!F${actualRowNumber}`,
+        range: `Tasks!G${actualRowNumber}`,
         values: [[isCompleted]]
       });
     }
@@ -292,9 +292,9 @@ async function handleUpdateTask(req, res, user) {
     }
     
     if (dueDate !== undefined) {
-      // Assuming dueDate is in column G (index 6)
+      // dueDate is in column F (index 5) - matches load-data.js row[5]
       updates.push({
-        range: `Tasks!G${actualRowNumber}`,
+        range: `Tasks!F${actualRowNumber}`,
         values: [[dueDate]]
       });
     }
