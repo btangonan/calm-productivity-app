@@ -128,7 +128,7 @@ async function handleCreateTask(req, res, user) {
     });
   }
 
-  console.log(`📝 Creating task for user: ${user.email}`);
+  console.log(`📝 Creating task for user: ${user.email || 'unknown'}`);
 
   // Set up Google Sheets API with user authentication
   const { google } = await import('googleapis');
