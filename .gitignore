@@ -15,3 +15,4 @@ yarn-error.log*
 # Google OAuth secrets
 client_secret_*.json
 credentials.jsonservice-account-key.json
+.env.vercel

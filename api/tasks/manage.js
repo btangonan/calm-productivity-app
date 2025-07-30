@@ -207,12 +207,75 @@ async function handleCreateTask(req, res, user) {
   });
 }
 
-// Handle PUT - Update task (placeholder for future implementation)
+// Handle PUT - Update task (including completion status)
 async function handleUpdateTask(req, res, user) {
-  return res.status(501).json({
-    success: false,
-    error: 'Task update not yet implemented in consolidated endpoint'
-  });
+  const startTime = Date.now();
+  console.log(`📝 Updating task for user: ${user.email}`);
+
+  const { taskId, isCompleted, title, description, context, dueDate, projectId } = req.body;
+
+  if (!taskId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Task ID is required for update'
+    });
+  }
+
+  try {
+    // Call Google Apps Script to update the task
+    const updateData = {};
+    if (isCompleted !== undefined) updateData.isCompleted = isCompleted;
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (context !== undefined) updateData.context = context;
+    if (dueDate !== undefined) updateData.dueDate = dueDate;
+    if (projectId !== undefined) updateData.projectId = projectId;
+
+    console.log(`📝 Updating task ${taskId} with data:`, updateData);
+
+    const scriptResponse = await fetch(process.env.VITE_APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'updateTask',
+        taskId: taskId,
+        updateData: updateData
+      })
+    });
+
+    if (!scriptResponse.ok) {
+      throw new Error(`Google Apps Script returned ${scriptResponse.status}: ${scriptResponse.statusText}`);
+    }
+
+    const scriptResult = await scriptResponse.json();
+    
+    if (!scriptResult.success) {
+      throw new Error(scriptResult.message || 'Failed to update task in Google Apps Script');
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`✅ Task updated successfully in ${duration}ms`);
+
+    // Return the updated task
+    return res.status(200).json({
+      success: true,
+      data: scriptResult.data,
+      performance: {
+        duration: `${duration}ms`,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Failed to update task:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to update task',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 }
 
 // Handle DELETE - Delete task (placeholder for future implementation)

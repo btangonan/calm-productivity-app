@@ -876,11 +876,50 @@ class ApiService {
   }
 
   async updateTaskCompletion(taskId: string, isCompleted: boolean, token: string): Promise<void> {
+    console.log(`📝 Updating task completion: ${taskId} -> ${isCompleted}`);
+    
+    // Use Edge Functions if available, otherwise fallback to Google Apps Script
+    if (this.useEdgeFunctions) {
+      try {
+        const response = await this.fetchWithAuth('/api/tasks/manage', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            taskId,
+            isCompleted
+          })
+        }, 'updateTaskCompletion', token);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to update task completion');
+        }
+
+        const result = await response.json();
+        console.log('✅ Task completion updated via Edge Functions:', result);
+        
+        // Invalidate cache
+        await this.invalidateTasksCache(token);
+        return;
+        
+      } catch (error) {
+        console.error('Edge Functions task update failed:', error);
+        if (!this.enableFallback) {
+          throw error;
+        }
+        console.log('🔄 Falling back to Google Apps Script...');
+      }
+    }
+
+    // Fallback to Google Apps Script
     const response = await this.executeGoogleScript<void>(token, 'updateTaskCompletion', [taskId, isCompleted]);
     if (!response.success) {
       throw new Error(response.message || 'Failed to update task');
     }
     
+    console.log('✅ Task completion updated via Google Apps Script');
     // Invalidate Edge Functions cache to ensure fresh data on next load
     await this.invalidateTasksCache(token);
   }
