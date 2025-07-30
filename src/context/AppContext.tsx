@@ -27,6 +27,7 @@ type AppAction =
   | { type: 'REORDER_TASKS'; payload: Task[] }
   | { type: 'LOGIN_SUCCESS'; payload: UserProfile }
   | { type: 'UPDATE_USER_PROFILE'; payload: UserProfile }
+  | { type: 'RESTORE_VIEW_STATE'; payload: { currentView: ViewType; selectedProjectId: string | null } }
   | { type: 'LOGOUT' };
 
 const initialState: AppState = {
@@ -54,8 +55,22 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_TASKS':
       return { ...state, tasks: action.payload };
     case 'SET_CURRENT_VIEW':
+      // Persist view to localStorage
+      try {
+        localStorage.setItem('app-current-view', action.payload);
+        localStorage.removeItem('app-selected-project'); // Clear project when switching views
+      } catch (error) {
+        console.warn('Failed to persist current view:', error);
+      }
       return { ...state, currentView: action.payload, selectedProjectId: null };
     case 'SET_SELECTED_PROJECT':
+      // Persist selected project to localStorage
+      try {
+        localStorage.setItem('app-selected-project', action.payload);
+        localStorage.setItem('app-current-view', 'project');
+      } catch (error) {
+        console.warn('Failed to persist selected project:', error);
+      }
       return { ...state, selectedProjectId: action.payload, currentView: 'project' };
     case 'ADD_TASK':
       return { ...state, tasks: [...state.tasks, action.payload] };
@@ -146,8 +161,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
       }
       
       return { ...state, userProfile: action.payload };
+    case 'RESTORE_VIEW_STATE':
+      // Restore view state without triggering localStorage writes
+      return { 
+        ...state, 
+        currentView: action.payload.currentView, 
+        selectedProjectId: action.payload.selectedProjectId 
+      };
     case 'LOGOUT':
       localStorage.removeItem('google-auth-state');
+      localStorage.removeItem('app-current-view');
+      localStorage.removeItem('app-selected-project');
       return { 
         ...state, 
         isAuthenticated: false, 
@@ -167,6 +191,36 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Restore view state from localStorage
+  const restoreViewState = () => {
+    try {
+      const savedView = localStorage.getItem('app-current-view') as ViewType;
+      const savedProject = localStorage.getItem('app-selected-project');
+      
+      if (savedProject && savedView === 'project') {
+        console.log('🔄 Restoring selected project:', savedProject);
+        dispatch({ 
+          type: 'RESTORE_VIEW_STATE', 
+          payload: { 
+            currentView: 'project', 
+            selectedProjectId: savedProject 
+          } 
+        });
+      } else if (savedView && savedView !== 'project') {
+        console.log('🔄 Restoring current view:', savedView);
+        dispatch({ 
+          type: 'RESTORE_VIEW_STATE', 
+          payload: { 
+            currentView: savedView, 
+            selectedProjectId: null 
+          } 
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to restore view state:', error);
+    }
+  };
 
   // Restore authentication state from localStorage on app start
   useEffect(() => {
@@ -220,6 +274,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     restoreAuthState();
   }, []);
+
+  // Restore view state after authentication is confirmed
+  useEffect(() => {
+    if (state.isAuthenticated && state.userProfile) {
+      // Restore view state after authentication
+      restoreViewState();
+    }
+  }, [state.isAuthenticated]);
 
   // Save authentication state to localStorage when user logs in
   useEffect(() => {
