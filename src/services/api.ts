@@ -302,8 +302,28 @@ class ApiService {
     });
     
     if (response.status === 401 && !isRetry) {
-      console.log('🔐 Got 401, attempting token refresh...');
+      console.log('🔐 Got 401, checking if token refresh is needed...');
       
+      // Check if the response indicates token refresh is needed
+      try {
+        const errorData = await response.clone().json();
+        if (errorData.needsRefresh) {
+          console.log('🔄 Backend indicates token refresh needed, attempting refresh...');
+          const refreshResult = await this.attemptTokenRefresh();
+          
+          if (refreshResult.success && refreshResult.newToken) {
+            console.log('✅ Token refresh successful, retrying request with new token');
+            return this.fetchWithAuth(url, options, context, refreshResult.newToken, true);
+          } else {
+            console.log('❌ Token refresh failed');
+            throw new Error('Authentication expired - please sign in again');
+          }
+        }
+      } catch (parseError) {
+        console.warn('Could not parse 401 response for needsRefresh flag');
+      }
+      
+      // Fallback to original logic
       const shouldRetry = await this.handleAuthError(context);
       
       if (shouldRetry) {

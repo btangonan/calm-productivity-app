@@ -85,7 +85,15 @@ export async function validateGoogleToken(authHeader) {
 
     console.error('Token validation failed for both access token and ID token');
     console.error('Access token response was not ok, and token does not start with eyJ (not a JWT)');
-    return null;
+    
+    // Return a special object indicating token refresh is needed
+    return {
+      userId: null,
+      email: null,
+      accessToken: token,
+      needsRefresh: true,
+      error: 'Token expired - refresh required'
+    };
   } catch (error) {
     console.error('Token validation error:', error);
     console.error('Error during token validation process:', error.message);

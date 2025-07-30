@@ -13,6 +13,15 @@ export default async function handler(req, res) {
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+    
+    // Handle token refresh case  
+    if (user.needsRefresh) {
+      return res.status(401).json({ 
+        error: 'Token expired',
+        needsRefresh: true,
+        message: 'Please refresh your access token'
+      });
+    }
 
     console.log(`📅 Calendar API request from user: ${user.email}`);
 
