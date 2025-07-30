@@ -122,7 +122,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       
       // Save refresh token to the database
       if (action.payload.refresh_token) {
-        fetch('/api/auth/store-token', {
+        fetch('/api/auth/manage?action=store-token', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
