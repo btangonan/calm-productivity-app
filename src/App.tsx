@@ -3,14 +3,12 @@ import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import MainContent from './components/MainContent';
 import LoginScreen from './components/LoginScreen';
-import GmailPanel from './components/GmailPanel';
 import { apiService } from './services/api';
 
 function AppContent() {
   const { state, dispatch } = useApp();
   const [sidebarWidth, setSidebarWidth] = useState(280); // Start with reasonable width
   const [isResizing, setIsResizing] = useState(false);
-  const [showGmailPanel, setShowGmailPanel] = useState(true); // Show Gmail panel by default
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -160,31 +158,7 @@ function AppContent() {
       </div>
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar with Gmail Toggle */}
-        <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-end">
-          <button
-            onClick={() => setShowGmailPanel(!showGmailPanel)}
-            className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              showGmailPanel 
-                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            title={showGmailPanel ? 'Hide Gmail panel' : 'Show Gmail panel'}
-          >
-            📧 Gmail
-            {showGmailPanel ? ' ✓' : ''}
-          </button>
-        </div>
-        <MainContent />
-      </div>
-      
-      {/* Gmail Panel (Right Side) */}
-      {showGmailPanel && (
-        <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
-          <GmailPanel onClose={() => setShowGmailPanel(false)} />
-        </div>
-      )}
+      <MainContent />
     </div>
   );
 }

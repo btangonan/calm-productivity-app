@@ -217,7 +217,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
 
   return (
     <>
-      <div className="h-full flex flex-col bg-white">
+      <div className="flex flex-col bg-white" style={{ height: '400px' }}>
         {/* Header */}
         <div className="border-b border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
