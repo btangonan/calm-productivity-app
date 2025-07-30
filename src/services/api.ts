@@ -723,7 +723,7 @@ class ApiService {
     try {
       // Try Edge Functions first if enabled
       if (this.useEdgeFunctions) {
-        const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/tasks/create`, {
+        const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/tasks/manage`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
