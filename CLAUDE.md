@@ -12,27 +12,35 @@ This document tracks the current application architecture, common issues, and de
 - **Storage**: Google Drive (via Google Drive API, using user-owned folders)
 - **Deployment**: Vercel (auto-deploys from GitHub main branch)
 
-### Current API Endpoints
+### Current API Endpoints (v1.0.0 Stable Release)
 ```
-/api/
+/api/ - 10/12 endpoints used
 ├── app/
 │   └── load-data.js          # Load all app data (areas, projects, tasks)
 ├── auth/
-│   ├── exchange-code.js      # OAuth code exchange
-│   ├── validate.js           # Token validation
-│   └── store-token.js        # Stores user's refresh token
+│   └── manage.js             # CONSOLIDATED: validate, exchange-code, store-token
+├── cache/
+│   └── invalidate.js         # Cache invalidation for data consistency
 ├── drive/
-│   └── list-files.js         # Fast drive file listing (Edge Function)
+│   └── files.js              # Enhanced Drive API with query system
+├── gmail/
+│   └── messages.js           # Gmail integration (search & convert to tasks)
 ├── projects/
 │   ├── files.js              # GET: list files, POST: upload files  
 │   └── manage.js             # Project CRUD (create, update, delete)
-├── tasks/
-│   ├── create.js             # Create new tasks
-│   └── list.js               # List tasks with filtering
 ├── settings/
 │   └── master-folder.js      # Master folder configuration
+├── tasks/
+│   └── manage.js             # CONSOLIDATED: create, list, update, delete
 └── health.js                 # API health check
 ```
+
+### API Consolidation History
+- **Original**: 13 endpoints (OVER 12 LIMIT!)
+- **Auth Consolidation**: 3 → 1 endpoint (freed 2 slots)
+- **Tasks Consolidation**: 2 → 1 endpoint (freed 1 slot)  
+- **Gmail Integration**: Used 1 slot
+- **Final**: 10/12 endpoints (2 slots available)
 
 ## 🔧 DEPLOYMENT WORKFLOW
 
@@ -48,6 +56,89 @@ This document tracks the current application architecture, common issues, and de
 - **ALWAYS** commit all changes: `git add . && git commit -m "message" && git push origin main`
 - **NEVER** claim features work without testing in deployed environment
 - Run git commands from project root: `/Users/bradleytangonan/google_productivity_app/`
+
+## 🔄 STABLE RELEASE & ROLLBACK PROCEDURES
+
+### Current Branch Strategy (July 30, 2025)
+- **`main`**: Latest development work
+- **`feature/modular-tile-system`**: Active development branch for tile system
+- **`release/v1.0-stable`**: **STABLE RELEASE** - fully working app before tile system
+- **`v1.0.0`**: Release tag pointing to stable state
+
+### How to Restore to Stable Release
+
+#### Option 1: Switch to Stable Branch (Temporary)
+```bash
+# Switch to stable version (preserves current work)
+git checkout release/v1.0-stable
+
+# Verify you're on stable branch
+git branch
+# * release/v1.0-stable
+
+# Return to development when ready
+git checkout feature/modular-tile-system
+```
+
+#### Option 2: Reset to Stable Tag (Permanent)
+```bash
+# WARNING: This discards all changes after v1.0.0
+git checkout main
+git reset --hard v1.0.0
+git push origin main --force-with-lease
+
+# OR create new branch from stable tag
+git checkout -b emergency-rollback v1.0.0
+git push -u origin emergency-rollback
+```
+
+#### Option 3: Create Hotfix from Stable
+```bash
+# Create hotfix branch from stable release
+git checkout release/v1.0-stable
+git checkout -b hotfix/emergency-fix
+# Make emergency fixes
+git push -u origin hotfix/emergency-fix
+```
+
+### What's in the Stable Release (v1.0.0)
+- ✅ Complete task management with Areas/Projects
+- ✅ Google Drive integration with file uploads  
+- ✅ Gmail integration for email-to-task conversion
+- ✅ Cache invalidation system for data consistency
+- ✅ Token expiration handling with automatic logout
+- ✅ Consolidated API endpoints (10/12 used)
+- ✅ Master folder setup and project management
+- ✅ All authentication and authorization working
+- ✅ Performance optimizations and error handling
+
+### Emergency Rollback Commands
+```bash
+# If tile system breaks everything, run these commands:
+
+# 1. Quick switch to working version
+git checkout release/v1.0-stable
+
+# 2. Deploy stable version to production
+git checkout release/v1.0-stable
+git push origin release/v1.0-stable
+# Then update Vercel to deploy from release/v1.0-stable branch
+
+# 3. Complete rollback of main branch
+git checkout main
+git reset --hard v1.0.0  
+git push origin main --force-with-lease
+```
+
+### Vercel Branch Deployment
+- **Production**: Currently deploys from `main` branch
+- **Preview**: Can deploy from any branch via PR
+- **Emergency**: Can switch production to deploy from `release/v1.0-stable`
+
+To switch Vercel to stable branch:
+1. Go to Vercel dashboard → Project settings  
+2. Change production branch from `main` to `release/v1.0-stable`
+3. Trigger new deployment
 
 ## 📊 DATA ARCHITECTURE
 
@@ -124,15 +215,20 @@ This document tracks the current application architecture, common issues, and de
 - **Frontend**: https://calm-productivity-app.vercel.app/
 - **API Base**: https://calm-productivity-app.vercel.app/api/
 - **Status**: ✅ ACTIVE
-- **Last Major Update**: January 2025 (File upload migration)
+- **Current Branch**: `feature/modular-tile-system` (development)
+- **Stable Branch**: `release/v1.0-stable` (production-ready fallback)
+- **Last Stable Release**: July 30, 2025 (v1.0.0)
 
-### API Capabilities
+### API Capabilities (Stable v1.0.0)
 - ✅ Full task management (create, read, update, delete)
 - ✅ Project management (create, read, update, delete)
-- ✅ Google Drive file operations (list, upload)
+- ✅ Google Drive file operations (list, upload, enhanced query system)
+- ✅ Gmail integration (search emails, convert to tasks)
 - ✅ Area/category management
-- ✅ Authentication and authorization
-- ✅ Performance optimization with Edge Functions
+- ✅ Authentication and authorization with token expiration handling
+- ✅ Cache invalidation system for data consistency
+- ✅ Performance optimization with consolidated endpoints
+- ✅ Master folder setup and project-specific Drive folders
 
 ### Authentication Setup
 - Users authenticate via Google OAuth
@@ -140,16 +236,32 @@ This document tracks the current application architecture, common issues, and de
 - Base64 encoded credentials in environment variables
 - Automatic folder sharing with authenticated users
 
-## 🔮 FUTURE IMPROVEMENTS
+## 🔮 DEVELOPMENT ROADMAP
 
-### Planned Features
-- Full Google Drive browsing (beyond project folders)
-- Enhanced file management capabilities  
-- Better error handling and user feedback
+### In Progress: Modular Tile System (Feature Branch)
+- **Branch**: `feature/modular-tile-system`
+- **Timeline**: 13-17 weeks total development
+- **Features**:
+  - Customizable dashboard with draggable tiles
+  - Gmail tile with AI-powered email-to-task conversion
+  - AI Search tile with local Ollama integration
+  - Calendar, Drive Files, and Notes tiles
+  - Window-style tile management (close/open)
+
+### Planned AI Integration (Local Ollama)
+- **Privacy-First**: All AI processing on user's machine
+- **Zero API Costs**: No external AI service fees
+- **Features**: Email analysis, natural language search, content summarization
+- **Models**: Llama 3.1, Codestral, user-configurable
+
+### Future Enhancements
+- Enhanced mobile responsiveness for tile system
+- Advanced AI features (bulk processing, context detection)
+- Team collaboration features
 - Performance monitoring and analytics
-- Mobile-responsive improvements
 
 ### Technical Debt
 - None currently - fully migrated to modern Vercel architecture
 - All Google Apps Script dependencies removed
 - Clean API structure with proper error handling
+- Stable release preserved for rollback safety

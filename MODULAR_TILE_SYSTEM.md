@@ -8,9 +8,35 @@ Transform the productivity app into a fully customizable, modular dashboard wher
 ### Core Principles
 - **User-Centric Customization**: Every user can create their perfect workflow layout
 - **Responsive Design**: Grid adapts seamlessly across all screen sizes
-- **Drag & Drop Interface**: Intuitive rearrangement without technical knowledge
+- **Drag & Drop Interface**: ☰ Hamburger handles for intuitive tile dragging
+- **Window-Style Management**: Close (×) and add (+) tiles like desktop windows
+- **View Integration**: Seamless integration with existing view system (Inbox, Today, Projects)
 - **Performance Optimized**: Only render visible tiles, lazy load content
 - **Extensible Architecture**: Easy to add new tile types without breaking existing functionality
+
+### Layout Architecture
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Left Sidebar (Projects/Areas) - PRESERVED                      │
+├─────────────────────────────────────────────────────────────────┤
+│ View Selector: 📥 Inbox | 📅 Today | 📁 Project | 📚 Logbook  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ ┌──────────────────┐ ┌──────────────────┐ ┌────────────────┐   │
+│ │ ☰ Tasks       × │ │ ☰ Gmail       × │ │ ☰ Files     × │   │
+│ │ [View-filtered]  │ │ [AI conversion]  │ │ [Recent files] │   │
+│ │ • Inbox tasks    │ │ • Smart analysis │ │ • Upload zone  │   │
+│ │ • Quick add      │ │ • Context detect │ │ • Preview      │   │
+│ └──────────────────┘ └──────────────────┘ └────────────────┘   │
+│                                                          [+]    │
+│ ┌──────────────────┐ ┌────────────────────────────────────────┐ │
+│ │ ☰ AI Search  × │ │ ☰ Calendar                        × │ │
+│ │ [Natural lang]   │ │ [Today's events & time blocking]   │ │
+│ │ • Cross-data     │ │ • Task deadline integration        │ │
+│ │ • Ollama local   │ │ • Quick meeting creation           │ │
+│ └──────────────────┘ └────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ### Grid System Architecture
 
@@ -95,13 +121,19 @@ interface EmailConversionOptions {
 **Default Size**: Large (2×2)
 **Configurable Sizes**: Medium, Large, XL
 **Closable**: No (Core functionality)
+**View-Aware**: Adapts content based on current view selection
 
 #### Features
-- **Task List**: Current tasks based on selected view (Today, Inbox, Project)
-- **Quick Add**: Inline task creation
+- **View-Aware Task List**: Automatically filters tasks based on current view:
+  - **Inbox**: Tasks without project assignment, not completed
+  - **Today**: Tasks due today or overdue, not completed
+  - **Project**: Tasks for selected project, not completed
+  - **Logbook**: All completed tasks
+- **Quick Add**: Inline task creation with smart project assignment
 - **Context Filtering**: Filter by context (@work, @home, etc.)
 - **Drag to Reorder**: Reorder tasks within tile
 - **Progress Indicator**: Visual progress for project tasks
+- **View Context Display**: Shows current view/project in tile header
 
 #### Configuration Options
 - Default view (Inbox, Today, Upcoming, Specific Project)
@@ -131,6 +163,14 @@ interface TasksTileConfig {
   displayMode: 'compact' | 'detailed' | 'card';
   taskLimit: number;
   enableInlineEdit: boolean;
+  syncWithViewSelector: boolean; // Auto-update based on global view
+  showViewContext: boolean; // Show current view/project in header
+}
+
+interface ViewSelectorState {
+  currentView: 'inbox' | 'today' | 'project' | 'logbook';
+  selectedProject: Project | null;
+  projects: Project[];
 }
 ```
 
@@ -420,41 +460,92 @@ interface TileControlsProps {
 // Floating Action Button for adding tiles
 const TileAddButton = () => (
   <button 
-    className="fixed bottom-6 right-6 w-14 h-14 bg-primary-600 hover:bg-primary-700 rounded-full shadow-lg"
+    className="fixed bottom-6 right-6 w-14 h-14 bg-primary-600 hover:bg-primary-700 rounded-full shadow-lg z-50"
     onClick={() => openTileMenu()}
   >
-    <PlusIcon className="w-6 h-6 text-white" />
+    <span className="text-white text-2xl">+</span>
   </button>
 );
 
-// Tile header with window controls
-const TileHeader = ({ tile, onClose, onMinimize }: TileHeaderProps) => (
-  <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
-    <h3 className="font-semibold text-gray-900">{tile.name}</h3>
-    <div className="flex space-x-2">
-      {tile.isClosable && (
-        <button
-          onClick={() => onClose(tile.id)}
-          className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center"
-        >
-          <XIcon className="w-3 h-3 text-white" />
-        </button>
-      )}
+// Tile header with drag handle and window controls
+const TileHeader = ({ tile, onClose, onMove }: TileHeaderProps) => (
+  <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50 cursor-default">
+    {/* Drag Handle */}
+    <button 
+      className="cursor-move text-gray-400 hover:text-gray-600 mr-3 drag-handle"
+      data-tile-id={tile.id}
+    >
+      <span className="text-lg select-none">☰</span> {/* Hamburger drag handle */}
+    </button>
+    
+    {/* Tile Title */}
+    <h3 className="font-semibold text-gray-900 flex-1">{tile.name}</h3>
+    
+    {/* Close Button */}
+    {tile.isClosable && (
+      <button
+        onClick={() => onClose(tile.id)}
+        className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center ml-2"
+        title="Close tile"
+      >
+        <span className="text-white text-sm">×</span>
+      </button>
+    )}
+  </div>
+);
+
+// View selector bar above tile grid
+const ViewSelector = ({ currentView, onViewChange, selectedProject, projects }) => (
+  <div className="bg-white border-b border-gray-200 p-4 mb-6">
+    <div className="flex items-center justify-between">
+      {/* View Tabs */}
+      <div className="flex space-x-1">
+        <ViewTab active={currentView === 'inbox'} onClick={() => onViewChange('inbox')}>
+          📥 Inbox
+        </ViewTab>
+        <ViewTab active={currentView === 'today'} onClick={() => onViewChange('today')}>
+          📅 Today  
+        </ViewTab>
+        <ViewTab active={currentView === 'logbook'} onClick={() => onViewChange('logbook')}>
+          📚 Logbook
+        </ViewTab>
+        {selectedProject && (
+          <ViewTab active={currentView === 'project'} onClick={() => onViewChange('project')}>
+            📁 {selectedProject.name}
+          </ViewTab>
+        )}
+      </div>
+      
+      {/* Project Selector */}
+      <ProjectDropdown 
+        projects={projects} 
+        selected={selectedProject}
+        onSelect={onProjectSelect}
+        placeholder="Select Project..."
+      />
     </div>
   </div>
 );
 
 // Tile menu/palette for adding tiles
-const TileMenu = ({ isOpen, availableTiles, onTileAdd }: TileMenuProps) => (
-  <div className={`fixed inset-0 bg-black bg-opacity-50 ${isOpen ? 'block' : 'hidden'}`}>
+const TileMenu = ({ isOpen, availableTiles, onTileAdd, onClose }: TileMenuProps) => (
+  <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 ${isOpen ? 'block' : 'hidden'}`}>
     <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full">
-      <h2 className="text-xl font-bold mb-4">Add Tile</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Add Tile</h2>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <span className="text-2xl">×</span>
+        </button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {availableTiles.map(tile => (
           <TileMenuItem 
             key={tile.id} 
             tile={tile} 
-            onAdd={() => onTileAdd(tile.type)} 
+            onAdd={() => {
+              onTileAdd(tile.type);
+              onClose();
+            }} 
           />
         ))}
       </div>
