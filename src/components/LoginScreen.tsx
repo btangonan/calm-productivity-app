@@ -44,7 +44,7 @@ const LoginScreen = () => {
     onError: () => {
       console.error('Google Login Failed');
     },
-    scope: 'https://www.googleapis.com/auth/drive',
+    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.readonly',
     access_type: 'offline',
     prompt: 'consent',
   });
