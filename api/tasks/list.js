@@ -1,4 +1,5 @@
 import { validateGoogleToken } from '../utils/google-auth.js';
+import { isCacheInvalidated, markCacheFresh } from '../cache/invalidate.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -15,6 +16,14 @@ export default async function handler(req, res) {
     }
 
     console.log(`🔐 Fetching tasks for user: ${user.email}`);
+
+    // Check if tasks cache has been invalidated
+    const userIdentifier = user.sub || user.email;
+    const isInvalidated = isCacheInvalidated(userIdentifier, 'tasks');
+    
+    if (isInvalidated) {
+      console.log('💾 Tasks cache invalidated - forcing fresh fetch from Google Sheets');
+    }
 
     // Fetch tasks from Google Sheets
     const sheetsResponse = await fetch(
@@ -59,13 +68,19 @@ export default async function handler(req, res) {
     const duration = Date.now() - startTime;
     console.log(`⚡ Fetched ${tasks.length} tasks in ${duration}ms`);
 
+    // Mark cache as fresh since we just fetched new data
+    if (isInvalidated) {
+      markCacheFresh(userIdentifier, 'tasks');
+    }
+
     return res.status(200).json({
       success: true,
       data: tasks,
       count: tasks.length,
       performance: {
         duration: `${duration}ms`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        cacheInvalidated: isInvalidated
       }
     });
 

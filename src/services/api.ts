@@ -655,6 +655,39 @@ class ApiService {
     return response.data;
   }
 
+  // Cache invalidation method to ensure data consistency between legacy and Edge Functions
+  private async invalidateTasksCache(token: string): Promise<void> {
+    try {
+      // Only invalidate if Edge Functions are enabled
+      if (!this.useEdgeFunctions) {
+        console.log('💾 Skipping cache invalidation - Edge Functions disabled');
+        return;
+      }
+
+      console.log('🗑️ Invalidating tasks cache to ensure data consistency...');
+      
+      const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/cache/invalidate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cacheKeys: ['tasks', 'app-data'] // Invalidate both tasks and full app data
+        })
+      });
+
+      if (response.ok) {
+        console.log('✅ Cache invalidated successfully');
+      } else {
+        console.warn(`⚠️ Cache invalidation failed: ${response.status} - but continuing operation`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Cache invalidation error (non-critical):', error);
+      // Don't throw - cache invalidation failure shouldn't break the main operation
+    }
+  }
+
   async createProject(name: string, description: string, areaId: string | undefined, token: string): Promise<Project> {
     try {
       const response = await fetch('/api/projects/manage', {
@@ -754,6 +787,9 @@ class ApiService {
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Failed to update task');
     }
+    
+    // Invalidate Edge Functions cache to ensure fresh data on next load
+    await this.invalidateTasksCache(token);
     return response.data;
   }
 
@@ -762,6 +798,9 @@ class ApiService {
     if (!response.success) {
       throw new Error(response.message || 'Failed to update task');
     }
+    
+    // Invalidate Edge Functions cache to ensure fresh data on next load
+    await this.invalidateTasksCache(token);
   }
 
   async deleteTask(taskId: string, token: string): Promise<void> {
@@ -769,6 +808,9 @@ class ApiService {
     if (!response.success) {
       throw new Error(response.message || 'Failed to delete task');
     }
+    
+    // Invalidate Edge Functions cache to ensure fresh data on next load
+    await this.invalidateTasksCache(token);
   }
 
   async deleteProject(projectId: string, token: string): Promise<void> {
@@ -850,6 +892,9 @@ class ApiService {
     if (!response.success) {
       throw new Error(response.message || 'Failed to reorder tasks');
     }
+    
+    // Invalidate Edge Functions cache to ensure fresh data on next load
+    await this.invalidateTasksCache(token);
   }
 
   async getAISuggestions(projectName: string, tasks: Task[]): Promise<string> {

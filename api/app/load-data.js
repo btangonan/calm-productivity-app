@@ -1,4 +1,5 @@
 import { validateGoogleToken } from '../utils/google-auth.js';
+import { isCacheInvalidated, markCacheFresh } from '../cache/invalidate.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -22,6 +23,14 @@ export default async function handler(req, res) {
     }
 
     console.log(`🔐 Loading app data for user: ${user.email}`);
+
+    // Check if app data cache has been invalidated
+    const userIdentifier = user.sub || user.email;
+    const isInvalidated = isCacheInvalidated(userIdentifier, 'app-data') || isCacheInvalidated(userIdentifier, 'tasks');
+    
+    if (isInvalidated) {
+      console.log('💾 App data cache invalidated - forcing fresh fetch from Google Sheets');
+    }
 
     // Use Google Sheets API directly with authentication
     const authStartTime = Date.now();
@@ -125,6 +134,12 @@ export default async function handler(req, res) {
     const duration = Date.now() - startTime;
     console.log(`⚡ Total app data loading: ${duration}ms: ${areas.length} areas, ${projects.length} projects, ${tasks.length} tasks`);
 
+    // Mark cache as fresh since we just fetched new data
+    if (isInvalidated) {
+      markCacheFresh(userIdentifier, 'app-data');
+      markCacheFresh(userIdentifier, 'tasks');
+    }
+
     return res.status(200).json({
       success: true,
       data: {
@@ -135,6 +150,7 @@ export default async function handler(req, res) {
       performance: {
         duration: `${duration}ms`,
         timestamp: new Date().toISOString(),
+        cacheInvalidated: isInvalidated,
         counts: {
           areas: areas.length,
           projects: projects.length,
