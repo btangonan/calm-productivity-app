@@ -304,7 +304,7 @@ async function handleConvertToTask(req, res, user) {
       dueDate: null,
       attachments: [{
         name: `Gmail Message: ${subject}`,
-        url: `https://mail.google.com/mail/u/0/#inbox/${messageId}`,
+        url: `https://mail.google.com/mail/u/0/#search/${messageId}`,
         type: 'gmail-message'
       }]
     })

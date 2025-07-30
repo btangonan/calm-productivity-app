@@ -601,7 +601,14 @@ function getTasks(projectId = null, view = 'all') {
       dueDate: row[5],
       isCompleted: row[6],
       sortOrder: row[7],
-      createdAt: row[8]
+      createdAt: row[8],
+      attachments: (() => {
+        try {
+          return JSON.parse(row[9] || '[]');
+        } catch {
+          return [];
+        }
+      })()
     }));
     
     // Filter by project if specified

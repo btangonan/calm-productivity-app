@@ -146,6 +146,34 @@ const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
     return '📎';
   };
 
+  const handleAttachmentClick = (attachment: TaskAttachment) => {
+    try {
+      // Handle special attachment types that might cause issues
+      if (attachment.type === 'gmail-message') {
+        // Try to open Gmail in a more reliable way
+        const messageId = attachment.url.split('/').pop() || attachment.url.split('#').pop();
+        if (messageId) {
+          // Use a more reliable Gmail URL format
+          const gmailUrl = `https://mail.google.com/mail/u/0/#search/rfc822msgid%3A${encodeURIComponent(messageId)}`;
+          window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+        } else {
+          // Fallback to original URL
+          window.open(attachment.url, '_blank', 'noopener,noreferrer');
+        }
+      } else if (attachment.type === 'calendar-event') {
+        // Calendar links should work better, but add fallback
+        window.open(attachment.url, '_blank', 'noopener,noreferrer');
+      } else {
+        // Regular file attachments
+        window.open(attachment.url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error('Failed to open attachment:', error);
+      // Show user-friendly error message
+      alert(`Unable to open attachment: ${attachment.name}. Please try copying the link manually.`);
+    }
+  };
+
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
       {/* File dropzone (only show when editing) */}
@@ -273,17 +301,15 @@ const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
                         </p>
                       </div>
                       <div className="flex items-center space-x-1 ml-2">
-                        <a
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => handleAttachmentClick(attachment)}
                           className="p-1 text-gray-400 hover:text-primary-600"
                           title="Open attachment"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
-                        </a>
+                        </button>
                         {isEditing && (
                           <button
                             onClick={() => handleRemoveAttachment(attachment.id)}
@@ -313,17 +339,15 @@ const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
                       </p>
                     </div>
                     <div className="flex items-center space-x-1 ml-2">
-                      <a
-                        href={attachment.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={() => handleAttachmentClick(attachment)}
                         className="p-1 text-gray-400 hover:text-primary-600"
                         title="Open attachment"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
-                      </a>
+                      </button>
                       {isEditing && (
                         <button
                           onClick={() => handleRemoveAttachment(attachment.id)}
