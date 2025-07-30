@@ -32,6 +32,7 @@ class ApiService {
   private useEdgeFunctions = import.meta.env.VITE_USE_EDGE_FUNCTIONS === 'true' || false; // Feature flag for Edge Functions
   private enableFallback = true; // Fallback to Apps Script if Edge Functions fail
   private backendHealthy = true; // Track backend health status
+  private onAuthError?: () => void; // Callback for auth errors
 
   // Methods to control Edge Functions for testing
   enableEdgeFunctions() {
@@ -59,6 +60,35 @@ class ApiService {
   // Log status on initialization
   constructor() {
     console.log(`🏗️ ApiService initialized - Edge Functions: ${this.useEdgeFunctions ? 'ENABLED' : 'DISABLED'}`);
+  }
+
+  // Set callback for auth errors (to trigger logout)
+  setAuthErrorCallback(callback: () => void) {
+    this.onAuthError = callback;
+  }
+
+  // Handle 401 unauthorized errors
+  private handleAuthError(context: string) {
+    console.error(`🔐 Authentication failed in ${context} - token likely expired`);
+    console.log('🚪 Triggering automatic logout due to token expiration');
+    
+    if (this.onAuthError) {
+      this.onAuthError();
+    } else {
+      console.warn('⚠️ No auth error callback set - cannot trigger automatic logout');
+    }
+  }
+
+  // Enhanced fetch with automatic 401 handling
+  private async fetchWithAuth(url: string, options: RequestInit = {}, context: string = 'API call'): Promise<Response> {
+    const response = await fetch(url, options);
+    
+    if (response.status === 401) {
+      this.handleAuthError(context);
+      throw new Error('Authentication expired - please sign in again');
+    }
+    
+    return response;
   }
 
   // Mock data for development
@@ -601,12 +631,12 @@ class ApiService {
       // Try Edge Functions first if enabled
       if (this.useEdgeFunctions) {
         console.log(`🔑 Calling Edge Function with token: ${token.substring(0, 20)}...`);
-        const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/app/load-data`, {
+        const response = await this.fetchWithAuth(`${this.EDGE_FUNCTIONS_URL}/app/load-data`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
           }
-        });
+        }, 'loadAppData');
 
         if (response.ok) {
           const result = await response.json();
@@ -690,7 +720,7 @@ class ApiService {
 
   async createProject(name: string, description: string, areaId: string | undefined, token: string): Promise<Project> {
     try {
-      const response = await fetch('/api/projects/manage', {
+      const response = await this.fetchWithAuth('/api/projects/manage', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -701,7 +731,7 @@ class ApiService {
           description: description.trim(), 
           areaId: areaId || null 
         }),
-      });
+      }, 'createProject');
       
       const data = await response.json();
       
@@ -1002,12 +1032,12 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
           console.log('⚡ Using direct folder ID to skip Sheets lookup');
         }
         
-        const response = await fetch(url, {
+        const response = await this.fetchWithAuth(url, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
           }
-        });
+        }, 'getProjectFiles');
 
         if (response.ok) {
           const result = await response.json();
@@ -1062,7 +1092,7 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
       const fileContent = await this.fileToBase64(file);
       
       // Use Vercel API endpoint instead of Google Apps Script
-      const response = await fetch(`/api/projects/files`, {
+      const response = await this.fetchWithAuth(`/api/projects/files`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1074,7 +1104,7 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
           fileContent,
           mimeType: file.type
         })
-      });
+      }, 'uploadFileToProject');
 
       if (!response.ok) {
         const errorData = await response.json();

@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
 import type { AppState, Area, Project, Task, ViewType, UserProfile } from '../types';
+import { apiService } from '../services/api';
 
 interface AppContextType {
   state: AppState;
@@ -213,6 +214,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('google-auth-state', JSON.stringify(state.userProfile));
     }
   }, [state.isAuthenticated, state.userProfile]);
+
+  // Set up API service auth error callback
+  useEffect(() => {
+    const handleAuthError = () => {
+      console.log('🚪 API service triggered auth error - forcing logout');
+      dispatch({ type: 'LOGOUT' });
+    };
+
+    apiService.setAuthErrorCallback(handleAuthError);
+  }, []);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
