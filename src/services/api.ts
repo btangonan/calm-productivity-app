@@ -72,6 +72,37 @@ class ApiService {
     console.error(`🔐 Authentication failed in ${context} - token likely expired`);
     console.log('🚪 Triggering automatic logout due to token expiration');
     
+    // Show user-friendly notification
+    if (typeof window !== 'undefined') {
+      // Create a temporary notification element
+      const notification = document.createElement('div');
+      notification.innerHTML = '🔐 Session expired - please sign in again';
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #fee2e2;
+        color: #dc2626;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid #fecaca;
+        z-index: 9999;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      `;
+      
+      document.body.appendChild(notification);
+      
+      // Remove notification after 5 seconds
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 5000);
+    }
+    
     if (this.onAuthError) {
       this.onAuthError();
     } else {
@@ -753,7 +784,7 @@ class ApiService {
     try {
       // Try Edge Functions first if enabled
       if (this.useEdgeFunctions) {
-        const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/tasks/manage`, {
+        const response = await this.fetchWithAuth(`${this.EDGE_FUNCTIONS_URL}/tasks/manage`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -767,7 +798,7 @@ class ApiService {
             dueDate,
             attachments
           })
-        });
+        }, 'createTask');
 
         if (response.ok) {
           const result = await response.json();
@@ -845,14 +876,14 @@ class ApiService {
 
   async deleteProject(projectId: string, token: string): Promise<void> {
     try {
-      const response = await fetch('/api/projects/manage', {
+      const response = await this.fetchWithAuth('/api/projects/manage', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ projectId }),
-      });
+      }, 'deleteProject');
       
       const data = await response.json();
       
@@ -891,7 +922,7 @@ class ApiService {
 
   async updateProjectName(projectId: string, newName: string, token: string): Promise<Project> {
     try {
-      const response = await fetch('/api/projects/manage', {
+      const response = await this.fetchWithAuth('/api/projects/manage', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -901,7 +932,7 @@ class ApiService {
           projectId, 
           name: newName.trim()
         }),
-      });
+      }, 'updateProjectName');
       
       const data = await response.json();
       
