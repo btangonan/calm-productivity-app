@@ -61,7 +61,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
       // Build query parameters
       const queryParams = new URLSearchParams({
         maxResults: '25',
-        dateRange: '7', // Last 7 days
+        dateRange: '0', // No date restriction - get all emails
         includeSpamTrash: 'false'
       });
 
@@ -200,7 +200,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
       // Load more emails (up to 100) without search query
       const queryParams = new URLSearchParams({
         maxResults: '100',
-        dateRange: '30', // Last 30 days for better search coverage
+        dateRange: '0', // No date restriction for comprehensive search
         includeSpamTrash: 'false'
       });
 
