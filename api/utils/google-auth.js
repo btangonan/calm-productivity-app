@@ -1,9 +1,11 @@
 export async function validateGoogleToken(authHeader) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('🔍 No auth header or invalid format');
     return null;
   }
 
   const token = authHeader.substring(7);
+  console.log('🔍 Validating token:', token.substring(0, 20) + '...');
   
   try {
     // Try validating as access token first (for the new OAuth flow)
@@ -11,10 +13,18 @@ export async function validateGoogleToken(authHeader) {
     
     if (accessTokenResponse.ok) {
       const tokenInfo = await accessTokenResponse.json();
+      console.log('🔍 Access token validation successful:', {
+        user_id: tokenInfo.user_id,
+        email: tokenInfo.email,
+        audience: tokenInfo.audience,
+        expires_in: tokenInfo.expires_in
+      });
       
       // Validate token is for our application
-      if (tokenInfo.audience && tokenInfo.audience !== process.env.GOOGLE_CLIENT_ID) {
-        console.error(`Access token audience mismatch: ${tokenInfo.audience} !== ${process.env.GOOGLE_CLIENT_ID}`);
+      const expectedClientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+      console.log('🔍 Expected client ID:', expectedClientId);
+      if (tokenInfo.audience && tokenInfo.audience !== expectedClientId) {
+        console.error(`Access token audience mismatch: ${tokenInfo.audience} !== ${expectedClientId}`);
         return null;
       }
 
@@ -28,6 +38,7 @@ export async function validateGoogleToken(authHeader) {
 
     // Fallback: Check if it's a JWT ID token (for backward compatibility)
     if (token.startsWith('eyJ')) {
+      console.log('🔍 Trying JWT ID token validation...');
       const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
       
       if (!response.ok) {
@@ -38,8 +49,9 @@ export async function validateGoogleToken(authHeader) {
       const tokenInfo = await response.json();
       
       // Validate token is for our application
-      if (tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
-        console.error(`JWT audience mismatch: ${tokenInfo.aud} !== ${process.env.GOOGLE_CLIENT_ID}`);
+      const expectedClientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+      if (tokenInfo.aud !== expectedClientId) {
+        console.error(`JWT audience mismatch: ${tokenInfo.aud} !== ${expectedClientId}`);
         return null;
       }
 
