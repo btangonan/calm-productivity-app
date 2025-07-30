@@ -34,6 +34,8 @@ const LoginScreen = () => {
             access_token: tokenResponse.access_token,
             refresh_token: tokenResponse.refresh_token,
             id_token: tokenResponse.id_token, // This may not be available with this flow
+            expires_in: tokenResponse.expires_in || 3600, // Default to 1 hour if not provided
+            tokenIssuedAt: Date.now(), // Track when token was issued for expiry calculation
           },
         });
         console.log('Login successful for:', userInfo.email);

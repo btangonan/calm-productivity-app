@@ -126,12 +126,20 @@ class ApiService {
       // Get current user profile from local storage (using correct key)
       const userProfile = JSON.parse(localStorage.getItem('google-auth-state') || '{}');
       
+      console.log('🔍 Token refresh debug:', {
+        hasRefreshToken: !!userProfile.refresh_token,
+        hasAccessToken: !!userProfile.access_token,
+        userEmail: userProfile.email,
+        refreshTokenLength: userProfile.refresh_token?.length || 0
+      });
+      
       if (!userProfile.refresh_token) {
-        console.error('❌ No refresh token available');
+        console.error('❌ No refresh token available in localStorage');
+        console.error('❌ Available keys in userProfile:', Object.keys(userProfile));
         return { success: false };
       }
 
-      console.log('🔄 Calling token refresh API...');
+      console.log('🔄 Calling token refresh API with refresh token length:', userProfile.refresh_token.length);
       
       const response = await fetch('/api/auth/manage?action=refresh', {
         method: 'POST',
@@ -144,36 +152,53 @@ class ApiService {
       });
 
       if (!response.ok) {
-        console.error('❌ Token refresh API failed:', response.status);
+        const errorText = await response.text();
+        console.error('❌ Token refresh API failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
         return { success: false };
       }
 
       const result = await response.json();
+      console.log('🔍 Token refresh API response:', {
+        success: result.success,
+        hasAccessToken: !!result.tokens?.access_token,
+        hasRefreshToken: !!result.tokens?.refresh_token,
+        error: result.error
+      });
       
       if (result.success && result.tokens?.access_token) {
-        console.log('✅ New access token received');
+        console.log('✅ New access token received, updating localStorage and context');
         
         // Update the stored user profile with new tokens
         const updatedProfile = {
           ...userProfile,
           access_token: result.tokens.access_token,
-          expires_in: result.tokens.expires_in,
+          expires_in: result.tokens.expires_in || 3600,
           token_type: result.tokens.token_type,
+          tokenIssuedAt: Date.now(), // Track when new token was issued
           // Keep existing refresh token or use new one if provided
           refresh_token: result.tokens.refresh_token || userProfile.refresh_token
         };
         
         localStorage.setItem('google-auth-state', JSON.stringify(updatedProfile));
+        console.log('💾 Updated localStorage with new tokens');
         
         // Trigger context update if available
         if (this.onTokenRefresh) {
+          console.log('🔄 Triggering context update with new profile');
           this.onTokenRefresh(updatedProfile);
+        } else {
+          console.warn('⚠️ No token refresh callback available');
         }
         
         return { success: true, newToken: result.tokens.access_token };
+      } else {
+        console.error('❌ Token refresh response invalid:', result);
+        return { success: false };
       }
-      
-      return { success: false };
       
     } catch (error) {
       console.error('❌ Token refresh error:', error);
@@ -188,8 +213,71 @@ class ApiService {
     this.onTokenRefresh = callback;
   }
 
+  // Check if access token is expired (client-side check)
+  private isTokenExpired(token: string): boolean {
+    try {
+      // For JWT tokens, decode and check expiry
+      if (token.startsWith('eyJ')) {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          const now = Math.floor(Date.now() / 1000);
+          const isExpired = payload.exp && payload.exp < now;
+          console.log('🔍 JWT token check:', {
+            exp: payload.exp,
+            now,
+            isExpired,
+            timeUntilExpiry: payload.exp ? payload.exp - now : 'unknown'
+          });
+          return isExpired;
+        }
+      }
+      
+      // For regular OAuth access tokens, check from localStorage metadata
+      const userProfile = JSON.parse(localStorage.getItem('google-auth-state') || '{}');
+      if (userProfile.expires_in) {
+        // Calculate when the token was issued (approximate)
+        const tokenAge = Date.now() - (userProfile.tokenIssuedAt || 0);
+        const tokenLifetime = userProfile.expires_in * 1000; // Convert to milliseconds
+        const isExpired = tokenAge > tokenLifetime;
+        
+        console.log('🔍 Access token age check:', {
+          tokenAge: Math.floor(tokenAge / 1000) + 's',
+          tokenLifetime: Math.floor(tokenLifetime / 1000) + 's',
+          isExpired
+        });
+        
+        return isExpired;
+      }
+      
+      // If we can't determine expiry, assume it might be expired and let the server decide
+      console.log('🔍 Cannot determine token expiry, assuming valid');
+      return false;
+      
+    } catch (error) {
+      console.warn('🔍 Error checking token expiry:', error);
+      return false; // If we can't check, assume it's valid and let server handle it
+    }
+  }
+
   // Enhanced fetch with automatic 401 handling and retry
   async fetchWithAuth(url: string, options: RequestInit = {}, context: string = 'API call', token?: string, isRetry: boolean = false): Promise<Response> {
+    // Check if token is expired before making the request
+    if (token && !isRetry) {
+      const isExpired = this.isTokenExpired(token);
+      if (isExpired) {
+        console.log('🔐 Token expired before request, attempting refresh...');
+        const refreshResult = await this.attemptTokenRefresh();
+        if (refreshResult.success && refreshResult.newToken) {
+          console.log('✅ Pre-request token refresh successful, using new token');
+          token = refreshResult.newToken;
+        } else {
+          console.log('❌ Pre-request token refresh failed');
+          throw new Error('Authentication expired - please sign in again');
+        }
+      }
+    }
+
     // Automatically add Authorization header if token is provided
     if (token) {
       options = {
