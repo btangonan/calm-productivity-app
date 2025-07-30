@@ -62,8 +62,15 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   }, [showDropdown]);
 
   const handleTaskToggle = async (taskId: string, isCompleted: boolean) => {
+    console.log(`🔄 Task toggle initiated: ${taskId} -> ${isCompleted}`);
+    
     const originalTask = tasks.find(task => task.id === taskId);
-    if (!originalTask) return;
+    if (!originalTask) {
+      console.error('❌ Task not found:', taskId);
+      return;
+    }
+
+    console.log('📋 Original task:', originalTask);
 
     try {
       // Get authentication token
@@ -72,26 +79,37 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
         throw new Error('User not authenticated');
       }
 
+      console.log('👤 User profile available, proceeding with update');
+
       // Optimistically update UI immediately
       dispatch({
         type: 'UPDATE_TASK',
         payload: { ...originalTask, isCompleted },
       });
+      
+      console.log('✅ Optimistic UI update dispatched');
 
       // Then update backend
       const token = userProfile.access_token || userProfile.id_token;
       if (!token) {
         throw new Error('No authentication token available');
       }
-      await apiService.updateTaskCompletion(taskId, isCompleted, token);
+      
+      console.log('🌐 Starting backend update...');
+      const result = await apiService.updateTaskCompletion(taskId, isCompleted, token);
+      console.log('✅ Backend update completed:', result);
       
     } catch (error) {
-      console.error('Failed to update task:', error);
+      console.error('❌ Failed to update task:', error);
+      console.error('🔄 Reverting optimistic update...');
+      
       // Revert the optimistic update on error
       dispatch({
         type: 'UPDATE_TASK',
         payload: originalTask,
       });
+      
+      console.log('↩️ Task reverted to original state:', originalTask);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to update task' });
     }
   };

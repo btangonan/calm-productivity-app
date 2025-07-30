@@ -53,6 +53,13 @@ function AppContent() {
         console.log('   Areas:', appData.areas.length, 'items');
         console.log('   Projects:', appData.projects.length, 'items');
         console.log('   Tasks:', appData.tasks.length, 'items');
+        
+        // Debug: Show completed tasks
+        const completedTasks = appData.tasks.filter(task => task.isCompleted);
+        console.log('✅ Completed tasks loaded:', completedTasks.length);
+        completedTasks.forEach(task => {
+          console.log(`   - ${task.title} (${task.id}) - isCompleted: ${task.isCompleted}`);
+        });
 
         const dispatchStartTime = performance.now();
         dispatch({ type: 'SET_AREAS', payload: appData.areas });
