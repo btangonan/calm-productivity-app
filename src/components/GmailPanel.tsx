@@ -60,7 +60,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
       
       // Build query parameters
       const queryParams = new URLSearchParams({
-        maxResults: '10',
+        maxResults: '25',
         dateRange: '7', // Last 7 days
         includeSpamTrash: 'false'
       });
@@ -197,9 +197,9 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     try {
       console.log('📧 Loading background emails for search...');
       
-      // Load more emails (up to 50) without search query
+      // Load more emails (up to 100) without search query
       const queryParams = new URLSearchParams({
-        maxResults: '50',
+        maxResults: '100',
         dateRange: '30', // Last 30 days for better search coverage
         includeSpamTrash: 'false'
       });
@@ -375,7 +375,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
               <div className="text-gray-500">No emails found</div>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 px-4">
               {emails.map((email) => (
                 <EmailItem
                   key={email.id}
@@ -430,7 +430,7 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
   };
 
   return (
-    <div className="px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+    <div className="py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0" onClick={onSelect}>
           {/* Line 1: Sender, subject, and date/time */}
