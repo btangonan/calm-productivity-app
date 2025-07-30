@@ -315,22 +315,33 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
     if (diffDays === 1) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return timeStr;
     } else if (diffDays < 7) {
-      return date.toLocaleDateString([], { weekday: 'short' });
+      const dayStr = date.toLocaleDateString([], { weekday: 'short' });
+      return `${dayStr} ${timeStr}`;
     } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return `${dateStr} ${timeStr}`;
     }
   };
 
   return (
-    <div className="p-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+    <div className="px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0" onClick={onSelect}>
-          {/* Line 1: Subject and date */}
-          <div className="flex items-center justify-between mb-1">
-            <p className={`text-sm font-medium truncate flex-1 mr-2 ${email.unread ? 'text-gray-900' : 'text-gray-700'}`}>
+          {/* Line 1: Sender, subject, and date/time */}
+          <div className="flex items-center mb-1">
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              <span className={`text-sm font-medium ${email.unread ? 'text-gray-900' : 'text-gray-700'}`}>
+                {email.sender}
+              </span>
+              {email.unread && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
+            </div>
+            <span className="text-gray-400 mx-2">•</span>
+            <p className={`text-sm truncate flex-1 mr-2 ${email.unread ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
               {email.subject}
             </p>
             <span className="text-xs text-gray-400 flex-shrink-0">
@@ -338,16 +349,9 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
             </span>
           </div>
           
-          {/* Line 2: Sender, unread indicator, and snippet */}
-          <div className="flex items-baseline space-x-2">
-            <div className="flex items-center space-x-1 flex-shrink-0">
-              <span className={`text-sm truncate max-w-[120px] ${email.unread ? 'font-semibold text-gray-700' : 'font-medium text-gray-600'}`}>
-                {email.sender}
-              </span>
-              {email.unread && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
-            </div>
-            <span className="text-gray-400 flex-shrink-0">•</span>
-            <p className="text-sm text-gray-500 truncate flex-1">
+          {/* Line 2: Email preview */}
+          <div>
+            <p className="text-sm text-gray-500 truncate">
               {email.snippet}
             </p>
           </div>
