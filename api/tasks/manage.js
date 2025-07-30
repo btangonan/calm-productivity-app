@@ -222,46 +222,117 @@ async function handleUpdateTask(req, res, user) {
   }
 
   try {
-    // Call Google Apps Script to update the task
-    const updateData = {};
-    if (isCompleted !== undefined) updateData.isCompleted = isCompleted;
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (context !== undefined) updateData.context = context;
-    if (dueDate !== undefined) updateData.dueDate = dueDate;
-    if (projectId !== undefined) updateData.projectId = projectId;
-
-    console.log(`📝 Updating task ${taskId} with data:`, updateData);
-
-    const scriptResponse = await fetch(process.env.VITE_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'updateTask',
-        taskId: taskId,
-        updateData: updateData
-      })
+    // Get service account credentials and connect to Google Sheets directly
+    const { GoogleAuth } = await import('google-auth-library');
+    const { google } = await import('googleapis');
+    
+    const auth = new GoogleAuth({
+      credentials: JSON.parse(Buffer.from(process.env.GOOGLE_CREDENTIALS_JSON, 'base64').toString('utf8')),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
-    if (!scriptResponse.ok) {
-      throw new Error(`Google Apps Script returned ${scriptResponse.status}: ${scriptResponse.statusText}`);
+    const sheets = google.sheets({ version: 'v4', auth });
+    const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+
+    // First, get the current task data to find the row
+    console.log(`📝 Finding task ${taskId} in Google Sheets...`);
+    
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Tasks!A:J', // Assuming columns A-J contain task data
+    });
+
+    const rows = response.data.values || [];
+    if (rows.length <= 1) {
+      throw new Error('No task data found in spreadsheet');
     }
 
-    const scriptResult = await scriptResponse.json();
+    // Find the task row (assuming first column contains task IDs)
+    const taskRowIndex = rows.findIndex((row, index) => index > 0 && row[0] === taskId);
     
-    if (!scriptResult.success) {
-      throw new Error(scriptResult.message || 'Failed to update task in Google Apps Script');
+    if (taskRowIndex === -1) {
+      throw new Error(`Task ${taskId} not found in spreadsheet`);
+    }
+
+    const actualRowNumber = taskRowIndex + 1; // +1 because spreadsheet rows are 1-indexed
+    
+    // Update the specific fields
+    const updates = [];
+    
+    if (isCompleted !== undefined) {
+      // Assuming isCompleted is in column F (index 5)
+      updates.push({
+        range: `Tasks!F${actualRowNumber}`,
+        values: [[isCompleted]]
+      });
+    }
+    
+    if (title !== undefined) {
+      // Assuming title is in column B (index 1)
+      updates.push({
+        range: `Tasks!B${actualRowNumber}`,
+        values: [[title]]
+      });
+    }
+    
+    if (description !== undefined) {
+      // Assuming description is in column C (index 2)
+      updates.push({
+        range: `Tasks!C${actualRowNumber}`,
+        values: [[description]]
+      });
+    }
+    
+    if (context !== undefined) {
+      // Assuming context is in column E (index 4)
+      updates.push({
+        range: `Tasks!E${actualRowNumber}`,
+        values: [[context]]
+      });
+    }
+    
+    if (dueDate !== undefined) {
+      // Assuming dueDate is in column G (index 6)
+      updates.push({
+        range: `Tasks!G${actualRowNumber}`,
+        values: [[dueDate]]
+      });
+    }
+    
+    if (projectId !== undefined) {
+      // Assuming projectId is in column D (index 3)
+      updates.push({
+        range: `Tasks!D${actualRowNumber}`,
+        values: [[projectId]]
+      });
+    }
+
+    console.log(`📝 Updating ${updates.length} fields for task ${taskId} in row ${actualRowNumber}`);
+
+    // Perform batch update
+    if (updates.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: updates
+        }
+      });
     }
 
     const duration = Date.now() - startTime;
-    console.log(`✅ Task updated successfully in ${duration}ms`);
+    console.log(`✅ Task updated successfully in Google Sheets in ${duration}ms`);
 
-    // Return the updated task
+    // Return success response
     return res.status(200).json({
       success: true,
-      data: scriptResult.data,
+      data: {
+        taskId,
+        updatedFields: Object.keys({ isCompleted, title, description, context, dueDate, projectId }).filter(key => 
+          eval(key) !== undefined
+        ),
+        rowNumber: actualRowNumber
+      },
       performance: {
         duration: `${duration}ms`,
         timestamp: new Date().toISOString()
