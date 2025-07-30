@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
 
+// Extend Window interface for search timeout
+declare global {
+  interface Window {
+    searchTimeout: NodeJS.Timeout;
+  }
+}
+
 interface GmailMessage {
   id: string;
   threadId: string;
@@ -22,7 +29,9 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
   const { state, dispatch } = useApp();
   const { userProfile } = state;
   const [emails, setEmails] = useState<GmailMessage[]>([]);
+  const [allEmails, setAllEmails] = useState<GmailMessage[]>([]); // Background loaded emails for search
   const [loading, setLoading] = useState(false);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLabel, setSelectedLabel] = useState('INBOX');
@@ -33,6 +42,10 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
   useEffect(() => {
     if (userProfile) {
       loadEmails();
+      // Load background emails for search after initial load
+      setTimeout(() => {
+        loadBackgroundEmails();
+      }, 1000);
     }
   }, [userProfile, selectedLabel]);
 
@@ -175,9 +188,88 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     }
   };
 
+  // Load more emails in background for search
+  const loadBackgroundEmails = async () => {
+    if (!userProfile?.access_token || backgroundLoading) return;
+    
+    setBackgroundLoading(true);
+    
+    try {
+      console.log('📧 Loading background emails for search...');
+      
+      // Load more emails (up to 50) without search query
+      const queryParams = new URLSearchParams({
+        maxResults: '50',
+        dateRange: '30', // Last 30 days for better search coverage
+        includeSpamTrash: 'false'
+      });
+
+      // Add label filter if selected
+      if (selectedLabel && selectedLabel !== 'INBOX') {
+        queryParams.append('labelIds', selectedLabel);
+      }
+
+      const token = userProfile.access_token || userProfile.id_token;
+      if (!token) return;
+
+      const response = await apiService.fetchWithAuth(
+        `/api/gmail/messages?${queryParams.toString()}`, 
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }, 
+        'Background Gmail messages fetch',
+        token
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.data?.messages) {
+          const transformedEmails: GmailMessage[] = data.data.messages.map((msg: any) => ({
+            id: msg.id,
+            threadId: msg.threadId,
+            sender: msg.from || 'Unknown Sender',
+            subject: msg.subject || '(No Subject)',
+            snippet: msg.snippet || msg.body?.substring(0, 150) || '',
+            date: msg.date || new Date().toISOString(),
+            unread: msg.isUnread || false,
+            labelIds: msg.labels || ['INBOX'],
+            body: msg.body || msg.snippet || ''
+          }));
+          
+          setAllEmails(transformedEmails);
+          console.log(`✅ Loaded ${transformedEmails.length} background emails for search`);
+        }
+      }
+    } catch (error) {
+      console.warn('Background email loading failed:', error);
+    } finally {
+      setBackgroundLoading(false);
+    }
+  };
+
   const handleSearch = () => {
-    // Implement search functionality
-    loadEmails();
+    if (searchQuery.trim()) {
+      // Search in background loaded emails first for instant results
+      const filteredEmails = allEmails.filter(email => 
+        email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.snippet.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      
+      if (filteredEmails.length > 0) {
+        setEmails(filteredEmails.slice(0, 20)); // Show top 20 matches
+        console.log(`🔍 Found ${filteredEmails.length} local search results`);
+      } else {
+        // If no local matches, search via API
+        console.log('🔍 No local matches, searching via API...');
+        loadEmails();
+      }
+    } else {
+      // Empty search, reload regular emails
+      loadEmails();
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -242,8 +334,17 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search emails..."
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                // Auto-search as user types (debounced)
+                clearTimeout(window.searchTimeout);
+                window.searchTimeout = setTimeout(() => {
+                  if (e.target.value !== searchQuery) {
+                    handleSearch();
+                  }
+                }, 500);
+              }}
+              placeholder={`Search emails...${backgroundLoading ? ' (loading more...)' : allEmails.length > 0 ? ` (${allEmails.length} searchable)` : ''}`}
               className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             />
@@ -329,7 +430,7 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
   };
 
   return (
-    <div className="px-4 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+    <div className="px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0" onClick={onSelect}>
           {/* Line 1: Sender, subject, and date/time */}
