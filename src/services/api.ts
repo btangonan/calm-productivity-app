@@ -1,4 +1,5 @@
 import type { Area, Project, Task, GoogleScriptResponse, Contact, TaskWithIntegrations, Document, ProjectFile, TaskAttachment, DriveFolder, DriveStructure } from '../types';
+import { authService } from './AuthService';
 
 // Google Apps Script API functions
 // These will be available when deployed as a Google Apps Script web app
@@ -32,7 +33,6 @@ class ApiService {
   private useEdgeFunctions = import.meta.env.VITE_USE_EDGE_FUNCTIONS === 'true' || false; // Feature flag for Edge Functions
   private enableFallback = true; // Fallback to Apps Script if Edge Functions fail
   private backendHealthy = true; // Track backend health status
-  private onAuthError?: () => void; // Callback for auth errors
 
   // Methods to control Edge Functions for testing
   enableEdgeFunctions() {
@@ -64,211 +64,27 @@ class ApiService {
 
   // Set callback for auth errors (to trigger logout)
   setAuthErrorCallback(callback: () => void) {
-    this.onAuthError = callback;
+    authService.setAuthErrorCallback(callback);
   }
 
-  // Handle 401 unauthorized errors
-  private async handleAuthError(context: string) {
-    console.error(`🔐 Authentication failed in ${context} - token likely expired`);
-    console.log('🔄 Attempting automatic token refresh...');
-    
-    // Try to refresh the token before logging out
-    const refreshResult = await this.attemptTokenRefresh();
-    
-    if (refreshResult.success) {
-      console.log('✅ Token refresh successful, retrying original request');
-      return true; // Indicate that the request should be retried
-    }
-    
-    console.log('🚪 Token refresh failed, triggering logout');
-    
-    // Show user-friendly notification
-    if (typeof window !== 'undefined') {
-      // Create a temporary notification element
-      const notification = document.createElement('div');
-      notification.innerHTML = '🔐 Session expired - please sign in again';
-      notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #fee2e2;
-        color: #dc2626;
-        padding: 12px 16px;
-        border-radius: 8px;
-        border: 1px solid #fecaca;
-        z-index: 9999;
-        font-family: system-ui, -apple-system, sans-serif;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      `;
-      
-      document.body.appendChild(notification);
-      
-      // Remove notification after 5 seconds
-      setTimeout(() => {
-        if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
-        }
-      }, 5000);
-    }
-    
-    if (this.onAuthError) {
-      this.onAuthError();
-    } else {
-      console.warn('⚠️ No auth error callback set - cannot trigger automatic logout');
-    }
+  // Handle 401 unauthorized errors - delegate to AuthService
+  private async handleAuthError(context: string): Promise<boolean> {
+    return await authService.handleAuthError(context);
   }
 
-  // Attempt to refresh the access token
+  // Attempt to refresh the access token - delegate to AuthService
   private async attemptTokenRefresh(): Promise<{ success: boolean; newToken?: string }> {
-    try {
-      // Get current user profile from local storage (using correct key)
-      const userProfile = JSON.parse(localStorage.getItem('google-auth-state') || '{}');
-      
-      console.log('🔐AUTH Token refresh debug:', {
-        hasRefreshToken: !!userProfile.refresh_token,
-        hasAccessToken: !!userProfile.access_token,
-        userEmail: userProfile.email,
-        refreshTokenLength: userProfile.refresh_token?.length || 0
-      });
-      
-      if (!userProfile.refresh_token) {
-        console.error('🔐AUTH No refresh token available in localStorage');
-        console.error('🔐AUTH Available keys in userProfile:', Object.keys(userProfile));
-        
-        // Show user-friendly message and clear invalid auth state
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('google-auth-state');
-          alert('Your session has expired and cannot be refreshed. Please sign in again.');
-          // Reload page to show login screen
-          window.location.reload();
-        }
-        
-        return { success: false };
-      }
-
-      console.log('🔐AUTH Calling token refresh API with refresh token length:', userProfile.refresh_token.length);
-      console.log('🔐AUTH Refresh token preview:', userProfile.refresh_token.substring(0, 15) + '...');
-      console.log('🔐AUTH Sending POST to /api/auth/manage?action=refresh');
-      
-      const response = await fetch('/api/auth/manage?action=refresh', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          refreshToken: userProfile.refresh_token
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('🔐AUTH Token refresh API failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        return { success: false };
-      }
-
-      const result = await response.json();
-      console.log('🔐AUTH Token refresh API response:', {
-        success: result.success,
-        hasAccessToken: !!result.tokens?.access_token,
-        hasRefreshToken: !!result.tokens?.refresh_token,
-        error: result.error
-      });
-      
-      if (result.success && result.tokens?.access_token) {
-        console.log('🔐AUTH New access token received, updating localStorage and context');
-        
-        // Update the stored user profile with new tokens
-        const updatedProfile = {
-          ...userProfile,
-          access_token: result.tokens.access_token,
-          expires_in: result.tokens.expires_in || 3600,
-          token_type: result.tokens.token_type,
-          tokenIssuedAt: Date.now(), // Track when new token was issued
-          // Keep existing refresh token or use new one if provided
-          refresh_token: result.tokens.refresh_token || userProfile.refresh_token
-        };
-        
-        localStorage.setItem('google-auth-state', JSON.stringify(updatedProfile));
-        console.log('💾 Updated localStorage with new tokens');
-        
-        // Trigger context update if available
-        if (this.onTokenRefresh) {
-          console.log('🔄 Triggering context update with new profile');
-          this.onTokenRefresh(updatedProfile);
-        } else {
-          console.warn('⚠️ No token refresh callback available');
-        }
-        
-        return { success: true, newToken: result.tokens.access_token };
-      } else {
-        console.error('❌ Token refresh response invalid:', result);
-        return { success: false };
-      }
-      
-    } catch (error) {
-      console.error('❌ Token refresh error:', error);
-      return { success: false };
-    }
+    return await authService.attemptTokenRefresh();
   }
 
-  // Callback for token refresh (to be set by context)
-  private onTokenRefresh?: (newProfile: any) => void;
-  
+  // Set callback for token refresh - delegate to AuthService
   setTokenRefreshCallback(callback: (newProfile: any) => void) {
-    this.onTokenRefresh = callback;
+    authService.setTokenRefreshCallback(callback);
   }
 
-  // Check if access token is expired (client-side check)
+  // Check if access token is expired - delegate to AuthService
   private isTokenExpired(token: string): boolean {
-    try {
-      // For JWT tokens, decode and check expiry
-      if (token.startsWith('eyJ')) {
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          const now = Math.floor(Date.now() / 1000);
-          const isExpired = payload.exp && payload.exp < now;
-          console.log('🔍 JWT token check:', {
-            exp: payload.exp,
-            now,
-            isExpired,
-            timeUntilExpiry: payload.exp ? payload.exp - now : 'unknown'
-          });
-          return isExpired;
-        }
-      }
-      
-      // For regular OAuth access tokens, check from localStorage metadata
-      const userProfile = JSON.parse(localStorage.getItem('google-auth-state') || '{}');
-      if (userProfile.expires_in) {
-        // Calculate when the token was issued (approximate)
-        const tokenAge = Date.now() - (userProfile.tokenIssuedAt || 0);
-        const tokenLifetime = userProfile.expires_in * 1000; // Convert to milliseconds
-        const isExpired = tokenAge > tokenLifetime;
-        
-        console.log('🔍 Access token age check:', {
-          tokenAge: Math.floor(tokenAge / 1000) + 's',
-          tokenLifetime: Math.floor(tokenLifetime / 1000) + 's',
-          isExpired
-        });
-        
-        return isExpired;
-      }
-      
-      // If we can't determine expiry, assume it might be expired and let the server decide
-      console.log('🔍 Cannot determine token expiry, assuming valid');
-      return false;
-      
-    } catch (error) {
-      console.warn('🔍 Error checking token expiry:', error);
-      return false; // If we can't check, assume it's valid and let server handle it
-    }
+    return authService.isTokenExpired(token);
   }
 
   // Enhanced fetch with automatic 401 handling and retry
