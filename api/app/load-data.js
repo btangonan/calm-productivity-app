@@ -138,7 +138,8 @@ export default async function handler(req, res) {
             return [];
           }
         })()
-    })).filter(task => task.id);
+      };
+    }).filter(task => task.id);
 
     const processingDuration = Date.now() - processingStartTime;
     console.log(`⚡ Data processing: ${processingDuration}ms`);
