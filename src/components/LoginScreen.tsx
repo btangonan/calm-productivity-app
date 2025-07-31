@@ -24,6 +24,15 @@ const LoginScreen = () => {
         });
         const userInfo = await userInfoResponse.json();
 
+        // Log token information for debugging
+        console.log('🔐AUTH Login token details:', {
+          hasAccessToken: !!tokenResponse.access_token,
+          hasRefreshToken: !!tokenResponse.refresh_token,
+          hasIdToken: !!tokenResponse.id_token,
+          expiresIn: tokenResponse.expires_in,
+          scopes: tokenResponse.scope
+        });
+
         dispatch({
           type: 'LOGIN_SUCCESS',
           payload: {
@@ -38,7 +47,13 @@ const LoginScreen = () => {
             tokenIssuedAt: Date.now(), // Track when token was issued for expiry calculation
           },
         });
-        console.log('Login successful for:', userInfo.email);
+        console.log('🔐AUTH Login successful for:', userInfo.email);
+        
+        if (tokenResponse.refresh_token) {
+          console.log('🔐AUTH Refresh token obtained successfully');
+        } else {
+          console.warn('🔐AUTH No refresh token received - this may cause authentication issues later');
+        }
       } catch (error) {
         console.error('Failed to fetch user info:', error);
       }
@@ -46,9 +61,9 @@ const LoginScreen = () => {
     onError: () => {
       console.error('Google Login Failed');
     },
-    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.readonly',
+    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly',
     access_type: 'offline',
-    prompt: 'consent',
+    prompt: 'consent', // Force consent screen to always get refresh token
   });
 
   return (

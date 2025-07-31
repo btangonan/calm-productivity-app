@@ -136,6 +136,15 @@ class ApiService {
       if (!userProfile.refresh_token) {
         console.error('🔐AUTH No refresh token available in localStorage');
         console.error('🔐AUTH Available keys in userProfile:', Object.keys(userProfile));
+        
+        // Show user-friendly message and clear invalid auth state
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('google-auth-state');
+          alert('Your session has expired and cannot be refreshed. Please sign in again.');
+          // Reload page to show login screen
+          window.location.reload();
+        }
+        
         return { success: false };
       }
 
