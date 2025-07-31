@@ -126,7 +126,7 @@ class ApiService {
       // Get current user profile from local storage (using correct key)
       const userProfile = JSON.parse(localStorage.getItem('google-auth-state') || '{}');
       
-      console.log('🔍 Token refresh debug:', {
+      console.log('🔐AUTH Token refresh debug:', {
         hasRefreshToken: !!userProfile.refresh_token,
         hasAccessToken: !!userProfile.access_token,
         userEmail: userProfile.email,
@@ -134,14 +134,14 @@ class ApiService {
       });
       
       if (!userProfile.refresh_token) {
-        console.error('❌ No refresh token available in localStorage');
-        console.error('❌ Available keys in userProfile:', Object.keys(userProfile));
+        console.error('🔐AUTH No refresh token available in localStorage');
+        console.error('🔐AUTH Available keys in userProfile:', Object.keys(userProfile));
         return { success: false };
       }
 
-      console.log('🔄 Calling token refresh API with refresh token length:', userProfile.refresh_token.length);
-      console.log('🔄 Refresh token preview:', userProfile.refresh_token.substring(0, 15) + '...');
-      console.log('📤 Sending POST to /api/auth/manage?action=refresh');
+      console.log('🔐AUTH Calling token refresh API with refresh token length:', userProfile.refresh_token.length);
+      console.log('🔐AUTH Refresh token preview:', userProfile.refresh_token.substring(0, 15) + '...');
+      console.log('🔐AUTH Sending POST to /api/auth/manage?action=refresh');
       
       const response = await fetch('/api/auth/manage?action=refresh', {
         method: 'POST',
@@ -155,7 +155,7 @@ class ApiService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Token refresh API failed:', {
+        console.error('🔐AUTH Token refresh API failed:', {
           status: response.status,
           statusText: response.statusText,
           error: errorText
@@ -164,7 +164,7 @@ class ApiService {
       }
 
       const result = await response.json();
-      console.log('🔍 Token refresh API response:', {
+      console.log('🔐AUTH Token refresh API response:', {
         success: result.success,
         hasAccessToken: !!result.tokens?.access_token,
         hasRefreshToken: !!result.tokens?.refresh_token,
@@ -172,7 +172,7 @@ class ApiService {
       });
       
       if (result.success && result.tokens?.access_token) {
-        console.log('✅ New access token received, updating localStorage and context');
+        console.log('🔐AUTH New access token received, updating localStorage and context');
         
         // Update the stored user profile with new tokens
         const updatedProfile = {
@@ -264,7 +264,7 @@ class ApiService {
 
   // Enhanced fetch with automatic 401 handling and retry
   async fetchWithAuth(url: string, options: RequestInit = {}, context: string = 'API call', token?: string, isRetry: boolean = false): Promise<Response> {
-    console.log(`🌐 fetchWithAuth called:`, {
+    console.log(`🔐AUTH fetchWithAuth called:`, {
       url,
       context,
       hasToken: !!token,
@@ -275,26 +275,26 @@ class ApiService {
     // Check if token is expired before making the request
     if (token && !isRetry) {
       const isExpired = this.isTokenExpired(token);
-      console.log(`🔍 Token expiry check:`, {
+      console.log(`🔐AUTH Token expiry check:`, {
         isExpired,
         tokenLength: token.length,
         context
       });
       
       if (isExpired) {
-        console.log('🔐 Token expired before request, attempting refresh...');
+        console.log('🔐AUTH Token expired before request, attempting refresh...');
         const refreshResult = await this.attemptTokenRefresh();
-        console.log('🔄 Pre-request refresh result:', {
+        console.log('🔐AUTH Pre-request refresh result:', {
           success: refreshResult.success,
           hasNewToken: !!refreshResult.newToken,
           newTokenPrefix: refreshResult.newToken?.substring(0, 20) + '...'
         });
         
         if (refreshResult.success && refreshResult.newToken) {
-          console.log('✅ Pre-request token refresh successful, using new token');
+          console.log('🔐AUTH Pre-request token refresh successful, using new token');
           token = refreshResult.newToken;
         } else {
-          console.log('❌ Pre-request token refresh failed');
+          console.log('🔐AUTH Pre-request token refresh failed');
           throw new Error('Authentication expired - please sign in again');
         }
       }
@@ -311,12 +311,12 @@ class ApiService {
       };
     }
     
-    console.log(`🔗 Making ${context} request to: ${url}`);
-    console.log('🔑 Authorization header:', options.headers?.['Authorization'] ? 'Present' : 'Missing');
+    console.log(`🔐AUTH Making ${context} request to: ${url}`);
+    console.log('🔐AUTH Authorization header:', options.headers?.['Authorization'] ? 'Present' : 'Missing');
     
     const response = await fetch(url, options);
     
-    console.log(`📊 ${context} response:`, {
+    console.log(`🔐AUTH ${context} response:`, {
       url,
       status: response.status,
       statusText: response.statusText,
@@ -324,25 +324,25 @@ class ApiService {
     });
     
     if (response.status === 401 && !isRetry) {
-      console.log('🔐 Got 401, checking if token refresh is needed...');
+      console.log('🔐AUTH Got 401, checking if token refresh is needed...');
       
       // Check if the response indicates token refresh is needed
       try {
         const errorData = await response.clone().json();
         if (errorData.needsRefresh) {
-          console.log('🔄 Backend indicates token refresh needed, attempting refresh...');
+          console.log('🔐AUTH Backend indicates token refresh needed, attempting refresh...');
           const refreshResult = await this.attemptTokenRefresh();
           
           if (refreshResult.success && refreshResult.newToken) {
-            console.log('✅ Token refresh successful, retrying request with new token');
+            console.log('🔐AUTH Token refresh successful, retrying request with new token');
             return this.fetchWithAuth(url, options, context, refreshResult.newToken, true);
           } else {
-            console.log('❌ Token refresh failed');
+            console.log('🔐AUTH Token refresh failed');
             throw new Error('Authentication expired - please sign in again');
           }
         }
       } catch (parseError) {
-        console.warn('Could not parse 401 response for needsRefresh flag');
+        console.warn('🔐AUTH Could not parse 401 response for needsRefresh flag');
       }
       
       // Fallback to original logic

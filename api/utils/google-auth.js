@@ -103,14 +103,14 @@ export async function validateGoogleToken(authHeader) {
 
 export async function refreshGoogleToken(refreshToken) {
   try {
-    console.log('🔄 refreshGoogleToken called with token length:', refreshToken?.length || 0);
-    console.log('🔄 Environment check:', {
+    console.log('🔐AUTH refreshGoogleToken called with token length:', refreshToken?.length || 0);
+    console.log('🔐AUTH Environment check:', {
       hasClientId: !!process.env.GOOGLE_CLIENT_ID,
       hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
       clientIdPreview: process.env.GOOGLE_CLIENT_ID?.substring(0, 10) + '...' || 'missing'
     });
 
-    console.log('📤 Making request to Google OAuth token endpoint...');
+    console.log('🔐AUTH Making request to Google OAuth token endpoint...');
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -124,7 +124,7 @@ export async function refreshGoogleToken(refreshToken) {
       }),
     });
 
-    console.log('📥 Google OAuth response:', {
+    console.log('🔐AUTH Google OAuth response:', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok
@@ -132,21 +132,21 @@ export async function refreshGoogleToken(refreshToken) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Google OAuth error response:', errorText);
+      console.error('🔐AUTH Google OAuth error response:', errorText);
       
       // Try to parse the error for more details
       try {
         const errorJson = JSON.parse(errorText);
-        console.error('❌ Google OAuth error details:', errorJson);
+        console.error('🔐AUTH Google OAuth error details:', errorJson);
       } catch (e) {
-        console.error('❌ Could not parse Google OAuth error as JSON');
+        console.error('🔐AUTH Could not parse Google OAuth error as JSON');
       }
       
       throw new Error(`Token refresh failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('✅ Google OAuth success response:', {
+    console.log('🔐AUTH Google OAuth success response:', {
       hasAccessToken: !!result.access_token,
       hasRefreshToken: !!result.refresh_token,
       tokenType: result.token_type,
@@ -155,8 +155,8 @@ export async function refreshGoogleToken(refreshToken) {
 
     return result;
   } catch (error) {
-    console.error('❌ Token refresh error:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('🔐AUTH Token refresh error:', error);
+    console.error('🔐AUTH Error stack:', error.stack);
     throw error;
   }
 }
