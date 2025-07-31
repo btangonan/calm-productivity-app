@@ -62,6 +62,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
       } catch (error) {
         console.warn('Failed to persist current view:', error);
       }
+      
+      // Add to browser history for back button support
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('view', action.payload);
+      currentUrl.searchParams.delete('project'); // Clear project when switching views
+      window.history.pushState({ view: action.payload }, '', currentUrl.toString());
+      
       return { ...state, currentView: action.payload, selectedProjectId: null };
     case 'SET_SELECTED_PROJECT':
       // Persist selected project to localStorage
@@ -71,6 +78,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
       } catch (error) {
         console.warn('Failed to persist selected project:', error);
       }
+      
+      // Add to browser history for back button support
+      const projectUrl = new URL(window.location.href);
+      projectUrl.searchParams.set('view', 'project');
+      projectUrl.searchParams.set('project', action.payload);
+      window.history.pushState({ view: 'project', project: action.payload }, '', projectUrl.toString());
+      
       return { ...state, selectedProjectId: action.payload, currentView: 'project' };
     case 'ADD_TASK':
       return { ...state, tasks: [...state.tasks, action.payload] };
@@ -282,6 +296,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
       restoreViewState();
     }
   }, [state.isAuthenticated]);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.view) {
+        console.log('🔙 Browser back button pressed, restoring state:', event.state);
+        
+        if (event.state.view === 'project' && event.state.project) {
+          dispatch({ 
+            type: 'RESTORE_VIEW_STATE', 
+            payload: { 
+              currentView: 'project', 
+              selectedProjectId: event.state.project 
+            } 
+          });
+        } else {
+          dispatch({ 
+            type: 'RESTORE_VIEW_STATE', 
+            payload: { 
+              currentView: event.state.view, 
+              selectedProjectId: null 
+            } 
+          });
+        }
+      } else {
+        // No state available, go to default view
+        console.log('🔙 Browser back button pressed, no state available, going to inbox');
+        dispatch({ 
+          type: 'RESTORE_VIEW_STATE', 
+          payload: { 
+            currentView: 'inbox', 
+            selectedProjectId: null 
+          } 
+        });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   // Save authentication state to localStorage when user logs in
   useEffect(() => {

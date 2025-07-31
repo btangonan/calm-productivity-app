@@ -305,7 +305,9 @@ async function handleConvertToTask(req, res, user) {
       attachments: [{
         name: `Gmail Message: ${subject}`,
         url: `https://mail.google.com/mail/u/0/#search/${messageId}`,
-        type: 'gmail-message'
+        type: 'gmail-message',
+        mimeType: 'message/rfc822',
+        size: 0
       }]
     })
   });

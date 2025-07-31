@@ -77,7 +77,7 @@ const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
             size: file.size,
             url: `https://drive.google.com/file/d/drive_file_${Date.now()}/view`,
             driveFileId: `drive_file_${Date.now()}`,
-            thumbnailUrl: file.type.startsWith('image/') ? `https://drive.google.com/thumbnail?id=drive_file_${Date.now()}` : undefined,
+            thumbnailUrl: (file.type && file.type.startsWith('image/')) ? `https://drive.google.com/thumbnail?id=drive_file_${Date.now()}` : undefined,
             createdAt: new Date().toISOString(),
             modifiedAt: new Date().toISOString()
           };
@@ -103,7 +103,7 @@ const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
             mimeType: file.type,
             size: file.size,
             url: URL.createObjectURL(file),
-            thumbnailUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+            thumbnailUrl: (file.type && file.type.startsWith('image/')) ? URL.createObjectURL(file) : undefined,
             uploadedAt: new Date().toISOString()
           };
           newAttachments.push(fallbackAttachment);
@@ -134,6 +134,7 @@ const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
   };
 
   const getFileIcon = (mimeType: string): string => {
+    if (!mimeType) return '📎';
     if (mimeType.startsWith('image/')) return '🖼️';
     if (mimeType.startsWith('video/')) return '🎥';
     if (mimeType.startsWith('audio/')) return '🎵';
@@ -143,6 +144,7 @@ const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
     if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📈';
     if (mimeType.includes('zip') || mimeType.includes('compressed')) return '🗜️';
     if (mimeType.includes('text/')) return '📃';
+    if (mimeType.includes('message/')) return '📧';
     return '📎';
   };
 
@@ -284,7 +286,7 @@ const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
               attachments.map((attachment) => (
                 <div key={attachment.id} className="group">
                 {/* Image preview for image attachments */}
-                {attachment.mimeType.startsWith('image/') && attachment.thumbnailUrl ? (
+                {(attachment.mimeType && attachment.mimeType.startsWith('image/')) && attachment.thumbnailUrl ? (
                   <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
                     <img
                       src={attachment.thumbnailUrl}
