@@ -12,7 +12,7 @@ This document tracks the current application architecture, common issues, and de
 - **Storage**: Google Drive (via Google Drive API, using user-owned folders)
 - **Deployment**: Vercel (auto-deploys from GitHub main branch)
 
-### Current API Endpoints (v1.0.0 Stable Release)
+### Current API Endpoints (v1.2.1 Stable Release)
 ```
 /api/ - 10/12 endpoints used
 ├── app/
@@ -59,49 +59,60 @@ This document tracks the current application architecture, common issues, and de
 
 ## 🔄 STABLE RELEASE & ROLLBACK PROCEDURES
 
-### Current Branch Strategy (July 30, 2025)
-- **`main`**: Latest development work
-- **`feature/modular-tile-system`**: Active development branch for tile system
-- **`release/v1.0-stable`**: **STABLE RELEASE** - fully working app before tile system
-- **`v1.0.0`**: Release tag pointing to stable state
+### Current Branch Strategy (July 31, 2025)
+- **`main`**: Latest stable development work (v1.2.1 - Post-Refactoring Stable)
+- **`v1.2.0`**: Stable tag created before comprehensive refactoring
+- **`v1.2.1`**: Latest stable release with refactored services + UI improvements
+- **Previous**: `release/v1.0-stable` and `v1.0.0` (original stable release)
 
 ### How to Restore to Stable Release
 
-#### Option 1: Switch to Stable Branch (Temporary)
+#### Option 1: Reset to Latest Stable (v1.2.1 - Recommended)
 ```bash
-# Switch to stable version (preserves current work)
-git checkout release/v1.0-stable
+# Current stable release with all improvements
+git checkout main
+git reset --hard v1.2.1
+git push origin main --force-with-lease
 
-# Verify you're on stable branch
-git branch
-# * release/v1.0-stable
-
-# Return to development when ready
-git checkout feature/modular-tile-system
+# Verify stable version
+git log --oneline -3
 ```
 
-#### Option 2: Reset to Stable Tag (Permanent)
+#### Option 2: Reset to Pre-Refactoring Stable (v1.2.0)
 ```bash
-# WARNING: This discards all changes after v1.0.0
+# Before the comprehensive API refactoring
+git checkout main
+git reset --hard v1.2.0
+git push origin main --force-with-lease
+```
+
+#### Option 3: Reset to Original Stable (v1.0.0)
+```bash
+# Original working version before major changes
 git checkout main
 git reset --hard v1.0.0
 git push origin main --force-with-lease
+```
 
-# OR create new branch from stable tag
-git checkout -b emergency-rollback v1.0.0
+#### Option 4: Create Emergency Branch
+```bash
+# Create emergency branch from any stable version
+git checkout -b emergency-rollback v1.2.1
 git push -u origin emergency-rollback
 ```
 
-#### Option 3: Create Hotfix from Stable
-```bash
-# Create hotfix branch from stable release
-git checkout release/v1.0-stable
-git checkout -b hotfix/emergency-fix
-# Make emergency fixes
-git push -u origin hotfix/emergency-fix
-```
+### What's in Each Stable Release
 
-### What's in the Stable Release (v1.0.0)
+#### v1.2.1 (Current Stable - July 31, 2025) - RECOMMENDED
+- ✅ **All v1.2.0 features PLUS:**
+- ✅ Comprehensive API refactoring (AuthService, TaskService, ProjectService, DriveService, MockDataService, GoogleScriptService)
+- ✅ Improved UI interactions (double-click emails, clean sender names)
+- ✅ Persistent divider positions (Gmail panel height, right sidebar width)
+- ✅ Gmail defaults to "Important" filter
+- ✅ Zero behavioral changes - all functionality preserved
+- ✅ Better maintainability with service extraction pattern
+
+#### v1.2.0 (Pre-Refactoring Stable - July 28, 2025)
 - ✅ Complete task management with Areas/Projects
 - ✅ Google Drive integration with file uploads  
 - ✅ Gmail integration for email-to-task conversion
@@ -112,22 +123,32 @@ git push -u origin hotfix/emergency-fix
 - ✅ All authentication and authorization working
 - ✅ Performance optimizations and error handling
 
+#### v1.0.0 (Original Stable - July 30, 2025)  
+- ✅ Basic working application
+- ✅ Core task and project management
+- ✅ Initial Google integrations
+
 ### Emergency Rollback Commands
 ```bash
-# If tile system breaks everything, run these commands:
+# If anything breaks, run these commands:
 
-# 1. Quick switch to working version
-git checkout release/v1.0-stable
-
-# 2. Deploy stable version to production
-git checkout release/v1.0-stable
-git push origin release/v1.0-stable
-# Then update Vercel to deploy from release/v1.0-stable branch
-
-# 3. Complete rollback of main branch
+# 1. Quick rollback to latest stable (RECOMMENDED)
 git checkout main
-git reset --hard v1.0.0  
+git reset --hard v1.2.1
 git push origin main --force-with-lease
+
+# 2. Rollback to pre-refactoring if services are broken
+git checkout main  
+git reset --hard v1.2.0
+git push origin main --force-with-lease
+
+# 3. Nuclear option - go back to very first stable
+git checkout main
+git reset --hard v1.0.0
+git push origin main --force-with-lease
+
+# 4. Verify rollback worked
+git log --oneline -5
 ```
 
 ### Vercel Branch Deployment
@@ -191,6 +212,38 @@ To switch Vercel to stable branch:
 - Currently limited to project-specific folders
 - **Future**: Plan to add full Google Drive browsing capability
 
+## 🏗️ CURRENT SERVICE ARCHITECTURE (v1.2.1)
+
+### Refactored Service Pattern
+The application uses a clean service architecture with dependency injection:
+
+```typescript
+// Service Structure
+src/services/
+├── api.ts              # Main API service (coordinator)
+├── AuthService.ts      # Authentication & token management
+├── TaskService.ts      # Task CRUD operations  
+├── ProjectService.ts   # Project & Drive integration
+├── DriveService.ts     # Google Drive file operations
+├── MockDataService.ts  # Development mock data
+└── GoogleScriptService.ts # Legacy script execution
+```
+
+### Service Responsibilities
+- **AuthService**: Token refresh, expiration handling, user profile management
+- **TaskService**: Task creation, updates, completion, email conversion
+- **ProjectService**: Project CRUD, Drive folder management, Area relationships
+- **DriveService**: File uploads, queries, folder operations
+- **MockDataService**: Development data when backend unavailable
+- **ApiService**: Main coordinator, delegates to specific services
+
+### Dependency Injection Pattern
+```typescript
+// Services receive dependencies via constructor/factory
+const taskService = createTaskService(fetchWithAuth, executeGoogleScript);
+const projectService = createProjectService(fetchWithAuth, driveService);
+```
+
 ## 🚨 CRITICAL MISTAKES TO AVOID
 
 - ❌ Making code changes without committing them
@@ -199,6 +252,7 @@ To switch Vercel to stable branch:
 - ❌ Using Google Apps Script patterns (we're fully on Vercel now)
 - ❌ Forgetting to check Vercel deployment status
 - ❌ Not handling temporary project IDs in optimistic updates
+- ❌ Breaking service dependency injection patterns during changes
 
 ## ✅ SUCCESS PATTERNS
 
@@ -214,12 +268,12 @@ To switch Vercel to stable branch:
 ### Live Application
 - **Frontend**: https://calm-productivity-app.vercel.app/
 - **API Base**: https://calm-productivity-app.vercel.app/api/
-- **Status**: ✅ ACTIVE
-- **Current Branch**: `feature/modular-tile-system` (development)
-- **Stable Branch**: `release/v1.0-stable` (production-ready fallback)
-- **Last Stable Release**: July 30, 2025 (v1.0.0)
+- **Status**: ✅ ACTIVE (v1.2.1 Stable)
+- **Current Branch**: `main` (stable development)
+- **Latest Stable Tag**: `v1.2.1` (July 31, 2025)
+- **Previous Stable Tags**: `v1.2.0` (July 28, 2025), `v1.0.0` (July 30, 2025)
 
-### API Capabilities (Stable v1.0.0)
+### API Capabilities (Current v1.2.1)
 - ✅ Full task management (create, read, update, delete)
 - ✅ Project management (create, read, update, delete)
 - ✅ Google Drive file operations (list, upload, enhanced query system)
