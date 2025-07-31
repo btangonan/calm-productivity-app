@@ -16,9 +16,17 @@ const MainContent = () => {
   const { currentView, selectedProjectId } = state;
   const [fileRefreshTrigger, setFileRefreshTrigger] = useState(0);
   const [showTaskForm, setShowTaskForm] = useState(false);
-  const [rightSidebarWidth, setRightSidebarWidth] = useState(384); // 24rem = 384px
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(() => {
+    // Persist right sidebar width in localStorage
+    const saved = localStorage.getItem('right-sidebar-width');
+    return saved ? parseInt(saved, 10) : 384; // 24rem = 384px default
+  });
   const [isResizingRight, setIsResizingRight] = useState(false);
-  const [gmailPanelHeight, setGmailPanelHeight] = useState(400); // Initial height in pixels
+  const [gmailPanelHeight, setGmailPanelHeight] = useState(() => {
+    // Persist Gmail panel height in localStorage
+    const saved = localStorage.getItem('gmail-panel-height');
+    return saved ? parseInt(saved, 10) : 400; // 400px default
+  });
   const [isResizingVertical, setIsResizingVertical] = useState(false);
   const [useEnhancedProjectView, setUseEnhancedProjectView] = useState(
     localStorage.getItem('enhanced-project-view') !== 'false' // Default to true
@@ -30,6 +38,15 @@ const MainContent = () => {
     // Refresh the file list when new files are uploaded
     setFileRefreshTrigger(prev => prev + 1);
   };
+
+  // Persist right sidebar width and Gmail panel height to localStorage
+  useEffect(() => {
+    localStorage.setItem('right-sidebar-width', rightSidebarWidth.toString());
+  }, [rightSidebarWidth]);
+
+  useEffect(() => {
+    localStorage.setItem('gmail-panel-height', gmailPanelHeight.toString());
+  }, [gmailPanelHeight]);
 
   const handleRightMouseDown = (e: React.MouseEvent) => {
     setIsResizingRight(true);

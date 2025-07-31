@@ -137,6 +137,11 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     setShowEmailModal(true);
   };
 
+  const handleEmailDoubleClick = (email: GmailMessage) => {
+    setSelectedEmail(email);
+    setShowEmailModal(true);
+  };
+
   const handleConvertToTask = async (email: GmailMessage) => {
     if (!userProfile?.access_token) return;
 
@@ -380,7 +385,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
                 <EmailItem
                   key={email.id}
                   email={email}
-                  onSelect={() => handleEmailClick(email)}
+                  onDoubleClick={() => handleEmailDoubleClick(email)}
                   onConvert={() => handleConvertToTask(email)}
                 />
               ))}
@@ -405,11 +410,11 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
 // Email Item Component
 interface EmailItemProps {
   email: GmailMessage;
-  onSelect: () => void;
+  onDoubleClick: () => void;
   onConvert: () => void;
 }
 
-const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
+const EmailItem = ({ email, onDoubleClick, onConvert }: EmailItemProps) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -438,12 +443,12 @@ const EmailItem = ({ email, onSelect, onConvert }: EmailItemProps) => {
   return (
     <div className="group py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 relative">
       <div className="flex items-start">
-        <div className="flex-1 min-w-0 pr-12" onClick={onSelect}>
+        <div className="flex-1 min-w-0 pr-12" onDoubleClick={onDoubleClick}>
           {/* Line 1: Sender, subject, and date/time */}
           <div className="flex items-center mb-1">
             <div className="flex items-center space-x-2 flex-shrink-0">
               <span className={`text-sm font-medium ${email.unread ? 'text-gray-900' : 'text-gray-700'}`}>
-                {decodeHtmlEntities(email.sender)}
+                {decodeHtmlEntities(email.sender).replace(/<[^>]*>/g, '').trim()}
               </span>
             </div>
             <span className="text-gray-400 mx-2">•</span>
