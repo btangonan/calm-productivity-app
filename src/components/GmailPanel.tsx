@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import { aiService } from '../services/ai';
 
 // Extend Window interface for search timeout
 declare global {
@@ -152,14 +153,16 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     }
 
     try {
-      console.log('🔄 Converting email to task with optimistic UI...', email.id);
+      console.log('🤖 Converting email to task with AI analysis...', email.id);
       
-      // Create optimistic task for instant UI feedback
+      // Analyze email with AI in parallel while showing optimistic UI
       const optimisticTaskId = `temp-email-${Date.now()}`;
-      const optimisticTask = {
-        id: optimisticTaskId, // Temporary ID
-        title: email.subject || 'Email Task',
-        description: `From: ${email.sender}\nEmail: ${email.snippet}`,
+      
+      // Show loading state with basic optimistic task
+      const basicOptimisticTask = {
+        id: optimisticTaskId,
+        title: '🤖 Analyzing email...',
+        description: `AI is analyzing this email to create a smart task...\n\nFrom: ${email.sender}\nSubject: ${email.subject}`,
         projectId: state.selectedProjectId || null,
         context: '@email',
         dueDate: null,
@@ -173,51 +176,177 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
           mimeType: 'message/rfc822',
           size: 0
         }],
-        isOptimistic: true // Mark as optimistic
+        isOptimistic: true
       };
       
-      // Update UI immediately for instant feedback
-      console.log('⚡ Adding optimistic email task to UI');
-      dispatch({ type: 'ADD_TASK', payload: optimisticTask });
-      
-      // Show success feedback immediately
+      // Update UI immediately
+      console.log('⚡ Adding basic optimistic task while AI analyzes');
+      dispatch({ type: 'ADD_TASK', payload: basicOptimisticTask });
       setError(null);
-      
-      // Close modal immediately for instant UX
       setShowEmailModal(false);
       
-      // Convert to real task in background
-      const response = await apiService.fetchWithAuth(
-        '/api/gmail/messages?action=convert-to-task', 
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messageId: email.id,
-            projectId: state.selectedProjectId || null,
-            context: '@email'
-          })
-        }, 
-        'Convert email to task',
-        token
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Email converted to real task successfully:', result);
+      try {
+        // Test AI connection first
+        const aiConnected = await aiService.testConnection();
         
-        if (result.success && result.data?.task) {
-          // Replace optimistic task with real task
-          dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
-          dispatch({ type: 'ADD_TASK', payload: result.data.task });
-          console.log('✅ Replaced optimistic email task with real task:', result.data.task.id);
+        let aiEnhancedTask = basicOptimisticTask;
+        
+        if (aiConnected) {
+          console.log('🤖 AI connected, analyzing email content...');
+          
+          // Get full email content for better analysis
+          let emailContent = email.snippet || '';
+          if (email.body) {
+            emailContent = email.body;
+          } else {
+            // Try to get full email content
+            try {
+              const fullEmailResponse = await apiService.fetchWithAuth(
+                `/api/gmail/messages/${email.id}`,
+                { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+                'Get full email content',
+                token
+              );
+              
+              if (fullEmailResponse.ok) {
+                const fullEmailData = await fullEmailResponse.json();
+                if (fullEmailData.success && fullEmailData.data?.message?.body) {
+                  emailContent = fullEmailData.data.message.body;
+                }
+              }
+            } catch (e) {
+              console.warn('Could not fetch full email content, using snippet');
+            }
+          }
+          
+          // Generate smart task title with AI
+          const smartTitle = await aiService.generateTaskTitle({
+            emailSubject: email.subject || '',
+            emailSender: email.sender || '',
+            emailContent: emailContent,
+            emailSnippet: email.snippet
+          });
+          
+          // Analyze email for comprehensive task data
+          const analysis = await aiService.analyzeEmail({
+            emailSubject: email.subject || '',
+            emailSender: email.sender || '',
+            emailContent: emailContent,
+            emailSnippet: email.snippet
+          });
+          
+          console.log('🤖 AI analysis complete:', { smartTitle, analysis });
+          
+          // Create AI-enhanced task
+          const contextMap = {
+            'creative_review': '@creative',
+            'feedback_request': '@feedback', 
+            'strategic_planning': '@strategy',
+            'logistics': '@meeting',
+            'summary': '@summary',
+            'executive_summary': '@executive',
+            'informational': '@email'
+          };
+
+          aiEnhancedTask = {
+            ...basicOptimisticTask,
+            title: smartTitle,
+            description: analysis.task_description,
+            context: contextMap[analysis.task_type] || '@email',
+            dueDate: analysis.due_date
+          };
+          
+          console.log('✨ AI-enhanced task created:', aiEnhancedTask.title);
         } else {
-          throw new Error(result.error || 'Invalid response format');
+          console.warn('🤖 AI not available, using fallback task creation');
+          // Fallback to basic task
+          aiEnhancedTask = {
+            ...basicOptimisticTask,
+            title: email.subject || 'Email Task',
+            description: `From: ${email.sender}\nEmail: ${email.snippet}`
+          };
         }
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to convert email to task');
+        
+        // Update optimistic task with AI-enhanced version
+        dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
+        dispatch({ type: 'ADD_TASK', payload: aiEnhancedTask });
+        
+        // Convert to real task in background
+        const response = await apiService.fetchWithAuth(
+          '/api/gmail/messages?action=convert-to-task', 
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messageId: email.id,
+              projectId: state.selectedProjectId || null,
+              context: aiEnhancedTask.context,
+              // Send AI-enhanced data to backend
+              aiEnhanced: true,
+              title: aiEnhancedTask.title,
+              description: aiEnhancedTask.description,
+              dueDate: aiEnhancedTask.dueDate
+            })
+          }, 
+          'Convert email to task',
+          token
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Email converted to real task successfully:', result);
+          
+          if (result.success && result.data?.task) {
+            // Replace optimistic task with real task
+            dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
+            dispatch({ type: 'ADD_TASK', payload: result.data.task });
+            console.log('✅ Replaced optimistic email task with real task:', result.data.task.id);
+          } else {
+            throw new Error(result.error || 'Invalid response format');
+          }
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to convert email to task');
+        }
+        
+      } catch (aiError) {
+        console.error('🤖 AI analysis failed, using basic conversion:', aiError);
+        
+        // Fallback to basic task creation
+        const fallbackTask = {
+          ...basicOptimisticTask,
+          title: email.subject || 'Email Task',
+          description: `From: ${email.sender}\nEmail: ${email.snippet}`
+        };
+        
+        dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
+        dispatch({ type: 'ADD_TASK', payload: fallbackTask });
+        
+        // Continue with regular API call for fallback
+        const response = await apiService.fetchWithAuth(
+          '/api/gmail/messages?action=convert-to-task', 
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messageId: email.id,
+              projectId: state.selectedProjectId || null,
+              context: '@email'
+            })
+          }, 
+          'Convert email to task',
+          token
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data?.task) {
+            dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
+            dispatch({ type: 'ADD_TASK', payload: result.data.task });
+          }
+        }
       }
+      
     } catch (error) {
       console.error('❌ Email conversion failed, removing optimistic task:', error);
       // Remove the optimistic task on failure
