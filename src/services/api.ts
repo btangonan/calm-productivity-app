@@ -1,5 +1,6 @@
 import type { Area, Project, Task, GoogleScriptResponse, Contact, TaskWithIntegrations, Document, ProjectFile, TaskAttachment, DriveFolder, DriveStructure } from '../types';
 import { authService } from './AuthService';
+import { createTaskService } from './TaskService';
 
 // Google Apps Script API functions
 // These will be available when deployed as a Google Apps Script web app
@@ -33,6 +34,7 @@ class ApiService {
   private useEdgeFunctions = import.meta.env.VITE_USE_EDGE_FUNCTIONS === 'true' || false; // Feature flag for Edge Functions
   private enableFallback = true; // Fallback to Apps Script if Edge Functions fail
   private backendHealthy = true; // Track backend health status
+  private taskService: ReturnType<typeof createTaskService>;
 
   // Methods to control Edge Functions for testing
   enableEdgeFunctions() {
@@ -60,6 +62,12 @@ class ApiService {
   // Log status on initialization
   constructor() {
     console.log(`🏗️ ApiService initialized - Edge Functions: ${this.useEdgeFunctions ? 'ENABLED' : 'DISABLED'}`);
+    
+    // Initialize TaskService with required dependencies
+    this.taskService = createTaskService(
+      this.fetchWithAuth.bind(this),
+      this.executeGoogleScript.bind(this)
+    );
   }
 
   // Set callback for auth errors (to trigger logout)
@@ -725,8 +733,7 @@ class ApiService {
   }
 
   async getTasks(projectId: string | undefined, view: string | undefined, token: string): Promise<Task[]> {
-    const response = await this.executeGoogleScript<Task[]>(token, 'getTasks', [projectId, view], 'GET');
-    return response.data || [];
+    return await this.taskService.getTasks(projectId, view, token);
   }
 
   async loadAppData(token: string): Promise<{areas: Area[], projects: Project[], tasks: Task[]}> {
@@ -791,37 +798,6 @@ class ApiService {
   }
 
   // Cache invalidation method to ensure data consistency between legacy and Edge Functions
-  private async invalidateTasksCache(token: string): Promise<void> {
-    try {
-      // Only invalidate if Edge Functions are enabled
-      if (!this.useEdgeFunctions) {
-        console.log('💾 Skipping cache invalidation - Edge Functions disabled');
-        return;
-      }
-
-      console.log('🗑️ Invalidating tasks cache to ensure data consistency...');
-      
-      const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/cache/invalidate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          cacheKeys: ['tasks', 'app-data'] // Invalidate both tasks and full app data
-        })
-      });
-
-      if (response.ok) {
-        console.log('✅ Cache invalidated successfully');
-      } else {
-        console.warn(`⚠️ Cache invalidation failed: ${response.status} - but continuing operation`);
-      }
-    } catch (error) {
-      console.warn('⚠️ Cache invalidation error (non-critical):', error);
-      // Don't throw - cache invalidation failure shouldn't break the main operation
-    }
-  }
 
   async createProject(name: string, description: string, areaId: string | undefined, token: string): Promise<Project> {
     try {
@@ -853,149 +829,20 @@ class ApiService {
   }
 
   async createTask(title: string, description: string, projectId: string | undefined, context: string | undefined, dueDate: string | undefined, attachments: TaskAttachment[] | undefined, token: string): Promise<Task> {
-    const startTime = performance.now();
-    
-    try {
-      // Try Edge Functions first if enabled
-      if (this.useEdgeFunctions) {
-        const response = await this.fetchWithAuth(`${this.EDGE_FUNCTIONS_URL}/tasks/manage`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            title,
-            description,
-            projectId,
-            context,
-            dueDate,
-            attachments
-          })
-        }, 'createTask');
-
-        if (response.ok) {
-          const result = await response.json();
-          const duration = performance.now() - startTime;
-          console.log(`⚡ Edge Function createTask: ${duration.toFixed(1)}ms`);
-          return result.data;
-        }
-
-        // If Edge Function fails and fallback is enabled
-        if (this.enableFallback) {
-          console.warn('Edge Function failed, falling back to Apps Script');
-          return await this.createTaskLegacy(title, description, projectId, context, dueDate, attachments, token);
-        }
-
-        throw new Error(`Edge Function failed: ${response.status}`);
-      }
-
-      // Use legacy Apps Script
-      return await this.createTaskLegacy(title, description, projectId, context, dueDate, attachments, token);
-
-    } catch (error) {
-      console.error('Task creation failed:', error);
-      
-      // Fallback to legacy if enabled
-      if (this.useEdgeFunctions && this.enableFallback) {
-        console.warn('Falling back to Apps Script due to error');
-        return await this.createTaskLegacy(title, description, projectId, context, dueDate, attachments, token);
-      }
-      
-      throw error;
-    }
+    return await this.taskService.createTask(title, description, projectId, context, dueDate, attachments, token);
   }
 
-  private async createTaskLegacy(title: string, description: string, projectId: string | undefined, context: string | undefined, dueDate: string | undefined, attachments: TaskAttachment[] | undefined, token: string): Promise<Task> {
-    const startTime = performance.now();
-    const response = await this.executeGoogleScript<Task>(token, 'createTask', [title, description, projectId, context, dueDate, attachments]);
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to create task');
-    }
-    const duration = performance.now() - startTime;
-    console.log(`🔄 Legacy createTask: ${duration.toFixed(1)}ms`);
-    return response.data;
-  }
 
   async updateTask(taskId: string, title: string, description: string, projectId: string | undefined, context: string | undefined, dueDate: string | undefined, token: string): Promise<Task> {
-    const response = await this.executeGoogleScript<Task>(token, 'updateTask', [taskId, title, description, projectId, context, dueDate]);
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to update task');
-    }
-    
-    // Invalidate Edge Functions cache to ensure fresh data on next load
-    await this.invalidateTasksCache(token);
-    return response.data;
+    return await this.taskService.updateTask(taskId, title, description, projectId, context, dueDate, token);
   }
 
   async updateTaskCompletion(taskId: string, isCompleted: boolean, token: string): Promise<void> {
-    console.log(`📝 Updating task completion: ${taskId} -> ${isCompleted}`);
-    
-    // Check if this is a temporary task ID that hasn't been synced yet
-    if (taskId.startsWith('temp-')) {
-      console.log('⏳ Task has temporary ID, delaying update to allow backend sync...');
-      
-      // Wait a moment for the task creation to complete in the background
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Throw a user-friendly error asking them to try again
-      throw new Error('Task is still being created - please try again in a moment');
-    }
-    
-    // Use Edge Functions if available, otherwise fallback to Google Apps Script
-    if (this.useEdgeFunctions) {
-      try {
-        const response = await this.fetchWithAuth('/api/tasks/manage', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            taskId,
-            isCompleted
-          })
-        }, 'updateTaskCompletion', token);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update task completion');
-        }
-
-        const result = await response.json();
-        console.log('✅ Task completion updated via Edge Functions:', result);
-        
-        // Invalidate cache
-        await this.invalidateTasksCache(token);
-        return;
-        
-      } catch (error) {
-        console.error('Edge Functions task update failed:', error);
-        if (!this.enableFallback) {
-          throw error;
-        }
-        console.log('🔄 Falling back to Google Apps Script...');
-      }
-    }
-
-    // Fallback to Google Apps Script
-    const response = await this.executeGoogleScript<void>(token, 'updateTaskCompletion', [taskId, isCompleted]);
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to update task');
-    }
-    
-    console.log('✅ Task completion updated via Google Apps Script');
-    // Invalidate Edge Functions cache to ensure fresh data on next load
-    await this.invalidateTasksCache(token);
+    return await this.taskService.updateTaskCompletion(taskId, isCompleted, token);
   }
 
   async deleteTask(taskId: string, token: string): Promise<void> {
-    const response = await this.executeGoogleScript<void>(token, 'deleteTask', [taskId]);
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to delete task');
-    }
-    
-    // Invalidate Edge Functions cache to ensure fresh data on next load
-    await this.invalidateTasksCache(token);
+    return await this.taskService.deleteTask(taskId, token);
   }
 
   async deleteProject(projectId: string, token: string): Promise<void> {
@@ -1073,57 +920,20 @@ class ApiService {
   }
 
   async reorderTasks(taskIds: string[], token: string): Promise<void> {
-    const response = await this.executeGoogleScript<void>(token, 'reorderTasks', [taskIds]);
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to reorder tasks');
-    }
-    
-    // Invalidate Edge Functions cache to ensure fresh data on next load
-    await this.invalidateTasksCache(token);
+    return await this.taskService.reorderTasks(taskIds, token);
   }
 
   async getAISuggestions(projectName: string, tasks: Task[]): Promise<string> {
-    try {
-      const prompt = `Project: ${projectName}
-
-Current tasks:
-${tasks.map(task => `- ${task.title}${task.isCompleted ? ' (completed)' : ''}`).join('\n')}
-
-Please suggest 2-3 logical next steps or identify any potential blockers for this project. Keep suggestions concise and actionable.`;
-
-      const response = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama2', // You can change this to whatever model you're using
-          prompt: prompt,
-          stream: false,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get AI suggestions');
-      }
-
-      const data = await response.json();
-      return data.response || 'No suggestions available.';
-    } catch (error) {
-      console.error('AI suggestions error:', error);
-      return 'AI suggestions temporarily unavailable. Please ensure Ollama is running locally.';
-    }
+    return await this.taskService.getAISuggestions(projectName, tasks);
   }
 
   // Google Integrations
   async processGmailToTasks(token: string): Promise<Task[]> {
-    const response = await this.executeGoogleScript<Task[]>(token, 'processGmailToTasks');
-    return response.data || [];
+    return await this.taskService.processGmailToTasks(token);
   }
 
   async syncTasksWithCalendar(token: string): Promise<any> {
-    const response = await this.executeGoogleScript<any>(token, 'syncTasksWithCalendar');
-    return response.data || [];
+    return await this.taskService.syncTasksWithCalendar(token);
   }
 
   async createTaskWithIntegrations(
@@ -1135,15 +945,11 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     createCalendarEvent: boolean | undefined,
     token: string
   ): Promise<TaskWithIntegrations> {
-    const response = await this.executeGoogleScript<TaskWithIntegrations>(
-      token, 
-      'createTaskWithIntegrations', 
-      [title, description, projectId, context, dueDate, createCalendarEvent]
-    );
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to create task with integrations');
-    }
-    return response.data;
+    // Need to update TaskService to match this signature - for now delegate with adaptation
+    return await this.taskService.createTaskWithIntegrations(
+      title, description, projectId, context, dueDate, undefined,
+      { calendarEventId: createCalendarEvent ? 'create' : undefined }, token
+    ) as TaskWithIntegrations;
   }
 
   async createProjectDocument(projectId: string, projectName: string, templateType: 'project-notes' | 'meeting-notes' | 'project-plan', token: string): Promise<Document> {
@@ -1761,40 +1567,7 @@ Please suggest 2-3 logical next steps or identify any potential blockers for thi
     customTitle?: string;
     customDescription?: string;
   } = {}): Promise<any> {
-    const startTime = performance.now();
-    
-    try {
-      console.log(`🔄 Converting Gmail message ${messageId} to task`);
-      
-      const response = await fetch(`${this.EDGE_FUNCTIONS_URL}/gmail/messages?action=convert-to-task`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          messageId,
-          ...options
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Email conversion failed: ${response.status}`);
-      }
-
-      const result = await response.json();
-      const duration = performance.now() - startTime;
-      console.log(`⚡ Email to task conversion completed: ${duration.toFixed(1)}ms`);
-      
-      // Invalidate tasks cache since we created a new task
-      await this.invalidateTasksCache(token);
-      
-      return result.data;
-    } catch (error) {
-      console.error('Email to task conversion failed:', error);
-      throw error;
-    }
+    return await this.taskService.convertEmailToTask(token, messageId, options);
   }
 
   async fixMissingDriveFolders(token: string): Promise<{ message: string; fixed: number; total: number }> {
