@@ -6,12 +6,20 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useDrag, useDrop } from 'react-dnd';
 import { googleLogout } from '@react-oauth/google';
 import { apiService } from '../services/api';
+import { createProjectService } from '../services/ProjectService';
 import TaskForm from './TaskForm';
 import MasterFolderSetup from './MasterFolderSetup';
 
 const Sidebar = () => {
   const { state, dispatch } = useApp();
   const { currentView, selectedProjectId, areas, projects, tasks, userProfile } = state;
+  
+  // Create ProjectService instance with dependencies from apiService
+  const projectService = createProjectService(
+    apiService.fetchWithAuth.bind(apiService),
+    apiService.driveService
+  );
+  
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [showCreateDropdown, setShowCreateDropdown] = useState(false);
   const [editingItem, setEditingItem] = useState<{ id: string; type: 'area' | 'project'; name: string } | null>(null);
@@ -119,7 +127,9 @@ const Sidebar = () => {
     console.log(`Moving project ${projectId} to area ${areaId}`);
     try {
       // Update project's areaId
-      await apiService.updateProjectArea(projectId, areaId);
+      const token = userProfile?.access_token || userProfile?.id_token;
+      if (!token) throw new Error('No authentication token available');
+      await projectService.updateProjectArea(projectId, areaId, token);
       
       // Update local state
       const project = projects.find(p => p.id === projectId);
@@ -213,7 +223,7 @@ const Sidebar = () => {
               if (!token) {
                 throw new Error('No authentication token available');
               }
-              await apiService.updateProjectName(id, newName.trim(), token);
+              await projectService.updateProjectName(id, newName.trim(), token);
               console.log(`✅ Updated project name and synced Google Drive folder: "${newName.trim()}"`);
             } catch (apiError) {
               console.error('Failed to sync project name with backend:', apiError);
@@ -241,7 +251,7 @@ const Sidebar = () => {
               }
               
               // Create real project with user's chosen name (this is the source of truth)
-              const realProject = await apiService.createProject(newName.trim(), '', project.areaId, token);
+              const realProject = await projectService.createProject(newName.trim(), '', project.areaId, token);
               
               // Replace temp project with real one, preserving user's name as source of truth
               dispatch({ type: 'DELETE_PROJECT', payload: id });
@@ -340,7 +350,7 @@ const Sidebar = () => {
       console.log(`🔄 UI updated to remove project: ${projectName}`);
       
       // Call backend API to delete project
-      await apiService.deleteProject(projectId, token);
+      await projectService.deleteProject(projectId, token);
       console.log(`✅ Backend deletion successful: ${projectName}`);
       
       // Wait a moment for backend to process the deletion

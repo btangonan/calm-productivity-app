@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../types';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import { createTaskService } from '../services/TaskService';
 import TaskForm from './TaskForm';
 import TaskDescription, { shouldTaskBeExpandable } from './TaskDescription';
 
@@ -15,6 +16,12 @@ interface SortableTaskItemProps {
 const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
   const { state, dispatch } = useApp();
   const { tasks } = state;
+  
+  // Create TaskService instance with dependencies from apiService
+  const taskService = createTaskService(
+    apiService.fetchWithAuth.bind(apiService),
+    apiService.executeGoogleScript.bind(apiService)
+  );
   const [showEditForm, setShowEditForm] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -96,7 +103,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
       }
       
       console.log('🌐 Starting backend update...');
-      const result = await apiService.updateTaskCompletion(taskId, isCompleted, token);
+      const result = await taskService.updateTaskCompletion(taskId, isCompleted, token);
       console.log('✅ Backend update completed:', result);
       
     } catch (error) {
@@ -140,7 +147,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
       console.log(`🗑️ Deleting task: ${task.id} - "${task.title}"`);
       
       // Call backend API to delete task
-      await apiService.deleteTask(task.id, token);
+      await taskService.deleteTask(task.id, token);
       
       // Remove from frontend state after successful backend deletion
       dispatch({ type: 'DELETE_TASK', payload: task.id });

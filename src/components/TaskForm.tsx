@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import { createTaskService } from '../services/TaskService';
 import TaskAttachments from './TaskAttachments';
 import type { Task, TaskAttachment } from '../types';
 
@@ -13,6 +14,12 @@ interface TaskFormProps {
 const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) => {
   const { state, dispatch } = useApp();
   const { projects, currentView, selectedProjectId } = state;
+  
+  // Create TaskService instance with dependencies from apiService
+  const taskService = createTaskService(
+    apiService.fetchWithAuth.bind(apiService),
+    apiService.executeGoogleScript.bind(apiService)
+  );
   
   const getInitialProjectId = () => {
     if (editingTask) return editingTask.projectId || '';
@@ -99,7 +106,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           throw new Error('No authentication token available');
         }
         
-        const backendUpdatedTask = await apiService.updateTask(
+        const backendUpdatedTask = await taskService.updateTask(
           editingTask.id,
           formData.title,
           formData.description,
@@ -167,7 +174,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
             throw new Error('No authentication token available');
           }
           
-          const newTask = await apiService.createTask(
+          const newTask = await taskService.createTask(
             formData.title,
             formData.description,
             formData.projectId || undefined,

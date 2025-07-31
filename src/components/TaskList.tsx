@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import { createTaskService } from '../services/TaskService';
 import TaskForm from './TaskForm';
 import TaskDescription, { shouldTaskBeExpandable } from './TaskDescription';
 import type { Task } from '../types';
@@ -11,6 +12,12 @@ const TaskList = () => {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  
+  // Create TaskService instance with dependencies from apiService
+  const taskService = createTaskService(
+    apiService.fetchWithAuth.bind(apiService),
+    apiService.executeGoogleScript.bind(apiService)
+  );
 
   const filteredTasks = useMemo(() => {
     let filtered = [...tasks];
@@ -74,7 +81,7 @@ const TaskList = () => {
       if (!token) {
         throw new Error('No authentication token available');
       }
-      await apiService.updateTaskCompletion(taskId, isCompleted, token);
+      await taskService.updateTaskCompletion(taskId, isCompleted, token);
       
     } catch (error) {
       console.error('Failed to update task:', error);
