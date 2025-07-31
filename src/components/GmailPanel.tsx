@@ -34,7 +34,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
   const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLabel, setSelectedLabel] = useState('INBOX');
+  const [selectedLabel, setSelectedLabel] = useState('IMPORTANT');
   const [selectedEmail, setSelectedEmail] = useState<GmailMessage | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
