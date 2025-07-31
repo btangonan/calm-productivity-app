@@ -21,6 +21,27 @@ export class AuthService {
   // Handle 401 unauthorized errors
   async handleAuthError(context: string): Promise<boolean> {
     console.error(`🔐 Authentication failed in ${context} - token likely expired`);
+    
+    // Check if we have a refresh token before trying to refresh
+    const userProfile = JSON.parse(localStorage.getItem('google-auth-state') || '{}');
+    if (!userProfile.refresh_token) {
+      console.log('🔐AUTH No refresh token available, triggering immediate logout');
+      
+      // Clear auth state and trigger logout immediately
+      localStorage.removeItem('google-auth-state');
+      
+      if (this.onAuthError) {
+        this.onAuthError();
+      } else {
+        console.warn('⚠️ No auth error callback set - forcing page reload');
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      }
+      
+      return false; // No retry
+    }
+    
     console.log('🔄 Attempting automatic token refresh...');
     
     // Try to refresh the token before logging out
@@ -90,12 +111,16 @@ export class AuthService {
         console.error('🔐AUTH No refresh token available in localStorage');
         console.error('🔐AUTH Available keys in userProfile:', Object.keys(userProfile));
         
-        // Show user-friendly message and clear invalid auth state
+        // Immediately trigger logout without showing alert (to prevent loops)
         if (typeof window !== 'undefined') {
           localStorage.removeItem('google-auth-state');
-          alert('Your session has expired and cannot be refreshed. Please sign in again.');
-          // Reload page to show login screen
-          window.location.reload();
+          // Trigger immediate logout without alert to prevent loops
+          if (this.onAuthError) {
+            this.onAuthError();
+          } else {
+            // Force reload as last resort
+            window.location.reload();
+          }
         }
         
         return { success: false };
