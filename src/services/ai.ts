@@ -59,23 +59,76 @@ class AIService {
   }
 
   /**
-   * Generate a smart task title from email content
+   * Generate project summary from multiple tasks and communications
    */
-  async generateTaskTitle(request: TaskGenerationRequest): Promise<string> {
+  async generateProjectSummary(projectData: {
+    projectName: string;
+    tasks: Array<{ title: string; description: string; status: string }>;
+    recentEmails: Array<{ subject: string; sender: string; snippet: string }>;
+  }): Promise<string> {
     const prompt = `
-Analyze this email and generate a concise, actionable task title (max 50 characters):
+You are a Creative Director's strategic assistant. Generate an executive summary for this project.
 
-Subject: ${request.emailSubject}
-From: ${request.emailSender}
-Content: ${request.emailContent.substring(0, 500)}
+PROJECT: ${projectData.projectName}
 
-Generate only the task title, nothing else. Make it actionable and specific.
-Examples: "Review Q4 budget proposal", "Schedule meeting with John", "Complete project documentation"
+CURRENT TASKS (${projectData.tasks.length}):
+${projectData.tasks.slice(0, 10).map(task => `- [${task.status}] ${task.title}`).join('\n')}
+
+RECENT COMMUNICATIONS (${projectData.recentEmails.length}):
+${projectData.recentEmails.slice(0, 5).map(email => `- From ${email.sender}: ${email.subject}`).join('\n')}
+
+Create a strategic executive summary (max 200 words) covering:
+1. Current project status and momentum
+2. Key deliverables and creative milestones
+3. Potential blockers or risks
+4. Next strategic actions needed
+
+Write in a professional but creative tone suitable for stakeholder updates.
 `;
 
     try {
       const response = await this.callOllama(prompt);
-      return response.trim().replace(/^["']|["']$/g, ''); // Remove quotes
+      return response.trim();
+    } catch (error) {
+      console.error('Project summary generation failed:', error);
+      return `Project ${projectData.projectName} summary unavailable. AI analysis failed.`;
+    }
+  }
+
+  /**
+   * Generate a smart task title from email content
+   */
+  async generateTaskTitle(request: TaskGenerationRequest): Promise<string> {
+    const prompt = `
+You are a Creative Director's assistant. Generate a concise, actionable task title (max 60 characters) from this email.
+
+CREATIVE CONTEXT:
+- Use action verbs: Review, Refine, Respond, Strategize, Follow up, Address
+- Consider creative urgency and client relationships
+- Identify specific deliverables, assets, or strategic elements
+- Capture the creative essence, not just administrative tasks
+
+Email Details:
+Subject: ${request.emailSubject}
+From: ${request.emailSender}
+Content: ${request.emailContent.substring(0, 600)}
+
+EXAMPLES:
+- Client feedback → "Address client concerns on video pacing"
+- Creative review → "Review logo concepts for brand alignment"
+- Strategic brief → "Analyze Project Atlas creative brief"
+- Meeting request → "Schedule creative review with team"
+- Revision request → "Refine hero image based on feedback"
+
+Generate ONLY the task title. Be specific about what creative work needs to be done.
+`;
+
+    try {
+      const response = await this.callOllama(prompt);
+      const title = response.trim().replace(/^["']|["']$/g, ''); // Remove quotes
+      
+      // Ensure title fits within 60 character limit
+      return title.length > 60 ? title.substring(0, 57) + '...' : title;
     } catch (error) {
       console.error('Task title generation failed:', error);
       return request.emailSubject || 'Email Task';
