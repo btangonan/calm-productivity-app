@@ -60,25 +60,34 @@ This document tracks the current application architecture, common issues, and de
 ## 🔄 STABLE RELEASE & ROLLBACK PROCEDURES
 
 ### Current Branch Strategy (July 31, 2025)
-- **`main`**: Latest stable development work (v1.2.1 - Post-Refactoring Stable)
-- **`v1.2.0`**: Stable tag created before comprehensive refactoring
-- **`v1.2.1`**: Latest stable release with refactored services + UI improvements
+- **`main`**: Latest stable development work (v1.2.2 - UX-Optimized Stable)
+- **`v1.2.2`**: **RECOMMENDED** - UX-optimized app with instant responsiveness
+- **`v1.2.1`**: Post-refactoring stable with service architecture
+- **`v1.2.0`**: Pre-refactoring stable
 - **Previous**: `release/v1.0-stable` and `v1.0.0` (original stable release)
 
 ### How to Restore to Stable Release
 
-#### Option 1: Reset to Latest Stable (v1.2.1 - Recommended)
+#### Option 1: Reset to Latest Stable (v1.2.2 - RECOMMENDED)
 ```bash
-# Current stable release with all improvements
+# UX-optimized app with instant responsiveness
 git checkout main
-git reset --hard v1.2.1
+git reset --hard v1.2.2
 git push origin main --force-with-lease
 
 # Verify stable version
 git log --oneline -3
 ```
 
-#### Option 2: Reset to Pre-Refactoring Stable (v1.2.0)
+#### Option 2: Reset to Post-Refactoring Stable (v1.2.1)
+```bash
+# Service architecture without UX optimizations
+git checkout main
+git reset --hard v1.2.1
+git push origin main --force-with-lease
+```
+
+#### Option 3: Reset to Pre-Refactoring Stable (v1.2.0)
 ```bash
 # Before the comprehensive API refactoring
 git checkout main
@@ -86,24 +95,26 @@ git reset --hard v1.2.0
 git push origin main --force-with-lease
 ```
 
-#### Option 3: Reset to Original Stable (v1.0.0)
-```bash
-# Original working version before major changes
-git checkout main
-git reset --hard v1.0.0
-git push origin main --force-with-lease
-```
-
 #### Option 4: Create Emergency Branch
 ```bash
-# Create emergency branch from any stable version
-git checkout -b emergency-rollback v1.2.1
+# Create emergency branch from recommended stable version
+git checkout -b emergency-rollback v1.2.2
 git push -u origin emergency-rollback
 ```
 
 ### What's in Each Stable Release
 
-#### v1.2.1 (Current Stable - July 31, 2025) - RECOMMENDED
+#### v1.2.2 (Current Stable - July 31, 2025) - **RECOMMENDED**
+- ✅ **All v1.2.1 features PLUS:**
+- ✅ **Bold styling for unread emails** (clear read/unread distinction)
+- ✅ **Instant task creation from emails** with optimistic UI
+- ✅ **Instant task creation from calendar events** with optimistic UI
+- ✅ **Background processing** eliminates wait times for Google API operations
+- ✅ **Professional-grade responsiveness** and interaction patterns
+- ✅ **Comprehensive error handling** with optimistic rollback
+- ✅ **Zero latency** email/calendar workflow integration
+
+#### v1.2.1 (Post-Refactoring Stable - July 31, 2025)
 - ✅ **All v1.2.0 features PLUS:**
 - ✅ Comprehensive API refactoring (AuthService, TaskService, ProjectService, DriveService, MockDataService, GoogleScriptService)
 - ✅ Improved UI interactions (double-click emails, clean sender names)
@@ -134,7 +145,7 @@ git push -u origin emergency-rollback
 
 # 1. Quick rollback to latest stable (RECOMMENDED)
 git checkout main
-git reset --hard v1.2.1
+git reset --hard v1.2.2
 git push origin main --force-with-lease
 
 # 2. Rollback to pre-refactoring if services are broken
@@ -268,12 +279,12 @@ const projectService = createProjectService(fetchWithAuth, driveService);
 ### Live Application
 - **Frontend**: https://calm-productivity-app.vercel.app/
 - **API Base**: https://calm-productivity-app.vercel.app/api/
-- **Status**: ✅ ACTIVE (v1.2.1 Stable)
+- **Status**: ✅ ACTIVE (v1.2.2 Stable - UX Optimized)
 - **Current Branch**: `main` (stable development)
-- **Latest Stable Tag**: `v1.2.1` (July 31, 2025)
-- **Previous Stable Tags**: `v1.2.0` (July 28, 2025), `v1.0.0` (July 30, 2025)
+- **Latest Stable Tag**: `v1.2.2` (July 31, 2025) - **RECOMMENDED**
+- **Previous Stable Tags**: `v1.2.1` (July 31, 2025), `v1.2.0` (July 28, 2025), `v1.0.0` (July 30, 2025)
 
-### API Capabilities (Current v1.2.1)
+### API Capabilities (Current v1.2.2)
 - ✅ Full task management (create, read, update, delete)
 - ✅ Project management (create, read, update, delete)
 - ✅ Google Drive file operations (list, upload, enhanced query system)
