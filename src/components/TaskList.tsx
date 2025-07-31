@@ -197,8 +197,14 @@ const TaskList = () => {
 
                   {/* Task checkbox */}
                   <div
-                    className={`task-checkbox mt-0.5 ${task.isCompleted ? 'completed' : ''}`}
-                    onClick={() => handleTaskToggle(task.id, !task.isCompleted)}
+                    className={`task-checkbox mt-0.5 ${task.isCompleted ? 'completed' : ''} ${(task as any).isOptimistic ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => {
+                      if ((task as any).isOptimistic) {
+                        console.log('⏳ Task is still being created, preventing interaction');
+                        return;
+                      }
+                      handleTaskToggle(task.id, !task.isCompleted);
+                    }}
                   >
                     {task.isCompleted && (
                       <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -210,8 +216,11 @@ const TaskList = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <h3 className={`text-sm font-medium ${task.isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                      <h3 className={`text-sm font-medium ${task.isCompleted ? 'line-through text-gray-500' : 'text-gray-900'} ${(task as any).isOptimistic ? 'opacity-70' : ''}`}>
                         {task.title}
+                        {(task as any).isOptimistic && (
+                          <span className="ml-2 text-xs text-gray-400">⏳ Creating...</span>
+                        )}
                       </h3>
                       <button
                         onClick={(e) => handleEditClick(task, e)}

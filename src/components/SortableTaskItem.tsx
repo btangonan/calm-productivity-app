@@ -318,8 +318,14 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
 
         {/* Task checkbox */}
         <div
-          className={`task-checkbox mt-0.5 flex-shrink-0 ${task.isCompleted ? 'completed' : ''}`}
-          onClick={() => handleTaskToggle(task.id, !task.isCompleted)}
+          className={`task-checkbox mt-0.5 flex-shrink-0 ${task.isCompleted ? 'completed' : ''} ${(task as any).isOptimistic ? 'opacity-50 cursor-not-allowed' : ''}`}
+          onClick={() => {
+            if ((task as any).isOptimistic) {
+              console.log('⏳ Task is still being created, preventing interaction');
+              return;
+            }
+            handleTaskToggle(task.id, !task.isCompleted);
+          }}
         >
           {task.isCompleted && (
             <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -355,6 +361,9 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task }) => {
                   title={selectedTaskId === task.id ? "Click again to edit title" : "Click to select task"}
                 >
                   {task.title}
+                  {(task as any).isOptimistic && (
+                    <span className="ml-2 text-xs text-gray-400">⏳ Creating...</span>
+                  )}
                 </h3>
               )}
             </div>

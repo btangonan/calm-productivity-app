@@ -1084,6 +1084,17 @@ class ApiService {
   async updateTaskCompletion(taskId: string, isCompleted: boolean, token: string): Promise<void> {
     console.log(`📝 Updating task completion: ${taskId} -> ${isCompleted}`);
     
+    // Check if this is a temporary task ID that hasn't been synced yet
+    if (taskId.startsWith('temp-')) {
+      console.log('⏳ Task has temporary ID, delaying update to allow backend sync...');
+      
+      // Wait a moment for the task creation to complete in the background
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Throw a user-friendly error asking them to try again
+      throw new Error('Task is still being created - please try again in a moment');
+    }
+    
     // Use Edge Functions if available, otherwise fallback to Google Apps Script
     if (this.useEdgeFunctions) {
       try {
