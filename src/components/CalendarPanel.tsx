@@ -111,14 +111,45 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
   const handleConvertToTask = async (event: CalendarEvent) => {
     if (!userProfile?.access_token) return;
 
-    try {
-      console.log('🔄 Converting calendar event to task via real API...', event.id);
-      
-      const token = userProfile.access_token || userProfile.id_token;
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
+    const token = userProfile.access_token || userProfile.id_token;
+    if (!token) {
+      console.error('No authentication token available');
+      return;
+    }
 
+    try {
+      console.log('🔄 Converting calendar event to task with optimistic UI...', event.id);
+      
+      // Create optimistic task for instant UI feedback
+      const optimisticTaskId = `temp-calendar-${Date.now()}`;
+      const optimisticTask = {
+        id: optimisticTaskId, // Temporary ID
+        title: event.summary || 'Calendar Event',
+        description: `Calendar Event: ${event.summary || 'Untitled Event'}\n${event.description || ''}`,
+        projectId: state.selectedProjectId || null,
+        context: '@calendar',
+        dueDate: event.start.dateTime || event.start.date || null,
+        isCompleted: false,
+        sortOrder: 0,
+        createdAt: new Date().toISOString(),
+        attachments: event.htmlLink ? [{
+          name: `Calendar Event: ${event.summary}`,
+          url: event.htmlLink,
+          type: 'calendar-event',
+          mimeType: 'text/calendar',
+          size: 0
+        }] : [],
+        isOptimistic: true // Mark as optimistic
+      };
+      
+      // Update UI immediately for instant feedback
+      console.log('⚡ Adding optimistic calendar task to UI');
+      dispatch({ type: 'ADD_TASK', payload: optimisticTask });
+      
+      // Show success feedback immediately
+      setError(null);
+      
+      // Convert to real task in background
       const response = await apiService.fetchWithAuth(
         '/api/calendar/events?action=convert-to-task', 
         {
@@ -136,13 +167,13 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Calendar event converted to task successfully:', result);
+        console.log('✅ Calendar event converted to real task successfully:', result);
         
         if (result.success && result.data?.task) {
+          // Replace optimistic task with real task
+          dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
           dispatch({ type: 'ADD_TASK', payload: result.data.task });
-          
-          // Show success feedback
-          setError(null);
+          console.log('✅ Replaced optimistic calendar task with real task:', result.data.task.id);
         } else {
           throw new Error(result.error || 'Invalid response format');
         }
@@ -151,7 +182,9 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
         throw new Error(errorData.error || 'Failed to convert event to task');
       }
     } catch (error) {
-      console.error('Failed to convert event:', error);
+      console.error('❌ Calendar conversion failed, removing optimistic task:', error);
+      // Remove the optimistic task on failure
+      dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
       setError(error instanceof Error ? error.message : 'Failed to convert event');
     }
   };

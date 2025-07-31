@@ -145,14 +145,48 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
   const handleConvertToTask = async (email: GmailMessage) => {
     if (!userProfile?.access_token) return;
 
-    try {
-      console.log('🔄 Converting email to task via real API...', email.id);
-      
-      const token = userProfile.access_token || userProfile.id_token;
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
+    const token = userProfile.access_token || userProfile.id_token;
+    if (!token) {
+      console.error('No authentication token available');
+      return;
+    }
 
+    try {
+      console.log('🔄 Converting email to task with optimistic UI...', email.id);
+      
+      // Create optimistic task for instant UI feedback
+      const optimisticTaskId = `temp-email-${Date.now()}`;
+      const optimisticTask = {
+        id: optimisticTaskId, // Temporary ID
+        title: email.subject || 'Email Task',
+        description: `From: ${email.sender}\nEmail: ${email.snippet}`,
+        projectId: state.selectedProjectId || null,
+        context: '@email',
+        dueDate: null,
+        isCompleted: false,
+        sortOrder: 0,
+        createdAt: new Date().toISOString(),
+        attachments: [{
+          name: `Gmail Message: ${email.subject}`,
+          url: `https://mail.google.com/mail/u/0/#inbox/${email.id}`,
+          type: 'gmail-message',
+          mimeType: 'message/rfc822',
+          size: 0
+        }],
+        isOptimistic: true // Mark as optimistic
+      };
+      
+      // Update UI immediately for instant feedback
+      console.log('⚡ Adding optimistic email task to UI');
+      dispatch({ type: 'ADD_TASK', payload: optimisticTask });
+      
+      // Show success feedback immediately
+      setError(null);
+      
+      // Close modal immediately for instant UX
+      setShowEmailModal(false);
+      
+      // Convert to real task in background
       const response = await apiService.fetchWithAuth(
         '/api/gmail/messages?action=convert-to-task', 
         {
@@ -170,16 +204,13 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Email converted to task successfully:', result);
+        console.log('✅ Email converted to real task successfully:', result);
         
         if (result.success && result.data?.task) {
+          // Replace optimistic task with real task
+          dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
           dispatch({ type: 'ADD_TASK', payload: result.data.task });
-          
-          // Show success feedback
-          setError(null);
-          
-          // Close modal if open
-          setShowEmailModal(false);
+          console.log('✅ Replaced optimistic email task with real task:', result.data.task.id);
         } else {
           throw new Error(result.error || 'Invalid response format');
         }
@@ -188,7 +219,9 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
         throw new Error(errorData.error || 'Failed to convert email to task');
       }
     } catch (error) {
-      console.error('Failed to convert email:', error);
+      console.error('❌ Email conversion failed, removing optimistic task:', error);
+      // Remove the optimistic task on failure
+      dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
       setError(error instanceof Error ? error.message : 'Failed to convert email');
     }
   };
@@ -447,12 +480,12 @@ const EmailItem = ({ email, onDoubleClick, onConvert }: EmailItemProps) => {
           {/* Line 1: Sender, subject, and date/time */}
           <div className="flex items-center mb-1">
             <div className="flex items-center space-x-2 flex-shrink-0">
-              <span className={`text-sm font-medium ${email.unread ? 'text-gray-900' : 'text-gray-700'}`}>
+              <span className={`text-sm ${email.unread ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
                 {decodeHtmlEntities(email.sender).replace(/<[^>]*>/g, '').trim()}
               </span>
             </div>
             <span className="text-gray-400 mx-2">•</span>
-            <p className={`text-sm truncate flex-1 mr-2 ${email.unread ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+            <p className={`text-sm truncate flex-1 mr-2 ${email.unread ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
               {decodeHtmlEntities(email.subject)}
             </p>
             <span className="text-xs text-gray-400 flex-shrink-0">
