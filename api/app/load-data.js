@@ -117,7 +117,7 @@ export default async function handler(req, res) {
         id: row[0],
         title: row[1],
         isCompletedRaw: row[6],
-        isCompletedParsed: row[6] === 'true' || row[6] === true,
+        isCompletedParsed: row[6] === 'TRUE' || row[6] === 'true' || row[6] === true,
         fullRow: row
       });
       
@@ -128,7 +128,7 @@ export default async function handler(req, res) {
         projectId: row[3] || null,
         context: row[4] || '',
         dueDate: row[5] || null,
-        isCompleted: row[6] === 'true' || row[6] === true,
+        isCompleted: row[6] === 'TRUE' || row[6] === 'true' || row[6] === true,
         sortOrder: parseInt(row[7]) || 0,
         createdAt: row[8] || '',
         attachments: (() => {
