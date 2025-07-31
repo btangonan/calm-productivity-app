@@ -198,18 +198,26 @@ async function handleStoreToken(req, res) {
 
 // Refresh access token
 async function handleRefreshToken(req, res) {
+  console.log('🔄 handleRefreshToken called with method:', req.method);
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { refreshToken } = req.body;
+  console.log('🔄 Refresh token received:', {
+    hasToken: !!refreshToken,
+    tokenLength: refreshToken?.length || 0,
+    tokenPreview: refreshToken?.substring(0, 15) + '...' || 'none'
+  });
   
   if (!refreshToken) {
+    console.error('❌ No refresh token provided in request body');
     return res.status(400).json({ error: 'Refresh token is required' });
   }
 
   try {
-    console.log('🔄 Refreshing access token...');
+    console.log('🔄 Attempting to refresh access token...');
     
     const newTokens = await refreshGoogleToken(refreshToken);
     

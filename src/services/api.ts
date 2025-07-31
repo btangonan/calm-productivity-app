@@ -140,6 +140,8 @@ class ApiService {
       }
 
       console.log('🔄 Calling token refresh API with refresh token length:', userProfile.refresh_token.length);
+      console.log('🔄 Refresh token preview:', userProfile.refresh_token.substring(0, 15) + '...');
+      console.log('📤 Sending POST to /api/auth/manage?action=refresh');
       
       const response = await fetch('/api/auth/manage?action=refresh', {
         method: 'POST',
@@ -262,12 +264,32 @@ class ApiService {
 
   // Enhanced fetch with automatic 401 handling and retry
   async fetchWithAuth(url: string, options: RequestInit = {}, context: string = 'API call', token?: string, isRetry: boolean = false): Promise<Response> {
+    console.log(`🌐 fetchWithAuth called:`, {
+      url,
+      context,
+      hasToken: !!token,
+      tokenPrefix: token?.substring(0, 20) + '...',
+      isRetry
+    });
+
     // Check if token is expired before making the request
     if (token && !isRetry) {
       const isExpired = this.isTokenExpired(token);
+      console.log(`🔍 Token expiry check:`, {
+        isExpired,
+        tokenLength: token.length,
+        context
+      });
+      
       if (isExpired) {
         console.log('🔐 Token expired before request, attempting refresh...');
         const refreshResult = await this.attemptTokenRefresh();
+        console.log('🔄 Pre-request refresh result:', {
+          success: refreshResult.success,
+          hasNewToken: !!refreshResult.newToken,
+          newTokenPrefix: refreshResult.newToken?.substring(0, 20) + '...'
+        });
+        
         if (refreshResult.success && refreshResult.newToken) {
           console.log('✅ Pre-request token refresh successful, using new token');
           token = refreshResult.newToken;

@@ -103,6 +103,14 @@ export async function validateGoogleToken(authHeader) {
 
 export async function refreshGoogleToken(refreshToken) {
   try {
+    console.log('🔄 refreshGoogleToken called with token length:', refreshToken?.length || 0);
+    console.log('🔄 Environment check:', {
+      hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      clientIdPreview: process.env.GOOGLE_CLIENT_ID?.substring(0, 10) + '...' || 'missing'
+    });
+
+    console.log('📤 Making request to Google OAuth token endpoint...');
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -116,13 +124,39 @@ export async function refreshGoogleToken(refreshToken) {
       }),
     });
 
+    console.log('📥 Google OAuth response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+
     if (!response.ok) {
-      throw new Error(`Token refresh failed: ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ Google OAuth error response:', errorText);
+      
+      // Try to parse the error for more details
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error('❌ Google OAuth error details:', errorJson);
+      } catch (e) {
+        console.error('❌ Could not parse Google OAuth error as JSON');
+      }
+      
+      throw new Error(`Token refresh failed: ${response.status} - ${errorText}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('✅ Google OAuth success response:', {
+      hasAccessToken: !!result.access_token,
+      hasRefreshToken: !!result.refresh_token,
+      tokenType: result.token_type,
+      expiresIn: result.expires_in
+    });
+
+    return result;
   } catch (error) {
-    console.error('Token refresh error:', error);
+    console.error('❌ Token refresh error:', error);
+    console.error('❌ Error stack:', error.stack);
     throw error;
   }
 }
