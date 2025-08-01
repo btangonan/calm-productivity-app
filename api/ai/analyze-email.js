@@ -8,8 +8,11 @@ export const config = {
 }
 
 export default async function handler(request) {
+  console.log('🔥 [DEBUG-AI-SERVER] Edge Function called:', request.method);
+  
   // Only allow POST requests
   if (request.method !== 'POST') {
+    console.log('🔥 [DEBUG-AI-SERVER] Method not allowed:', request.method);
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' }
@@ -18,10 +21,13 @@ export default async function handler(request) {
 
   // Check for Groq API key
   const groqApiKey = process.env.GROQ_API_KEY; // No VITE_ prefix for server-side
+  console.log('🔥 [DEBUG-AI-SERVER] API key check:', groqApiKey ? 'Present' : 'Missing');
+  
   if (!groqApiKey) {
+    console.log('🔥 [DEBUG-AI-SERVER] ERROR: GROQ_API_KEY not found in environment');
     return new Response(JSON.stringify({ 
       success: false, 
-      error: 'AI service not configured' 
+      error: 'AI service not configured - missing GROQ_API_KEY' 
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -29,7 +35,9 @@ export default async function handler(request) {
   }
 
   try {
+    console.log('🔥 [DEBUG-AI-SERVER] Parsing request body...');
     const { emailSubject, emailSender, emailContent, emailSnippet } = await request.json();
+    console.log('🔥 [DEBUG-AI-SERVER] Request data:', { emailSubject, emailSender: emailSender?.substring(0, 20) });
     
     // Build Creative Director system prompt
     const prompt = `
@@ -113,6 +121,7 @@ Analyze this email with creative and strategic awareness. Extract actionable tas
 `;
 
     // Call Groq API
+    console.log('🔥 [DEBUG-AI-SERVER] Calling Groq API...');
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -134,13 +143,17 @@ Analyze this email with creative and strategic awareness. Extract actionable tas
       }),
     });
 
+    console.log('🔥 [DEBUG-AI-SERVER] Groq API response status:', groqResponse.status);
+    
     if (!groqResponse.ok) {
       const errorData = await groqResponse.json().catch(() => ({}));
+      console.log('🔥 [DEBUG-AI-SERVER] Groq API error:', errorData);
       throw new Error(`Groq API error: ${groqResponse.status} - ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const groqData = await groqResponse.json();
     const aiResponse = groqData.choices[0]?.message?.content || '';
+    console.log('🔥 [DEBUG-AI-SERVER] AI response received:', aiResponse?.substring(0, 100) + '...');
 
     // Parse JSON from AI response
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
@@ -180,7 +193,7 @@ Analyze this email with creative and strategic awareness. Extract actionable tas
     });
 
   } catch (error) {
-    console.error('AI email analysis failed:', error);
+    console.error('🔥 [DEBUG-AI-SERVER] AI email analysis failed:', error);
     
     // Return fallback analysis
     return new Response(JSON.stringify({
