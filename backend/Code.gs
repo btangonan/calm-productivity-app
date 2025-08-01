@@ -272,6 +272,12 @@ function doPost(e) {
       case 'shareFolderWithServiceAccount':
         result = shareFolderWithServiceAccount(parameters[0]);
         break;
+      case 'validateDriveFolder':
+        result = validateDriveFolder(parameters[0]);
+        break;
+      case 'createProjectFolder':
+        result = createProjectFolder(parameters[0]);
+        break;
       default:
         result = { success: false, message: `Unknown function: '${functionName}'`, version: DEPLOYMENT_VERSION };
         break;
@@ -2370,6 +2376,68 @@ function shareFolderWithServiceAccount(folderId) {
   } catch (error) {
     console.error('Error sharing folder with service account:', error);
     return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * Validate that a Drive folder still exists and is accessible
+ */
+function validateDriveFolder(folderId) {
+  try {
+    if (!folderId) {
+      return { success: true, data: false }; // No folder to validate
+    }
+    
+    console.log(`Validating Drive folder: ${folderId}`);
+    
+    try {
+      const folder = DriveApp.getFolderById(folderId);
+      // Try to access folder name - this will throw if folder is deleted or inaccessible
+      const folderName = folder.getName();
+      console.log(`✅ Drive folder validated: ${folderName}`);
+      return { success: true, data: true };
+    } catch (folderError) {
+      console.log(`❌ Drive folder not found or inaccessible: ${folderId}`);
+      return { success: true, data: false }; // Folder doesn't exist or is inaccessible
+    }
+  } catch (error) {
+    console.error('Error validating Drive folder:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Create a new Drive folder for a project (used for reconnection)
+ */
+function createProjectFolder(projectName) {
+  try {
+    console.log(`Creating new Drive folder for project: ${projectName}`);
+    
+    // Get the master folder
+    const masterFolderId = getActualMasterFolderId();
+    const masterFolder = DriveApp.getFolderById(masterFolderId);
+    
+    // Create new folder with timestamp to avoid name conflicts
+    const timestamp = new Date().toISOString().slice(0, 16).replace(/[:-]/g, '');
+    const folderName = `${projectName} (Restored ${timestamp})`;
+    
+    const newFolder = masterFolder.createFolder(folderName);
+    
+    // Create standard subfolders
+    newFolder.createFolder(TASKS_SUBFOLDER);
+    
+    const result = {
+      folderId: newFolder.getId(),
+      folderUrl: newFolder.getUrl(),
+      folderName: folderName
+    };
+    
+    console.log(`✅ New Drive folder created: ${result.folderName} (${result.folderId})`);
+    return { success: true, data: result };
+    
+  } catch (error) {
+    console.error('Error creating project folder:', error);
+    return { success: false, error: error.toString() };
   }
 }
 

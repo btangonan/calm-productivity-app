@@ -24,6 +24,84 @@ export class ProjectService {
     console.log('🏗️ ProjectService initialized');
   }
 
+  // ==== DRIVE FOLDER VALIDATION METHODS ====
+
+  /**
+   * Validate that a project's Drive folder still exists
+   */
+  async validateProjectDriveFolder(token: string, project: Project): Promise<'connected' | 'folder_deleted' | 'error'> {
+    if (!project.driveFolderId) {
+      return 'connected'; // No folder to validate
+    }
+
+    try {
+      console.log(`🔍 Validating Drive folder for project: ${project.name}`);
+      const response = await this.executeGoogleScript<boolean>(
+        token, 
+        'validateDriveFolder', 
+        [project.driveFolderId], 
+        'GET'
+      );
+
+      if (response.success) {
+        return response.data ? 'connected' : 'folder_deleted';
+      } else {
+        console.error(`Drive validation failed for project ${project.name}:`, response.error);
+        return 'error';
+      }
+    } catch (error) {
+      console.error(`Drive validation error for project ${project.name}:`, error);
+      return 'error';
+    }
+  }
+
+  /**
+   * Reconnect project to a new Drive folder
+   */
+  async reconnectProjectToNewFolder(token: string, projectId: string, projectName: string): Promise<{success: boolean, folderId?: string, folderUrl?: string, error?: string}> {
+    try {
+      console.log(`🔄 Reconnecting project "${projectName}" to new Drive folder`);
+      
+      // Create new Drive folder for the project
+      const response = await this.executeGoogleScript<{folderId: string, folderUrl: string}>(
+        token,
+        'createProjectFolder',
+        [projectName],
+        'POST'
+      );
+
+      if (response.success && response.data) {
+        // Update project with new folder info
+        const updateResponse = await this.executeGoogleScript<Project>(
+          token,
+          'updateProject',
+          [projectId, {
+            driveFolderId: response.data.folderId,
+            driveFolderUrl: response.data.folderUrl,
+            driveStatus: 'connected'
+          }],
+          'POST'
+        );
+
+        if (updateResponse.success) {
+          console.log(`✅ Project "${projectName}" reconnected to new folder: ${response.data.folderId}`);
+          return {
+            success: true,
+            folderId: response.data.folderId,
+            folderUrl: response.data.folderUrl
+          };
+        } else {
+          return {success: false, error: updateResponse.error || 'Failed to update project'};
+        }
+      } else {
+        return {success: false, error: response.error || 'Failed to create new folder'};
+      }
+    } catch (error) {
+      console.error(`Failed to reconnect project "${projectName}":`, error);
+      return {success: false, error: error instanceof Error ? error.message : 'Unknown error'};
+    }
+  }
+
   // ==== AREA MANAGEMENT METHODS ====
 
   async getAreas(token: string): Promise<Area[]> {

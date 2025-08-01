@@ -4,6 +4,7 @@ export interface Area {
   description: string;
   driveFolderId?: string;
   driveFolderUrl?: string;
+  driveStatus?: 'connected' | 'folder_deleted' | 'checking' | 'error';
   createdAt: string;
 }
 
@@ -15,6 +16,7 @@ export interface Project {
   status: 'Active' | 'Paused' | 'Completed' | 'Archive';
   driveFolderId?: string;
   driveFolderUrl?: string;
+  driveStatus?: 'connected' | 'folder_deleted' | 'checking' | 'error';
   createdAt: string;
 }
 
