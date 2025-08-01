@@ -61,8 +61,18 @@ function appReducer(state: AppState, action: AppAction): AppState {
         newTaskCount: action.payload.length,
         hasTaskId: action.payload.find(t => t.id === 'task_1754025023944_06w5zkqs7') ? 'YES' : 'NO',
         timestamp: new Date().toLocaleTimeString(),
-        stackTrace: new Error().stack?.split('\n')?.slice(0, 5)?.join('\n') // Just first 5 lines
+        stackTrace: new Error().stack?.split('\n')?.slice(0, 10)?.join('\n') // Show more stack trace
       });
+      
+      // CRITICAL: If tasks are being reduced to very few, this is suspicious
+      if (action.payload.length < 5 && state.tasks.length > 5) {
+        console.error(`🚨 [DEBUG-TASK-UPDATE] CRITICAL: SET_TASKS reducing tasks from ${state.tasks.length} to ${action.payload.length}!`, {
+          currentTasks: state.tasks.map(t => ({ id: t.id, title: t.title.substring(0, 30) })),
+          newTasks: action.payload.map(t => ({ id: t.id, title: t.title.substring(0, 30) })),
+          fullStackTrace: new Error().stack
+        });
+      }
+      
       return { ...state, tasks: action.payload };
     case 'SET_CURRENT_VIEW':
       // Persist view to localStorage
