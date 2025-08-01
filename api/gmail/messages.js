@@ -37,8 +37,10 @@ export default async function handler(req, res) {
       const { action } = req.query;
       if (action === 'convert-to-task') {
         return await handleConvertToTask(req, res, user);
+      } else if (action === 'reply') {
+        return await handleReplyToEmail(req, res, user);
       } else {
-        return res.status(400).json({ error: 'Invalid action. Use: convert-to-task' });
+        return res.status(400).json({ error: 'Invalid action. Use: convert-to-task, reply' });
       }
     }
 
@@ -447,6 +449,100 @@ async function handleGetFullMessage(req, res, user) {
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve full email content',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}
+
+// Handle email reply via Gmail API
+async function handleReplyToEmail(req, res, user) {
+  try {
+    const { messageId, replyText, threadId } = req.body;
+    
+    if (!messageId || !replyText) {
+      return res.status(400).json({ 
+        error: 'messageId and replyText are required' 
+      });
+    }
+
+    console.log(`📧 Replying to email ${messageId} for user ${user.email}`);
+
+    // Set up Gmail API with user authentication
+    const { google } = await import('googleapis');
+    const { OAuth2Client } = await import('google-auth-library');
+    
+    const authClient = new OAuth2Client(
+      process.env.VITE_GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+    authClient.setCredentials({ access_token: user.accessToken });
+
+    const gmail = google.gmail({ version: 'v1', auth: authClient });
+
+    // Get the original message to extract headers for reply
+    const originalMessage = await gmail.users.messages.get({
+      userId: 'me',
+      id: messageId,
+      format: 'full'
+    });
+
+    const headers = originalMessage.data.payload.headers || [];
+    const getHeader = (name) => headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+    
+    const originalSubject = getHeader('Subject');
+    const originalFrom = getHeader('From');
+    const originalTo = getHeader('To');
+    const originalMessageId = getHeader('Message-ID');
+    
+    // Extract sender email from original message
+    const fromMatch = originalFrom.match(/<([^>]+)>/);
+    const replyToEmail = fromMatch ? fromMatch[1] : originalFrom;
+    
+    // Create reply subject
+    const replySubject = originalSubject.startsWith('Re: ') ? originalSubject : `Re: ${originalSubject}`;
+    
+    // Create the reply message
+    const emailContent = [
+      `To: ${replyToEmail}`,
+      `Subject: ${replySubject}`,
+      `In-Reply-To: ${originalMessageId}`,
+      `References: ${originalMessageId}`,
+      'Content-Type: text/plain; charset=utf-8',
+      '',
+      replyText
+    ].join('\n');
+
+    // Encode the message
+    const encodedMessage = Buffer.from(emailContent).toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    // Send the reply
+    const result = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: encodedMessage,
+        threadId: threadId // This keeps the reply in the same conversation thread
+      }
+    });
+
+    console.log(`✅ Reply sent successfully. Message ID: ${result.data.id}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Reply sent successfully',
+      data: {
+        messageId: result.data.id,
+        threadId: result.data.threadId
+      }
+    });
+
+  } catch (error) {
+    console.error('Failed to send reply:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to send reply',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

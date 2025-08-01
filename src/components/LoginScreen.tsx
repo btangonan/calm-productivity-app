@@ -61,7 +61,7 @@ const LoginScreen = () => {
     onError: () => {
       console.error('Google Login Failed');
     },
-    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly',
+    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.readonly',
     access_type: 'offline',
     prompt: 'consent', // Force consent screen to always get refresh token
   });
