@@ -305,14 +305,26 @@ export class TaskService {
   private async invalidateTasksCache(token: string): Promise<void> {
     if (this.useEdgeFunctions) {
       try {
-        await this.fetchWithAuth('/api/cache/invalidate', {
+        const payload = { cacheKeys: ['tasks'] };
+        console.log('🗑️ [DEBUG-CACHE] Invalidating cache with payload:', payload);
+        
+        const response = await this.fetchWithAuth('/api/cache/invalidate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ cacheKeys: ['tasks'] })
+          body: JSON.stringify(payload)
         }, 'invalidateTasksCache');
+        
+        console.log('🗑️ [DEBUG-CACHE] Cache invalidation response status:', response.status);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('🗑️ [DEBUG-CACHE] Cache invalidation failed:', errorText);
+        } else {
+          const result = await response.json();
+          console.log('🗑️ [DEBUG-CACHE] Cache invalidation success:', result);
+        }
       } catch (error) {
         console.warn('Failed to invalidate tasks cache:', error);
         // Don't throw error for cache invalidation failures

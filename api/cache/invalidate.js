@@ -16,11 +16,20 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    console.log('🗑️ [DEBUG-CACHE-SERVER] Request body received:', req.body);
+    console.log('🗑️ [DEBUG-CACHE-SERVER] Request headers:', req.headers);
+    
     const { cacheKeys } = req.body;
     
+    console.log('🗑️ [DEBUG-CACHE-SERVER] Extracted cacheKeys:', cacheKeys);
+    console.log('🗑️ [DEBUG-CACHE-SERVER] cacheKeys type:', typeof cacheKeys);
+    console.log('🗑️ [DEBUG-CACHE-SERVER] cacheKeys is array:', Array.isArray(cacheKeys));
+    
     if (!cacheKeys || !Array.isArray(cacheKeys)) {
+      console.error('🗑️ [DEBUG-CACHE-SERVER] Invalid cacheKeys - returning 400');
       return res.status(400).json({ 
-        error: 'Invalid request - cacheKeys array required' 
+        error: 'Invalid request - cacheKeys array required',
+        received: { cacheKeys, type: typeof cacheKeys, isArray: Array.isArray(cacheKeys) }
       });
     }
 
