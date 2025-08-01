@@ -28,11 +28,18 @@ export interface TaskGenerationRequest {
 class AIService {
   private readonly baseUrl = 'http://localhost:11434';
   private readonly model = 'llama3.2:3b'; // Fast, lightweight model for real-time analysis
+  private readonly isProduction = import.meta.env.PROD;
 
   /**
    * Test connection to local Ollama server
    */
   async testConnection(): Promise<boolean> {
+    // Skip AI in production - it only works locally
+    if (this.isProduction) {
+      console.log('🔥 [DEBUG-AI] Production mode - AI disabled, using fallback');
+      return false;
+    }
+    
     try {
       console.log('🔥 [DEBUG-AI] Testing Ollama connection to:', this.baseUrl);
       const response = await fetch(`${this.baseUrl}/api/tags`);
