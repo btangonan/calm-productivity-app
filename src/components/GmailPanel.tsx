@@ -344,6 +344,25 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     }
   };
 
+  // Handle email reply with mailto link
+  const handleReplyToEmail = (email: GmailMessage) => {
+    // Extract sender email from the sender field
+    const senderMatch = email.sender.match(/<([^>]+)>/);
+    const senderEmail = senderMatch ? senderMatch[1] : email.sender;
+    
+    // Create mailto URL with reply subject and recipient
+    const replySubject = email.subject.startsWith('Re: ') ? email.subject : `Re: ${email.subject}`;
+    const mailtoUrl = `mailto:${encodeURIComponent(senderEmail)}?subject=${encodeURIComponent(replySubject)}`;
+    
+    // Open in user's default email client
+    window.open(mailtoUrl, '_blank');
+    
+    console.log('📧 Opening reply in email client:', {
+      to: senderEmail,
+      subject: replySubject
+    });
+  };
+
   // Load more emails in background for search
   const loadBackgroundEmails = async () => {
     if (!userProfile?.access_token || backgroundLoading) return;
@@ -552,6 +571,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
           isOpen={showEmailModal}
           onClose={() => setShowEmailModal(false)}
           onConvertToTask={handleConvertToTask}
+          onReplyToEmail={handleReplyToEmail}
         />
       )}
     </>
@@ -619,17 +639,29 @@ const EmailItem = ({ email, onDoubleClick, onConvert }: EmailItemProps) => {
           </div>
         </div>
         
-        {/* Hover-only task conversion button */}
-        <button
-          onClick={(e) => { 
-            e.stopPropagation(); 
-            onConvert(); 
-          }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 shadow-sm"
-          title="Convert to task"
-        >
-          + Task
-        </button>
+        {/* Hover-only action buttons */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-1">
+          <button
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              handleReplyToEmail(email); 
+            }}
+            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 shadow-sm"
+            title="Reply to email"
+          >
+            ↩ Reply
+          </button>
+          <button
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              onConvert(); 
+            }}
+            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 shadow-sm"
+            title="Convert to task"
+          >
+            + Task
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -641,6 +673,7 @@ interface EmailDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConvertToTask: (email: GmailMessage) => void;
+  onReplyToEmail: (email: GmailMessage) => void;
 }
 
 interface FullEmailContent {
@@ -662,7 +695,7 @@ interface FullEmailContent {
   }>;
 }
 
-const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask }: EmailDetailModalProps) => {
+const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask, onReplyToEmail }: EmailDetailModalProps) => {
   const [fullEmail, setFullEmail] = useState<FullEmailContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -744,6 +777,12 @@ const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask }: EmailDeta
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">Email Details</h3>
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => onReplyToEmail(email)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+              >
+                ↩ Reply
+              </button>
               <button
                 onClick={() => onConvertToTask(email)}
                 className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
