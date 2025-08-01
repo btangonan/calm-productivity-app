@@ -355,7 +355,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     const mailtoUrl = `mailto:${encodeURIComponent(senderEmail)}?subject=${encodeURIComponent(replySubject)}`;
     
     // Open in user's default email client
-    window.open(mailtoUrl, '_blank');
+    window.location.href = mailtoUrl;
     
     console.log('📧 Opening reply in email client:', {
       to: senderEmail,
@@ -965,7 +965,16 @@ const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask, onReplyToEm
 
                 {/* Reply Composer */}
                 {showReplyComposer && (
-                  <div className="border-t border-gray-200 pt-4 mt-4">
+                  <div 
+                    ref={(el) => {
+                      if (el) {
+                        setTimeout(() => {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
+                      }
+                    }}
+                    className="border-t border-gray-200 pt-4 mt-4"
+                  >
                     <div className="bg-blue-50 p-4 rounded-lg">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-medium text-gray-900">Reply to: {email.sender}</h4>
@@ -1001,7 +1010,13 @@ const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask, onReplyToEm
                           
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => onReplyToEmail(email)}
+                              onClick={() => {
+                                const senderMatch = email.sender.match(/<([^>]+)>/);
+                                const replyToEmail = senderMatch ? senderMatch[1] : email.sender;
+                                const replySubject = email.subject.startsWith('Re: ') ? email.subject : `Re: ${email.subject}`;
+                                const mailtoUrl = `mailto:${encodeURIComponent(replyToEmail)}?subject=${encodeURIComponent(replySubject)}`;
+                                window.location.href = mailtoUrl;
+                              }}
                               className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50"
                               disabled={sendingReply}
                             >
