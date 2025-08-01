@@ -208,10 +208,15 @@ export class TaskService {
 
   // Delete a task
   async deleteTask(taskId: string, token: string): Promise<void> {
+    console.log(`🗑️ [DEBUG-TASK-DELETE] deleteTask called for ID: ${taskId}`);
+    console.log(`🗑️ [DEBUG-TASK-DELETE] Stack trace:`, new Error().stack?.split('\n')?.slice(0, 8)?.join('\n'));
+    
     const response = await this.executeGoogleScript<void>(token, 'deleteTask', [taskId]);
     if (!response.success) {
       throw new Error(response.message || 'Failed to delete task');
     }
+    
+    console.log(`🗑️ [DEBUG-TASK-DELETE] Task ${taskId} successfully deleted from backend`);
     
     // Invalidate Edge Functions cache to ensure fresh data on next load
     await this.invalidateTasksCache(token);
