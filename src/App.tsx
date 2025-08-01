@@ -96,14 +96,12 @@ function AppContent() {
       }
     };
 
-    // TEMPORARY: Completely disable data loading to test task update bug
-    console.log(`🔄 [DEBUG-APP-LOAD] DISABLED: App.tsx data loading completely disabled for testing`);
-    // if (state.tasks.length === 0) {
-    //   console.log(`🔄 [DEBUG-APP-LOAD] Loading initial data (tasks array empty)`);
-    //   loadInitialData();
-    // } else {
-    //   console.log(`🔄 [DEBUG-APP-LOAD] SKIPPING data reload - tasks already loaded (${state.tasks.length} tasks)`);
-    // }
+    if (state.tasks.length === 0) {
+      console.log(`🔄 [DEBUG-APP-LOAD] Loading initial data (tasks array empty)`);
+      loadInitialData();
+    } else {
+      console.log(`🔄 [DEBUG-APP-LOAD] SKIPPING data reload - tasks already loaded (${state.tasks.length} tasks)`);
+    }
   }, [state.isAuthenticated, state.userProfile?.id]); // Only trigger on authentication changes, not profile updates
 
   useEffect(() => {
