@@ -26,27 +26,31 @@ export interface TaskGenerationRequest {
 }
 
 class AIService {
-  private readonly baseUrl = 'http://localhost:11434';
-  private readonly model = 'llama3.2:3b'; // Fast, lightweight model for real-time analysis
-  private readonly isProduction = import.meta.env.PROD;
+  private readonly baseUrl = 'https://api.groq.com/openai/v1';
+  private readonly model = 'llama-3.1-70b-versatile'; // Fast, high-quality model for creative tasks
+  private readonly apiKey = import.meta.env.VITE_GROQ_API_KEY;
 
   /**
-   * Test connection to local Ollama server
+   * Test connection to Groq API
    */
   async testConnection(): Promise<boolean> {
-    // Skip AI in production - it only works locally
-    if (this.isProduction) {
-      console.log('🔥 [DEBUG-AI] Production mode - AI disabled, using fallback');
+    if (!this.apiKey) {
+      console.error('🔥 [DEBUG-AI] No Groq API key found - AI disabled');
       return false;
     }
     
     try {
-      console.log('🔥 [DEBUG-AI] Testing Ollama connection to:', this.baseUrl);
-      const response = await fetch(`${this.baseUrl}/api/tags`);
-      console.log('🔥 [DEBUG-AI] Connection response status:', response.status);
+      console.log('🔥 [DEBUG-AI] Testing Groq API connection...');
+      const response = await fetch(`${this.baseUrl}/models`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('🔥 [DEBUG-AI] Groq API response status:', response.status);
       return response.ok;
     } catch (error) {
-      console.error('🔥 [DEBUG-AI] Failed to connect to Ollama:', error);
+      console.error('🔥 [DEBUG-AI] Failed to connect to Groq API:', error);
       return false;
     }
   }
@@ -59,7 +63,7 @@ class AIService {
     const prompt = this.buildEmailAnalysisPrompt(request);
     
     try {
-      const response = await this.callOllama(prompt);
+      const response = await this.callGroq(prompt);
       console.log('🔥 [DEBUG-AI] Raw analysis response:', response);
       const analysis = this.parseEmailAnalysis(response);
       console.log('🔥 [DEBUG-AI] Parsed analysis:', analysis);
@@ -102,7 +106,7 @@ Write in a professional but creative tone suitable for stakeholder updates.
 `;
 
     try {
-      const response = await this.callOllama(prompt);
+      const response = await this.callGroq(prompt);
       return response.trim();
     } catch (error) {
       console.error('Project summary generation failed:', error);
@@ -140,7 +144,7 @@ Generate ONLY the task title. Be specific about what creative work needs to be d
 `;
 
     try {
-      const response = await this.callOllama(prompt);
+      const response = await this.callGroq(prompt);
       const title = response.trim().replace(/^["']|["']$/g, ''); // Remove quotes
       
       // Ensure title fits within 60 character limit
@@ -241,32 +245,41 @@ Analyze this email with creative and strategic awareness. Extract actionable tas
   }
 
   /**
-   * Call Ollama API with prompt
+   * Call Groq API with prompt
    */
-  private async callOllama(prompt: string): Promise<string> {
-    const response = await fetch(`${this.baseUrl}/api/generate`, {
+  private async callGroq(prompt: string): Promise<string> {
+    if (!this.apiKey) {
+      throw new Error('No Groq API key available');
+    }
+
+    const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: this.model,
-        prompt,
-        stream: false,
-        options: {
-          temperature: 0.3, // Lower temperature for more focused responses
-          top_p: 0.9,
-          top_k: 40,
-        }
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3, // Lower temperature for more focused responses
+        max_tokens: 1000,
+        top_p: 0.9,
+        stream: false
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Groq API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
-    return data.response;
+    return data.choices[0]?.message?.content || '';
   }
 
   /**
