@@ -53,6 +53,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_PROJECTS':
       return { ...state, projects: action.payload };
     case 'SET_TASKS':
+      console.log(`🔄 [DEBUG-TASK-UPDATE] SET_TASKS action called - this might overwrite task updates!`, {
+        currentTaskCount: state.tasks.length,
+        newTaskCount: action.payload.length,
+        hasTaskId: action.payload.find(t => t.id === 'task_1754025023944_06w5zkqs7') ? 'YES' : 'NO',
+        stackTrace: new Error().stack
+      });
       return { ...state, tasks: action.payload };
     case 'SET_CURRENT_VIEW':
       // Persist view to localStorage

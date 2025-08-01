@@ -139,6 +139,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
         console.log(`🔄 [DEBUG-TASK-UPDATE] UPDATE_TASK action dispatched successfully`);
         
         // Close form immediately for better UX
+        console.log(`🔄 [DEBUG-TASK-UPDATE] Closing task form and calling callbacks`);
         onSubmit?.();
         onClose();
       } else {
