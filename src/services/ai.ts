@@ -108,7 +108,7 @@ Write in a professional but creative tone suitable for stakeholder updates.
 `;
 
     try {
-      const response = await this.callGroq(prompt);
+      const response = await this.callAI(prompt);
       return response.trim();
     } catch (error) {
       console.error('Project summary generation failed:', error);
@@ -146,7 +146,7 @@ Generate ONLY the task title. Be specific about what creative work needs to be d
 `;
 
     try {
-      const response = await this.callGroq(prompt);
+      const response = await this.callAI(prompt);
       const title = response.trim().replace(/^["']|["']$/g, ''); // Remove quotes
       
       // Ensure title fits within 60 character limit
@@ -247,41 +247,27 @@ Analyze this email with creative and strategic awareness. Extract actionable tas
   }
 
   /**
-   * Call Groq API with prompt
+   * Call AI service via server-side endpoint
    */
-  private async callGroq(prompt: string): Promise<string> {
-    if (!this.apiKey) {
-      throw new Error('No Groq API key available');
-    }
-
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+  private async callAI(prompt: string): Promise<string> {
+    console.log('🔥 [DEBUG-AI] Calling server-side AI endpoint...');
+    
+    const response = await fetch('/api/ai/generate', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.3, // Lower temperature for more focused responses
-        max_tokens: 1000,
-        top_p: 0.9,
-        stream: false
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Groq API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+      throw new Error(`AI service error: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content || '';
+    if (data.success && data.content) {
+      return data.content;
+    } else {
+      throw new Error(data.error || 'AI generation failed');
+    }
   }
 
   /**
