@@ -53,7 +53,17 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
     e.preventDefault();
     if (!formData.title.trim()) return;
 
-    console.log(`🔄 [DEBUG-TASK-UPDATE] TaskForm handleSubmit started with ${state.tasks.length} tasks in state`);
+    // Prevent double submission
+    if (loading) {
+      console.log(`🔄 [DEBUG-TASK-UPDATE] TaskForm handleSubmit BLOCKED - already loading`);
+      return;
+    }
+
+    console.log(`🔄 [DEBUG-TASK-UPDATE] TaskForm handleSubmit started with ${state.tasks.length} tasks in state`, {
+      editingTask: editingTask ? editingTask.id : 'none',
+      formTitle: formData.title.substring(0, 30),
+      timestamp: new Date().toLocaleTimeString()
+    });
     
     setLoading(true);
     try {
