@@ -358,8 +358,13 @@ const Sidebar = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Reload fresh data to ensure everything is in sync
-      console.log('🔄 Reloading fresh data...');
+      console.log('🔄 [DEBUG-SIDEBAR] Reloading fresh data after project deletion...');
       const appData = await apiService.loadAppData(token);
+      console.log(`🔄 [DEBUG-SIDEBAR] Dispatching SET_TASKS from Sidebar project deletion:`, {
+        taskCount: appData.tasks.length,
+        timestamp: new Date().toLocaleTimeString(),
+        reason: 'Project deletion cleanup'
+      });
       dispatch({ type: 'SET_AREAS', payload: appData.areas });
       dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
       dispatch({ type: 'SET_TASKS', payload: appData.tasks });
