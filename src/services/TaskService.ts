@@ -120,10 +120,9 @@ export class TaskService {
     
     console.log(`🔄 [DEBUG-TASK-UPDATE] Update successful, returning task:`, response.data);
     
-    // Invalidate Edge Functions cache to ensure fresh data on next load
-    await this.invalidateTasksCache(token);
-    
-    console.log(`🔄 [DEBUG-TASK-UPDATE] Cache invalidated, task update complete`);
+    // TEMPORARILY DISABLE cache invalidation to test if it's causing the bug
+    // await this.invalidateTasksCache(token);
+    console.log(`🔄 [DEBUG-TASK-UPDATE] SKIPPING cache invalidation for debugging - task update complete`);
     return response.data;
   }
 
