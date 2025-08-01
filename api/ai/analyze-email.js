@@ -39,7 +39,8 @@ export default async function handler(request) {
   try {
     console.log('🔥 [DEBUG-AI-SERVER] Parsing request body...');
     ({ emailSubject, emailSender, emailContent, emailSnippet } = await request.json());
-    console.log('🔥 [DEBUG-AI-SERVER] Request data:', { emailSubject, emailSender: emailSender?.substring(0, 20) });
+    console.log('🔥 [DEBUG-AI-SERVER] Request data:', { emailSubject, emailSender, emailContent: emailContent?.substring(0, 100) });
+    console.log('🔥 [DEBUG-AI-SERVER] Is this a calendar event?', emailSender === 'Calendar Event');
     
     // Build Creative Director system prompt
     const prompt = `
@@ -179,7 +180,8 @@ Analyze this email with creative and strategic awareness. Extract actionable tas
 
     const groqData = await groqResponse.json();
     const aiResponse = groqData.choices[0]?.message?.content || '';
-    console.log('🔥 [DEBUG-AI-SERVER] AI response received:', aiResponse?.substring(0, 100) + '...');
+    console.log('🔥 [DEBUG-AI-SERVER] Full AI response:', aiResponse);
+    console.log('🔥 [DEBUG-AI-SERVER] AI response length:', aiResponse.length);
 
     // Parse JSON from AI response
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
@@ -209,6 +211,10 @@ Analyze this email with creative and strategic awareness. Extract actionable tas
       },
       context_tags: Array.isArray(analysis.context_tags) ? analysis.context_tags : ['email']
     };
+
+    console.log('🔥 [DEBUG-AI-SERVER] Final validated analysis:', validatedAnalysis);
+    console.log('🔥 [DEBUG-AI-SERVER] Final context_tags:', validatedAnalysis.context_tags);
+    console.log('🔥 [DEBUG-AI-SERVER] Final task_description preview:', validatedAnalysis.task_description?.substring(0, 100));
 
     return new Response(JSON.stringify({
       success: true,

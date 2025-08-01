@@ -163,7 +163,10 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
             })
           ]);
           
-          console.log('🔥 [DEBUG-AI] AI analysis complete:', { smartTitle, analysis });
+          console.log('🔥 [DEBUG-AI] Raw AI analysis response:', analysis);
+          console.log('🔥 [DEBUG-AI] AI-generated task_description:', analysis.task_description);
+          console.log('🔥 [DEBUG-AI] AI-generated context_tags:', analysis.context_tags);
+          console.log('🔥 [DEBUG-AI] Smart title generated:', smartTitle);
           
           aiEnhancedTask = {
             title: smartTitle,
