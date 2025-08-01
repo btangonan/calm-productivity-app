@@ -16,9 +16,16 @@ function AppContent() {
       isAuthenticated: state.isAuthenticated,
       userProfileId: state.userProfile?.id,
       userEmail: state.userProfile?.email,
+      currentTaskCount: state.tasks.length,
       timestamp: new Date().toLocaleTimeString(),
       stackTrace: new Error().stack?.split('\n')?.slice(0, 5)?.join('\n')
     });
+    
+    // CRITICAL: Don't reload data if we already have tasks AND no auth state change
+    if (state.tasks.length > 0) {
+      console.log(`🔄 [DEBUG-APP-LOAD] BLOCKING data reload - already have ${state.tasks.length} tasks loaded!`);
+      return;
+    }
 
     const loadInitialData = async () => {
       // Only load data if user is authenticated
