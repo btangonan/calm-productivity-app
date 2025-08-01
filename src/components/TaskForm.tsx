@@ -53,6 +53,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
     e.preventDefault();
     if (!formData.title.trim()) return;
 
+    console.log(`🔄 [DEBUG-TASK-UPDATE] TaskForm handleSubmit started with ${state.tasks.length} tasks in state`);
+    
     setLoading(true);
     try {
       if (editingTask) {
