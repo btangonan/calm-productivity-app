@@ -134,6 +134,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           throw new Error('Backend returned task without ID');
         }
         
+        // Wait a moment to ensure any pending SET_TASKS operations complete first
+        console.log(`🔄 [DEBUG-TASK-UPDATE] Waiting for any pending SET_TASKS to complete...`);
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
         dispatch({ type: 'UPDATE_TASK', payload: backendUpdatedTask });
         
         console.log(`🔄 [DEBUG-TASK-UPDATE] UPDATE_TASK action dispatched successfully`);
