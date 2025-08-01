@@ -22,8 +22,14 @@ const TaskList = () => {
   const filteredTasks = useMemo(() => {
     let filtered = [...tasks];
     
+    console.log(`🔄 [DEBUG-FILTER] Filtering tasks for view: ${currentView}`, {
+      totalTasks: tasks.length,
+      selectedProjectId: selectedProjectId
+    });
+    
     if (currentView === 'project' && selectedProjectId) {
       filtered = filtered.filter(task => task.projectId === selectedProjectId && !task.isCompleted);
+      console.log(`🔄 [DEBUG-FILTER] Project view filtered: ${filtered.length} tasks`);
     } else if (currentView !== 'project') {
       const today = new Date();
       today.setHours(23, 59, 59, 999);
@@ -31,25 +37,32 @@ const TaskList = () => {
       switch (currentView) {
         case 'inbox':
           filtered = filtered.filter(task => !task.projectId && !task.isCompleted);
+          console.log(`🔄 [DEBUG-FILTER] Inbox view filtered: ${filtered.length} tasks`);
           break;
         case 'today':
           filtered = filtered.filter(task => 
             !task.isCompleted && task.dueDate && new Date(task.dueDate) <= today
           );
+          console.log(`🔄 [DEBUG-FILTER] Today view filtered: ${filtered.length} tasks`);
           break;
         case 'upcoming':
           filtered = filtered.filter(task => 
             !task.isCompleted && task.dueDate && new Date(task.dueDate) > today
           );
+          console.log(`🔄 [DEBUG-FILTER] Upcoming view filtered: ${filtered.length} tasks`);
           break;
         case 'anytime':
           filtered = filtered.filter(task => !task.isCompleted && !task.dueDate);
+          console.log(`🔄 [DEBUG-FILTER] Anytime view filtered: ${filtered.length} tasks`);
           break;
         case 'logbook':
           filtered = filtered.filter(task => task.isCompleted);
+          console.log(`🔄 [DEBUG-FILTER] Logbook view filtered: ${filtered.length} tasks`);
           break;
       }
     }
+    
+    console.log(`🔄 [DEBUG-FILTER] Final filtered tasks: ${filtered.length}`);
     
     return filtered.sort((a, b) => {
       if (a.sortOrder !== b.sortOrder) {
