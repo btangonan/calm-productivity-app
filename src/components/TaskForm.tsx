@@ -159,8 +159,23 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
         await new Promise(resolve => setTimeout(resolve, 100));
         
         console.log(`🔄 [DEBUG-TASK-UPDATE] Now closing task form and calling callbacks`);
+        
+        console.log(`🔄 [DEBUG-TASK-UPDATE] Calling onSubmit callback...`);
         onSubmit?.();
+        
+        console.log(`🔄 [DEBUG-TASK-UPDATE] Calling onClose callback...`);
         onClose();
+        
+        console.log(`🔄 [DEBUG-TASK-UPDATE] TaskForm callbacks completed - task update process finished`);
+        
+        // Wait and check if tasks disappear after callbacks
+        setTimeout(() => {
+          console.log(`🔄 [DEBUG-TASK-UPDATE] 1 second after form close - current task count: ${state.tasks.length}`);
+        }, 1000);
+        
+        setTimeout(() => {
+          console.log(`🔄 [DEBUG-TASK-UPDATE] 3 seconds after form close - current task count: ${state.tasks.length}`);
+        }, 3000);
       } else {
         // Create new task
         const userProfile = state.userProfile;
