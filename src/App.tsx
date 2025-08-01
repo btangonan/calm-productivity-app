@@ -12,9 +12,18 @@ function AppContent() {
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log(`🔄 [DEBUG-APP-LOAD] App.tsx useEffect triggered:`, {
+      isAuthenticated: state.isAuthenticated,
+      userProfileId: state.userProfile?.id,
+      userEmail: state.userProfile?.email,
+      timestamp: new Date().toLocaleTimeString(),
+      stackTrace: new Error().stack?.split('\n')?.slice(0, 5)?.join('\n')
+    });
+
     const loadInitialData = async () => {
       // Only load data if user is authenticated
       if (!state.isAuthenticated || !state.userProfile) {
+        console.log(`🔄 [DEBUG-APP-LOAD] Skipping data load - not authenticated or no profile`);
         return;
       }
 
@@ -62,6 +71,11 @@ function AppContent() {
         });
 
         const dispatchStartTime = performance.now();
+        console.log(`🔄 [DEBUG-APP-LOAD] Dispatching SET_TASKS from App.tsx loadInitialData:`, {
+          taskCount: appData.tasks.length,
+          timestamp: new Date().toLocaleTimeString()
+        });
+        
         dispatch({ type: 'SET_AREAS', payload: appData.areas });
         dispatch({ type: 'SET_PROJECTS', payload: appData.projects });
         dispatch({ type: 'SET_TASKS', payload: appData.tasks });
