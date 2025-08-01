@@ -191,6 +191,50 @@ export class AuthService {
       
     } catch (error) {
       console.error('❌ Token refresh error:', error);
+      
+      // Check if this is an expired refresh token error
+      if (error.message && error.message.includes('invalid_grant')) {
+        console.log('🔐AUTH Refresh token is expired/invalid - clearing auth state and forcing re-login');
+        
+        // Clear the expired refresh token from localStorage
+        localStorage.removeItem('google-auth-state');
+        
+        // Show user-friendly message about needing to re-authenticate
+        if (typeof window !== 'undefined') {
+          const notification = document.createElement('div');
+          notification.innerHTML = '🔐 Session expired - please sign in again to continue';
+          notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #fef3c7;
+            color: #d97706;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #fed7aa;
+            z-index: 9999;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          `;
+          
+          document.body.appendChild(notification);
+          
+          // Remove notification after 5 seconds
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 5000);
+        }
+        
+        // Trigger logout to show login screen
+        if (this.onAuthError) {
+          this.onAuthError();
+        }
+      }
+      
       return { success: false };
     }
   }
