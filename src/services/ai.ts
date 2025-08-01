@@ -26,31 +26,30 @@ export interface TaskGenerationRequest {
 }
 
 class AIService {
-  private readonly baseUrl = 'https://api.groq.com/openai/v1';
-  private readonly model = 'llama-3.1-70b-versatile'; // Fast, high-quality model for creative tasks
-  private readonly apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  // Use secure server-side AI endpoint instead of exposing API keys to browser
+  private readonly aiEndpoint = '/api/ai/analyze-email';
 
   /**
-   * Test connection to Groq API
+   * Test connection to AI service
    */
-  async testConnection(): Promise<boolean> {
-    if (!this.apiKey) {
-      console.error('🔥 [DEBUG-AI] No Groq API key found - AI disabled');
-      return false;
-    }
-    
+  async testConnection(): Promise<boolean> {    
     try {
-      console.log('🔥 [DEBUG-AI] Testing Groq API connection...');
-      const response = await fetch(`${this.baseUrl}/models`, {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        }
+      console.log('🔥 [DEBUG-AI] Testing AI service connection...');
+      // Simple test call to see if AI endpoint is available
+      const response = await fetch(this.aiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emailSubject: 'Test connection',
+          emailSender: 'test@example.com',
+          emailContent: 'This is a test to check if AI service is working.',
+          emailSnippet: 'Test snippet'
+        })
       });
-      console.log('🔥 [DEBUG-AI] Groq API response status:', response.status);
+      console.log('🔥 [DEBUG-AI] AI service response status:', response.status);
       return response.ok;
     } catch (error) {
-      console.error('🔥 [DEBUG-AI] Failed to connect to Groq API:', error);
+      console.error('🔥 [DEBUG-AI] Failed to connect to AI service:', error);
       return false;
     }
   }
@@ -60,14 +59,32 @@ class AIService {
    */
   async analyzeEmail(request: TaskGenerationRequest): Promise<EmailAnalysis> {
     console.log('🔥 [DEBUG-AI] Analyzing email:', request.emailSubject);
-    const prompt = this.buildEmailAnalysisPrompt(request);
     
     try {
-      const response = await this.callGroq(prompt);
-      console.log('🔥 [DEBUG-AI] Raw analysis response:', response);
-      const analysis = this.parseEmailAnalysis(response);
-      console.log('🔥 [DEBUG-AI] Parsed analysis:', analysis);
-      return analysis;
+      const response = await fetch(this.aiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emailSubject: request.emailSubject,
+          emailSender: request.emailSender,
+          emailContent: request.emailContent,
+          emailSnippet: request.emailSnippet
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI service error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('🔥 [DEBUG-AI] AI service response:', data);
+      
+      if (data.success && data.data) {
+        console.log('🔥 [DEBUG-AI] AI analysis successful:', data.data);
+        return data.data;
+      } else {
+        throw new Error(data.error || 'AI analysis failed');
+      }
     } catch (error) {
       console.error('🔥 [DEBUG-AI] Email analysis failed:', error);
       // Return fallback analysis
