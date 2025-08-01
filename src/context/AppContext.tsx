@@ -45,6 +45,9 @@ const initialState: AppState = {
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_LOADING':
+      if (action.payload === true && state.tasks.length > 0) {
+        console.log(`🔄 [DEBUG-LOADING] SET_LOADING(true) called with ${state.tasks.length} existing tasks - this might clear state!`);
+      }
       return { ...state, loading: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
@@ -121,6 +124,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
         tasks: updatedTasks,
       };
     case 'DELETE_TASK':
+      console.log(`🔄 [DEBUG-DELETE-TASK] DELETE_TASK called for ID: ${action.payload}`, {
+        taskExists: state.tasks.find(t => t.id === action.payload) ? 'YES' : 'NO',
+        totalTasks: state.tasks.length,
+        stackTrace: new Error().stack?.split('\n')?.slice(0, 8)?.join('\n')
+      });
       return {
         ...state,
         tasks: state.tasks.filter(task => task.id !== action.payload),
