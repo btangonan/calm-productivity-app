@@ -34,9 +34,11 @@ export default async function handler(request) {
     });
   }
 
+  let emailSubject, emailSender, emailContent, emailSnippet;
+  
   try {
     console.log('🔥 [DEBUG-AI-SERVER] Parsing request body...');
-    const { emailSubject, emailSender, emailContent, emailSnippet } = await request.json();
+    ({ emailSubject, emailSender, emailContent, emailSnippet } = await request.json());
     console.log('🔥 [DEBUG-AI-SERVER] Request data:', { emailSubject, emailSender: emailSender?.substring(0, 20) });
     
     // Build Creative Director system prompt
@@ -129,7 +131,7 @@ Analyze this email with creative and strategic awareness. Extract actionable tas
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-70b-versatile',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'user',
