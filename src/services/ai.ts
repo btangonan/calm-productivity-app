@@ -34,10 +34,12 @@ class AIService {
    */
   async testConnection(): Promise<boolean> {
     try {
+      console.log('🔥 [DEBUG-AI] Testing Ollama connection to:', this.baseUrl);
       const response = await fetch(`${this.baseUrl}/api/tags`);
+      console.log('🔥 [DEBUG-AI] Connection response status:', response.status);
       return response.ok;
     } catch (error) {
-      console.error('Failed to connect to Ollama:', error);
+      console.error('🔥 [DEBUG-AI] Failed to connect to Ollama:', error);
       return false;
     }
   }
@@ -46,15 +48,21 @@ class AIService {
    * Analyze email content and extract task information
    */
   async analyzeEmail(request: TaskGenerationRequest): Promise<EmailAnalysis> {
+    console.log('🔥 [DEBUG-AI] Analyzing email:', request.emailSubject);
     const prompt = this.buildEmailAnalysisPrompt(request);
     
     try {
       const response = await this.callOllama(prompt);
-      return this.parseEmailAnalysis(response);
+      console.log('🔥 [DEBUG-AI] Raw analysis response:', response);
+      const analysis = this.parseEmailAnalysis(response);
+      console.log('🔥 [DEBUG-AI] Parsed analysis:', analysis);
+      return analysis;
     } catch (error) {
-      console.error('Email analysis failed:', error);
+      console.error('🔥 [DEBUG-AI] Email analysis failed:', error);
       // Return fallback analysis
-      return this.createFallbackAnalysis(request);
+      const fallback = this.createFallbackAnalysis(request);
+      console.log('🔥 [DEBUG-AI] Using fallback analysis:', fallback);
+      return fallback;
     }
   }
 
@@ -99,6 +107,7 @@ Write in a professional but creative tone suitable for stakeholder updates.
    * Generate a smart task title from email content
    */
   async generateTaskTitle(request: TaskGenerationRequest): Promise<string> {
+    console.log('🔥 [DEBUG-AI] Generating task title for:', request.emailSubject);
     const prompt = `
 You are a Creative Director's assistant. Generate a concise, actionable task title (max 60 characters) from this email.
 
@@ -128,10 +137,14 @@ Generate ONLY the task title. Be specific about what creative work needs to be d
       const title = response.trim().replace(/^["']|["']$/g, ''); // Remove quotes
       
       // Ensure title fits within 60 character limit
-      return title.length > 60 ? title.substring(0, 57) + '...' : title;
+      const finalTitle = title.length > 60 ? title.substring(0, 57) + '...' : title;
+      console.log('🔥 [DEBUG-AI] Generated title:', finalTitle);
+      return finalTitle;
     } catch (error) {
-      console.error('Task title generation failed:', error);
-      return request.emailSubject || 'Email Task';
+      console.error('🔥 [DEBUG-AI] Task title generation failed:', error);
+      const fallbackTitle = request.emailSubject || 'Email Task';
+      console.log('🔥 [DEBUG-AI] Using fallback title:', fallbackTitle);
+      return fallbackTitle;
     }
   }
 

@@ -153,7 +153,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
     }
 
     try {
-      console.log('🤖 Converting email to task with AI analysis...', email.id);
+      console.log('🔥 [DEBUG-AI] Converting email to task with AI analysis...', email.id);
       
       const optimisticTaskId = `temp-email-${Date.now()}`;
       
@@ -187,11 +187,13 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
       }
       
       // Test AI connection and do analysis upfront
+      console.log('🔥 [DEBUG-AI] Testing AI connection...');
       const aiConnected = await aiService.testConnection();
+      console.log('🔥 [DEBUG-AI] AI connection result:', aiConnected);
       let finalTask;
       
       if (aiConnected) {
-        console.log('🤖 AI connected, analyzing email content...');
+        console.log('🔥 [DEBUG-AI] AI connected, analyzing email content...');
         
         // Run AI analysis in parallel
         const [smartTitle, analysis] = await Promise.all([
@@ -209,7 +211,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
           })
         ]);
         
-        console.log('🤖 AI analysis complete:', { smartTitle, analysis });
+        console.log('🔥 [DEBUG-AI] AI analysis complete:', { smartTitle, analysis });
         
         // Map task types to context tags
         const contextMap = {
@@ -244,9 +246,10 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
           aiEnhanced: true // Mark as AI-enhanced
         };
         
-        console.log('✨ AI-enhanced task created:', finalTask.title);
+        console.log('🔥 [DEBUG-AI] ✨ AI-enhanced task created:', finalTask.title);
+        console.log('🔥 [DEBUG-AI] Final task object:', finalTask);
       } else {
-        console.warn('🤖 AI not available, using fallback task creation');
+        console.log('🔥 [DEBUG-AI] ⚠️ AI not available, using fallback task creation');
         
         // Fallback to basic task
         finalTask = {
@@ -271,7 +274,7 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
       }
       
       // Add the final task to UI immediately
-      console.log('⚡ Adding AI-enhanced task to UI');
+      console.log('🔥 [DEBUG-AI] ⚡ Adding final task to UI:', finalTask.title);
       dispatch({ type: 'ADD_TASK', payload: finalTask });
       
       // Convert to real task in background (but keep AI-enhanced data if successful)  
@@ -298,24 +301,27 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
 
         if (response.ok) {
           const result = await response.json();
-          console.log('✅ Email converted to real task successfully:', result);
+          console.log('🔥 [DEBUG-AI] ✅ Backend response:', result);
           
           if (result.success && result.data?.task) {
             // Only replace with backend task if AI enhancement failed
             // Otherwise keep the AI-enhanced version
             if (!finalTask.aiEnhanced) {
+              console.log('🔥 [DEBUG-AI] Replacing fallback task with backend task');
               dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
               dispatch({ type: 'ADD_TASK', payload: result.data.task });
-              console.log('✅ Replaced fallback task with backend task:', result.data.task.id);
+              console.log('🔥 [DEBUG-AI] ✅ Replaced fallback task with backend task:', result.data.task.id);
             } else {
-              // Just update the ID to make it persistent
-              dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
-              dispatch({ type: 'ADD_TASK', payload: { 
+              console.log('🔥 [DEBUG-AI] Keeping AI-enhanced task, updating ID only');
+              const persistentTask = { 
                 ...finalTask, 
                 id: result.data.task.id,
                 isOptimistic: false 
-              }});
-              console.log('✅ Made AI-enhanced task persistent:', result.data.task.id);
+              };
+              dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
+              dispatch({ type: 'ADD_TASK', payload: persistentTask });
+              console.log('🔥 [DEBUG-AI] ✅ Made AI-enhanced task persistent:', result.data.task.id);
+              console.log('🔥 [DEBUG-AI] Persistent task object:', persistentTask);
             }
           } else {
             throw new Error(result.error || 'Invalid response format');
@@ -325,13 +331,13 @@ const GmailPanel = ({ onClose }: GmailPanelProps) => {
           throw new Error(errorData.error || 'Failed to convert email to task');
         }
       } catch (backendError) {
-        console.error('❌ Backend conversion failed, keeping optimistic task:', backendError);
+        console.error('🔥 [DEBUG-AI] ❌ Backend conversion failed, keeping optimistic task:', backendError);
         // Keep the optimistic task even if backend fails
         setError('Task created locally, sync with backend failed');
       }
       
     } catch (error) {
-      console.error('❌ Email conversion failed, removing optimistic task:', error);
+      console.error('🔥 [DEBUG-AI] ❌ Email conversion failed, removing optimistic task:', error);
       // Remove the optimistic task on failure
       dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
       setError(error instanceof Error ? error.message : 'Failed to convert email');
