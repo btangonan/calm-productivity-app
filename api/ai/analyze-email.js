@@ -92,9 +92,11 @@ Use keywords like: "MegaCorp", "summer_campaign", "kickoff", "email", "calendar_
 
 🗓️ SPECIAL: Calendar Event Handling
 If the sender is "Calendar Event", this is a calendar event conversion:
+- ALWAYS include the actual event title/name in your task_title
+- Use natural, conversational language - avoid stiff corporate speak
 - Keep context_tags simple: ["calendar"] only
-- Format task_description cleanly without redundant "Calendar:" prefixes
-- Focus on the ACTION needed, not just describing the event
+- Focus on specific ACTION needed for this particular event
+- Make task titles like: "Prepare for [Event Name]", "Attend [Event Name]", "Follow up on [Event Name]"
 
 🧱 Output Format
 You must output a single JSON object in the following format:
@@ -120,15 +122,15 @@ EXAMPLE - Calendar Event:
 {
   "is_actionable": true,
   "task_type": "logistics",  
-  "task_title": "Cancel Midjourney subscription",
-  "task_description": "Action needed: Cancel Midjourney subscription\\n\\nScheduled: Wednesday, August 1\\nReason: No longer needed for current projects",
+  "task_title": "Attend 'Am I feeling lucky?' brainstorm session",
+  "task_description": "Join the brainstorm session to explore new creative opportunities and potential project directions.\\n\\nScheduled: Friday, August 1\\nCome prepared with ideas and questions.",
   "priority": "medium",
   "due_date": "2025-08-01",
   "creative_analysis": {
-    "tone": "neutral",
-    "sentiment": "neutral", 
-    "key_themes": ["subscription_management", "cost_optimization"],
-    "notes": "Administrative task to clean up unused subscriptions"
+    "tone": "curious",
+    "sentiment": "positive", 
+    "key_themes": ["brainstorming", "creative_exploration", "opportunity_assessment"],
+    "notes": "Sounds like an ideation session with potential for interesting projects"
   },
   "context_tags": ["calendar"]
 }

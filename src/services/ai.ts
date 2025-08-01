@@ -121,28 +121,44 @@ Write in a professional but creative tone suitable for stakeholder updates.
    */
   async generateTaskTitle(request: TaskGenerationRequest): Promise<string> {
     console.log('🔥 [DEBUG-AI] Generating task title for:', request.emailSubject);
+    
+    const isCalendarEvent = request.emailSender === 'Calendar Event';
+    
     const prompt = `
-You are a Creative Director's assistant. Generate a concise, actionable task title (max 60 characters) from this email.
+You are a Creative Director's assistant. Generate a concise, actionable task title (max 60 characters) from this ${isCalendarEvent ? 'calendar event' : 'email'}.
 
-CREATIVE CONTEXT:
+${isCalendarEvent ? 
+`CALENDAR EVENT CONTEXT:
+- ALWAYS include the actual event name/title in quotes or naturally
+- Use natural, conversational language (not corporate speak)  
+- Focus on the specific action needed for THIS event
+- Use verbs like: Attend, Prepare for, Follow up on, Review agenda for
+- Example patterns: "Attend 'Project Kickoff' meeting", "Prepare for client review session"` :
+`CREATIVE CONTEXT:
 - Use action verbs: Review, Refine, Respond, Strategize, Follow up, Address
 - Consider creative urgency and client relationships
 - Identify specific deliverables, assets, or strategic elements
-- Capture the creative essence, not just administrative tasks
+- Capture the creative essence, not just administrative tasks`}
 
-Email Details:
+${isCalendarEvent ? 'Event' : 'Email'} Details:
 Subject: ${request.emailSubject}
 From: ${request.emailSender}
 Content: ${request.emailContent.substring(0, 600)}
 
-EXAMPLES:
+${isCalendarEvent ?
+`CALENDAR EXAMPLES:
+- "Team standup" → "Attend daily team standup"
+- "Client presentation" → "Present creative concepts to client"  
+- "Am I feeling lucky?" → "Attend 'Am I feeling lucky?' brainstorm"
+- "Project review" → "Review project progress with team"` :
+`EMAIL EXAMPLES:
 - Client feedback → "Address client concerns on video pacing"
 - Creative review → "Review logo concepts for brand alignment"
 - Strategic brief → "Analyze Project Atlas creative brief"
 - Meeting request → "Schedule creative review with team"
-- Revision request → "Refine hero image based on feedback"
+- Revision request → "Refine hero image based on feedback"`}
 
-Generate ONLY the task title. Be specific about what creative work needs to be done.
+Generate ONLY the task title. Be specific about what needs to be done.
 `;
 
     try {
