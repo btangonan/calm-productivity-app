@@ -138,7 +138,7 @@ async function handleGetCalendarEvents(req, res, user) {
 
 // Handle POST - Convert calendar event to task
 async function handleConvertEventToTask(req, res, user) {
-  const { eventId, projectId, context, customTitle, customDescription } = req.body;
+  const { eventId, projectId, context, customTitle, customDescription, title, description, priority } = req.body;
 
   if (!eventId) {
     return res.status(400).json({ 
@@ -176,10 +176,16 @@ async function handleConvertEventToTask(req, res, user) {
   const eventStart = event.start?.dateTime || event.start?.date || '';
   const eventEnd = event.end?.dateTime || event.end?.date || '';
 
-  // Create task from calendar event
-  const taskTitle = customTitle || `Calendar: ${eventTitle}`;
-  const taskDescription = customDescription || 
+  // Create task from calendar event (prioritize AI-enhanced data)
+  const taskTitle = title || customTitle || `Calendar: ${eventTitle}`;
+  const taskDescription = description || customDescription || 
     `Event: ${eventTitle}\nTime: ${eventStart}${eventEnd && eventEnd !== eventStart ? ` - ${eventEnd}` : ''}\n${eventLocation ? `Location: ${eventLocation}\n` : ''}\n${eventDescription}`;
+    
+  console.log('🔥 [DEBUG-CALENDAR-BACKEND] Using AI-enhanced data:', { 
+    aiTitle: title, 
+    aiDescription: description?.substring(0, 100),
+    fallbackTitle: `Calendar: ${eventTitle}` 
+  });
 
   // Determine context
   let taskContext = context || '';
@@ -206,24 +212,34 @@ async function handleConvertEventToTask(req, res, user) {
   }
 
   // Create task using the existing task creation endpoint
+  const taskPayload = {
+    title: taskTitle,
+    description: taskDescription,
+    projectId: projectId || null,
+    context: taskContext,
+    dueDate: dueDate,
+    priority: priority || 'medium', // Include AI-enhanced priority
+    attachments: [{
+      name: `Calendar Event: ${eventTitle}`,
+      url: event.htmlLink || `https://calendar.google.com/calendar/event?eid=${eventId}`,
+      type: 'calendar-event'
+    }]
+  };
+  
+  console.log('🔥 [DEBUG-CALENDAR-BACKEND] Final task payload:', {
+    title: taskPayload.title,
+    description: taskPayload.description?.substring(0, 100),
+    context: taskPayload.context,
+    priority: taskPayload.priority
+  });
+  
   const taskResponse = await fetch(`${req.headers.host?.includes('localhost') ? 'http://localhost:3000' : 'https://' + req.headers.host}/api/tasks/manage`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': req.headers.authorization
     },
-    body: JSON.stringify({
-      title: taskTitle,
-      description: taskDescription,
-      projectId: projectId || null,
-      context: taskContext,
-      dueDate: dueDate,
-      attachments: [{
-        name: `Calendar Event: ${eventTitle}`,
-        url: event.htmlLink || `https://calendar.google.com/calendar/event?eid=${eventId}`,
-        type: 'calendar-event'
-      }]
-    })
+    body: JSON.stringify(taskPayload)
   });
 
   if (!taskResponse.ok) {
