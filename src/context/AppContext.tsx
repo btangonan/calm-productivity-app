@@ -138,7 +138,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
       const updatedTasks = state.tasks.map(task => {
         const isMatch = task.id === action.payload.id;
         console.log(`🔄 [DEBUG-TASK-UPDATE] Task ${task.id} === ${action.payload.id}: ${isMatch}`);
-        return isMatch ? action.payload : task;
+        if (isMatch) {
+          // CRITICAL FIX: Convert string "false"/"true" to proper boolean
+          const normalizedTask = {
+            ...action.payload,
+            isCompleted: action.payload.isCompleted === true || action.payload.isCompleted === "true"
+          };
+          console.log(`🔄 [DEBUG-TASK-UPDATE] FIXED: Converting isCompleted from "${action.payload.isCompleted}" to ${normalizedTask.isCompleted}`);
+          return normalizedTask;
+        }
+        return task;
       });
       
       console.log(`🔄 [DEBUG-TASK-UPDATE] Updated tasks array:`, {
