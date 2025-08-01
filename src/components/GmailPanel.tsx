@@ -699,6 +699,9 @@ const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask, onReplyToEm
   const [fullEmail, setFullEmail] = useState<FullEmailContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showReplyComposer, setShowReplyComposer] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
   const { state } = useApp();
   const { userProfile } = state;
 
@@ -710,6 +713,9 @@ const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask, onReplyToEm
       // Reset state when modal closes
       setFullEmail(null);
       setError(null);
+      setShowReplyComposer(false);
+      setReplyText('');
+      setSendingReply(false);
     }
   }, [isOpen, email.id]);
 
@@ -747,6 +753,53 @@ const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask, onReplyToEm
     }
   };
 
+  // Handle in-app reply using Gmail API
+  const handleInAppReply = async () => {
+    if (!replyText.trim() || !userProfile?.access_token) return;
+    
+    setSendingReply(true);
+    
+    try {
+      const token = userProfile.access_token || userProfile.id_token;
+      const response = await apiService.fetchWithAuth(
+        '/api/gmail/messages?action=reply',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messageId: email.id,
+            threadId: email.threadId,
+            replyText: replyText.trim()
+          })
+        },
+        'Send email reply',
+        token
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // Reset reply form
+          setReplyText('');
+          setShowReplyComposer(false);
+          
+          // Show success message
+          alert('Reply sent successfully!');
+        } else {
+          throw new Error(data.error || 'Failed to send reply');
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send reply');
+      }
+    } catch (error) {
+      console.error('Failed to send reply:', error);
+      alert(`Failed to send reply: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -778,10 +831,14 @@ const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask, onReplyToEm
             <h3 className="text-lg font-semibold text-gray-900">Email Details</h3>
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => onReplyToEmail(email)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                onClick={() => setShowReplyComposer(!showReplyComposer)}
+                className={`px-4 py-2 text-white text-sm rounded ${
+                  showReplyComposer 
+                    ? 'bg-gray-600 hover:bg-gray-700' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
-                ↩ Reply
+                {showReplyComposer ? '✕ Cancel' : '↩ Reply'}
               </button>
               <button
                 onClick={() => onConvertToTask(email)}
@@ -905,6 +962,69 @@ const EmailDetailModal = ({ email, isOpen, onClose, onConvertToTask, onReplyToEm
                     )}
                   </div>
                 </div>
+
+                {/* Reply Composer */}
+                {showReplyComposer && (
+                  <div className="border-t border-gray-200 pt-4 mt-4">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-900">Reply to: {email.sender}</h4>
+                        <button
+                          onClick={() => setShowReplyComposer(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Subject: Re: {email.subject}
+                          </label>
+                        </div>
+                        
+                        <div>
+                          <textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Type your reply..."
+                            className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled={sendingReply}
+                          />
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-gray-500">
+                            {replyText.length} characters
+                          </div>
+                          
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => onReplyToEmail(email)}
+                              className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50"
+                              disabled={sendingReply}
+                            >
+                              📧 Use Email App
+                            </button>
+                            
+                            <button
+                              onClick={handleInAppReply}
+                              disabled={!replyText.trim() || sendingReply}
+                              className={`px-4 py-2 text-sm rounded font-medium ${
+                                !replyText.trim() || sendingReply
+                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                              }`}
+                            >
+                              {sendingReply ? 'Sending...' : 'Send Reply'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
