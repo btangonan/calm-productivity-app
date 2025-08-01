@@ -89,11 +89,29 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'ADD_TASK':
       return { ...state, tasks: [...state.tasks, action.payload] };
     case 'UPDATE_TASK':
+      console.log(`🔄 [DEBUG-TASK-UPDATE] AppContext reducer UPDATE_TASK:`, {
+        actionPayload: action.payload,
+        payloadId: action.payload.id,
+        totalTasks: state.tasks.length,
+        existingTaskIds: state.tasks.map(t => t.id),
+        taskToUpdate: state.tasks.find(t => t.id === action.payload.id)
+      });
+      
+      const updatedTasks = state.tasks.map(task => {
+        const isMatch = task.id === action.payload.id;
+        console.log(`🔄 [DEBUG-TASK-UPDATE] Task ${task.id} === ${action.payload.id}: ${isMatch}`);
+        return isMatch ? action.payload : task;
+      });
+      
+      console.log(`🔄 [DEBUG-TASK-UPDATE] Updated tasks array:`, {
+        before: state.tasks.length,
+        after: updatedTasks.length,
+        updatedTaskFound: updatedTasks.find(t => t.id === action.payload.id)
+      });
+      
       return {
         ...state,
-        tasks: state.tasks.map(task =>
-          task.id === action.payload.id ? action.payload : task
-        ),
+        tasks: updatedTasks,
       };
     case 'DELETE_TASK':
       return {

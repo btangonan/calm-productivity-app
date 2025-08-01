@@ -83,7 +83,7 @@ function AppContent() {
     };
 
     loadInitialData();
-  }, [dispatch, state.isAuthenticated, state.userProfile]);
+  }, [dispatch, state.isAuthenticated, state.userProfile?.id]); // Only trigger on authentication changes, not profile updates
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

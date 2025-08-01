@@ -116,7 +116,15 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
           token
         );
         
+        console.log(`🔄 [DEBUG-TASK-UPDATE] Dispatching UPDATE_TASK action with:`, {
+          originalId: editingTask.id,
+          updatedTask: backendUpdatedTask,
+          payload: backendUpdatedTask
+        });
+        
         dispatch({ type: 'UPDATE_TASK', payload: backendUpdatedTask });
+        
+        console.log(`🔄 [DEBUG-TASK-UPDATE] UPDATE_TASK action dispatched successfully`);
         
         // Close form immediately for better UX
         onSubmit?.();
