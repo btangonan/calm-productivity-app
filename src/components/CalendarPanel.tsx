@@ -132,18 +132,33 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
         console.log('🔥 [DEBUG-AI] AI connected, analyzing calendar event...');
         
         try {
+          // Format the event time for AI analysis
+          const formatEventTime = (startTime: string) => {
+            const date = new Date(startTime);
+            const options: Intl.DateTimeFormatOptions = { 
+              weekday: 'long', 
+              month: 'long', 
+              day: 'numeric'
+            };
+            return date.toLocaleDateString('en-US', options);
+          };
+
+          const readableTime = event.start.dateTime ? formatEventTime(event.start.dateTime) : 
+                              event.start.date ? formatEventTime(event.start.date) : 
+                              'No date specified';
+
           // Use AI to analyze calendar event and generate smart task
           const [smartTitle, analysis] = await Promise.all([
             aiService.generateTaskTitle({
               emailSubject: event.summary || '',
               emailSender: 'Calendar Event',
-              emailContent: event.description || '',
+              emailContent: `Calendar event scheduled for ${readableTime}. ${event.description || 'No additional details.'}`,
               emailSnippet: event.summary || ''
             }),
             aiService.analyzeEmail({
               emailSubject: event.summary || '',
               emailSender: 'Calendar Event',
-              emailContent: `Calendar Event: ${event.summary || 'Untitled Event'}\n\nDescription: ${event.description || 'No description'}\n\nScheduled: ${event.start.dateTime || event.start.date}`,
+              emailContent: `Calendar Event: ${event.summary || 'Untitled Event'}\n\nDescription: ${event.description || 'No description'}\n\nScheduled: ${readableTime}`,
               emailSnippet: event.summary || ''
             })
           ]);
@@ -153,7 +168,7 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
           aiEnhancedTask = {
             title: smartTitle,
             description: analysis.task_description,
-            context: `@calendar ${analysis.context_tags.join(' @')}`,
+            context: '@calendar', // Keep it simple, just @calendar
             priority: analysis.priority
           };
           
@@ -203,7 +218,7 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
           body: JSON.stringify({
             eventId: event.id,
             projectId: state.selectedProjectId || null,
-            context: aiEnhancedTask?.context || '@calendar',
+            context: '@calendar',
             // Send AI-enhanced data to backend
             title: aiEnhancedTask?.title || event.summary || 'Calendar Event',
             description: aiEnhancedTask?.description || `Calendar Event: ${event.summary || 'Untitled Event'}\n${event.description || ''}`,
