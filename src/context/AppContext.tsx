@@ -57,7 +57,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
         currentTaskCount: state.tasks.length,
         newTaskCount: action.payload.length,
         hasTaskId: action.payload.find(t => t.id === 'task_1754025023944_06w5zkqs7') ? 'YES' : 'NO',
-        stackTrace: new Error().stack
+        timestamp: new Date().toLocaleTimeString(),
+        stackTrace: new Error().stack?.split('\n')?.slice(0, 5)?.join('\n') // Just first 5 lines
       });
       return { ...state, tasks: action.payload };
     case 'SET_CURRENT_VIEW':
