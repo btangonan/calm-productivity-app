@@ -107,6 +107,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
         taskToUpdate: state.tasks.find(t => t.id === action.payload.id)
       });
       
+      if (state.tasks.length < 10) {
+        console.log(`🔄 [DEBUG-TASK-UPDATE] WARNING: Only ${state.tasks.length} tasks in state during UPDATE_TASK!`, {
+          allTasks: state.tasks.map(t => ({ id: t.id, title: t.title.substring(0, 30) }))
+        });
+      }
+      
       const updatedTasks = state.tasks.map(task => {
         const isMatch = task.id === action.payload.id;
         console.log(`🔄 [DEBUG-TASK-UPDATE] Task ${task.id} === ${action.payload.id}: ${isMatch}`);
