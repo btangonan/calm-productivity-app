@@ -96,7 +96,13 @@ function AppContent() {
       }
     };
 
-    loadInitialData();
+    // Only load data on first authentication, not during task updates
+    if (state.tasks.length === 0) {
+      console.log(`🔄 [DEBUG-APP-LOAD] Loading initial data (tasks array empty)`);
+      loadInitialData();
+    } else {
+      console.log(`🔄 [DEBUG-APP-LOAD] SKIPPING data reload - tasks already loaded (${state.tasks.length} tasks)`);
+    }
   }, [state.isAuthenticated, state.userProfile?.id]); // Only trigger on authentication changes, not profile updates
 
   useEffect(() => {
