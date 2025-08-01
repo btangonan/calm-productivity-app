@@ -53,11 +53,23 @@ async function handleGetCalendarEvents(req, res, user) {
   const startTime = Date.now();
   
   const {
-    maxResults = '10',
     timeRange = '7', // days
     orderBy = 'startTime',
     singleEvents = 'true'
   } = req.query;
+
+  // Scale maxResults based on time range - more days = more potential events
+  const timeRangeDays = parseInt(timeRange);
+  let maxResults;
+  if (timeRangeDays <= 1) {
+    maxResults = 10;   // Today: 10 events max
+  } else if (timeRangeDays <= 7) {
+    maxResults = 20;   // Week: 20 events max  
+  } else if (timeRangeDays <= 14) {
+    maxResults = 35;   // 2 weeks: 35 events max
+  } else {
+    maxResults = 50;   // Month+: 50 events max
+  }
 
   console.log(`📅 Loading calendar events for next ${timeRange} days, maxResults: ${maxResults}`);
 
@@ -99,7 +111,7 @@ async function handleGetCalendarEvents(req, res, user) {
     calendarId: 'primary',
     timeMin: timeMin,
     timeMax: timeMax,
-    maxResults: parseInt(maxResults),
+    maxResults: maxResults, // Already converted to integer above
     singleEvents: singleEvents === 'true',
     orderBy: orderBy
   });

@@ -55,8 +55,7 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
       
       // Build query parameters for calendar events
       const queryParams = new URLSearchParams({
-        maxResults: '10',
-        timeRange: timeRange, // Next N days
+        timeRange: timeRange, // Next N days - backend will determine maxResults
         orderBy: 'startTime',
         singleEvents: 'true'
       });
