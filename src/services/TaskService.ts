@@ -311,7 +311,7 @@ export class TaskService {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ type: 'tasks' })
+          body: JSON.stringify({ cacheKeys: ['tasks'] })
         }, 'invalidateTasksCache');
       } catch (error) {
         console.warn('Failed to invalidate tasks cache:', error);
