@@ -119,8 +119,20 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
         console.log(`🔄 [DEBUG-TASK-UPDATE] Dispatching UPDATE_TASK action with:`, {
           originalId: editingTask.id,
           updatedTask: backendUpdatedTask,
-          payload: backendUpdatedTask
+          payload: backendUpdatedTask,
+          payloadExists: !!backendUpdatedTask,
+          payloadId: backendUpdatedTask?.id
         });
+        
+        if (!backendUpdatedTask) {
+          console.error(`🔄 [DEBUG-TASK-UPDATE] ERROR: backendUpdatedTask is null/undefined!`);
+          throw new Error('Backend returned no task data');
+        }
+        
+        if (!backendUpdatedTask.id) {
+          console.error(`🔄 [DEBUG-TASK-UPDATE] ERROR: backendUpdatedTask has no ID!`, backendUpdatedTask);
+          throw new Error('Backend returned task without ID');
+        }
         
         dispatch({ type: 'UPDATE_TASK', payload: backendUpdatedTask });
         
@@ -207,7 +219,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ onClose, onSubmit, editingTask }) =
         }
       }
     } catch (error) {
-      console.error('Failed to save task:', error);
+      console.error('🔄 [DEBUG-TASK-UPDATE] Failed to save task:', error);
+      console.error('🔄 [DEBUG-TASK-UPDATE] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        editingTask: editingTask?.id,
+        formData: formData
+      });
       dispatch({ type: 'SET_ERROR', payload: 'Failed to save task' });
     } finally {
       setLoading(false);
