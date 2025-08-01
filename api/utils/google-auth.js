@@ -110,18 +110,38 @@ export async function refreshGoogleToken(refreshToken) {
       clientIdPreview: process.env.GOOGLE_CLIENT_ID?.substring(0, 10) + '...' || 'missing'
     });
 
+    // Validate required parameters before making request
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      throw new Error('GOOGLE_CLIENT_ID environment variable is missing');
+    }
+    if (!process.env.GOOGLE_CLIENT_SECRET) {
+      throw new Error('GOOGLE_CLIENT_SECRET environment variable is missing');
+    }
+    if (!refreshToken) {
+      throw new Error('Refresh token is null or undefined');
+    }
+
+    const requestBody = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    });
+
+    console.log('🔐AUTH Request body parameters:', {
+      client_id: process.env.GOOGLE_CLIENT_ID?.substring(0, 10) + '...',
+      client_secret: process.env.GOOGLE_CLIENT_SECRET ? '[PRESENT]' : '[MISSING]',
+      refresh_token: refreshToken?.substring(0, 15) + '...',
+      grant_type: 'refresh_token'
+    });
+
     console.log('🔐AUTH Making request to Google OAuth token endpoint...');
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
+      body: requestBody,
     });
 
     console.log('🔐AUTH Google OAuth response:', {
@@ -134,15 +154,29 @@ export async function refreshGoogleToken(refreshToken) {
       const errorText = await response.text();
       console.error('🔐AUTH Google OAuth error response:', errorText);
       
-      // Try to parse the error for more details
+      // Enhanced error parsing and reporting
       try {
         const errorJson = JSON.parse(errorText);
-        console.error('🔐AUTH Google OAuth error details:', errorJson);
-      } catch (e) {
-        console.error('🔐AUTH Could not parse Google OAuth error as JSON');
+        console.error('🔐AUTH Google OAuth error details:', {
+          error: errorJson.error,
+          error_description: errorJson.error_description,
+          fullError: errorJson
+        });
+        
+        // Provide specific guidance based on error type
+        if (errorJson.error === 'invalid_grant') {
+          console.error('🔐AUTH DIAGNOSIS: Refresh token is invalid, expired, or revoked. User needs to re-authenticate.');
+        } else if (errorJson.error === 'invalid_client') {
+          console.error('🔐AUTH DIAGNOSIS: Client ID or Client Secret is invalid. Check environment variables.');
+        } else if (errorJson.error === 'invalid_request') {
+          console.error('🔐AUTH DIAGNOSIS: Request parameters are malformed. Check request body formatting.');
+        }
+        
+        throw new Error(`Token refresh failed: ${errorJson.error} - ${errorJson.error_description || errorText}`);
+      } catch (parseError) {
+        console.error('🔐AUTH Could not parse Google OAuth error as JSON:', parseError);
+        throw new Error(`Token refresh failed: ${response.status} - ${errorText}`);
       }
-      
-      throw new Error(`Token refresh failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
