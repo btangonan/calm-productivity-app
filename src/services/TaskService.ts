@@ -99,13 +99,31 @@ export class TaskService {
 
   // Update an existing task
   async updateTask(taskId: string, title: string, description: string, projectId: string | undefined, context: string | undefined, dueDate: string | undefined, token: string): Promise<Task> {
+    console.log(`🔄 [DEBUG-TASK-UPDATE] Starting task update for ID: ${taskId}`);
+    console.log(`🔄 [DEBUG-TASK-UPDATE] Parameters:`, { 
+      taskId, 
+      title, 
+      description: description?.substring(0, 50) + '...',
+      projectId,
+      context,
+      dueDate 
+    });
+    
     const response = await this.executeGoogleScript<Task>(token, 'updateTask', [taskId, title, description, projectId, context, dueDate]);
+    
+    console.log(`🔄 [DEBUG-TASK-UPDATE] Backend response:`, response);
+    
     if (!response.success || !response.data) {
+      console.error(`🔄 [DEBUG-TASK-UPDATE] Update failed:`, response);
       throw new Error(response.message || 'Failed to update task');
     }
     
+    console.log(`🔄 [DEBUG-TASK-UPDATE] Update successful, returning task:`, response.data);
+    
     // Invalidate Edge Functions cache to ensure fresh data on next load
     await this.invalidateTasksCache(token);
+    
+    console.log(`🔄 [DEBUG-TASK-UPDATE] Cache invalidated, task update complete`);
     return response.data;
   }
 
