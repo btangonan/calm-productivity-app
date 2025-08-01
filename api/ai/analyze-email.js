@@ -89,9 +89,16 @@ Every task must include:
 Tag projects, clients, teams, or artifacts involved.
 Use keywords like: "MegaCorp", "summer_campaign", "kickoff", "email", "calendar_event", "brief_upload", "storyboard"
 
+🗓️ SPECIAL: Calendar Event Handling
+If the sender is "Calendar Event", this is a calendar event conversion:
+- Keep context_tags simple: ["calendar"] only
+- Format task_description cleanly without redundant "Calendar:" prefixes
+- Focus on the ACTION needed, not just describing the event
+
 🧱 Output Format
 You must output a single JSON object in the following format:
 
+EXAMPLE - Regular Email:
 {
   "is_actionable": true,
   "task_type": "creative_review",
@@ -106,6 +113,23 @@ You must output a single JSON object in the following format:
     "notes": "Design team seems confident. Logos feel more premium. Deadline is tight."
   },
   "context_tags": ["Atlas", "logo", "design_review", "branding"]
+}
+
+EXAMPLE - Calendar Event:
+{
+  "is_actionable": true,
+  "task_type": "logistics",  
+  "task_title": "Cancel Midjourney subscription",
+  "task_description": "Action needed: Cancel Midjourney subscription\\n\\nScheduled: Wednesday, August 1\\nReason: No longer needed for current projects",
+  "priority": "medium",
+  "due_date": "2025-08-01",
+  "creative_analysis": {
+    "tone": "neutral",
+    "sentiment": "neutral", 
+    "key_themes": ["subscription_management", "cost_optimization"],
+    "notes": "Administrative task to clean up unused subscriptions"
+  },
+  "context_tags": ["calendar"]
 }
 
 ⛔️ Output Constraints
