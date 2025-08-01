@@ -2,19 +2,22 @@
 
 This document tracks the current application architecture, common issues, and deployment patterns.
 
-## 🚀 CURRENT ARCHITECTURE (JULY 2025)
+## 🚀 CURRENT ARCHITECTURE (AUGUST 2025)
 
 ### Tech Stack
 - **Frontend**: React/TypeScript hosted on Vercel
-- **Backend**: Node.js API routes on Vercel (`/api/*`)
+- **Backend**: Node.js API routes + Vercel Edge Functions (`/api/*`)
+- **AI Integration**: Groq API (Llama 3.1 70B) via secure Edge Functions
 - **Authentication**: User-based Google OAuth. The application requests permission to access the user's Google Drive and uses their access token to perform operations on their behalf.
 - **Database**: Google Sheets (via Google Sheets API)
 - **Storage**: Google Drive (via Google Drive API, using user-owned folders)
 - **Deployment**: Vercel (auto-deploys from GitHub main branch)
 
-### Current API Endpoints (v1.2.1 Stable Release)
+### Current API Endpoints (v1.3.0 AI Integration Release)
 ```
-/api/ - 10/12 endpoints used
+/api/ - 11/12 endpoints used
+├── ai/
+│   └── analyze-email.js      # 🤖 NEW: Secure AI email analysis (Edge Function)
 ├── app/
 │   └── load-data.js          # Load all app data (areas, projects, tasks)
 ├── auth/
@@ -35,12 +38,81 @@ This document tracks the current application architecture, common issues, and de
 └── health.js                 # API health check
 ```
 
-### API Consolidation History
+### AI Integration Architecture
+- **Model**: Llama 3.1 70B Versatile (via Groq API)
+- **Security**: Server-side Edge Function (API key never exposed to browser)
+- **Performance**: Sub-second responses (500+ tokens/sec inference)
+- **Persona**: Creative Director-focused analysis and task generation
+- **Fallback**: Graceful degradation to basic task creation if AI unavailable
+
+### API Evolution History
 - **Original**: 13 endpoints (OVER 12 LIMIT!)
 - **Auth Consolidation**: 3 → 1 endpoint (freed 2 slots)
 - **Tasks Consolidation**: 2 → 1 endpoint (freed 1 slot)  
 - **Gmail Integration**: Used 1 slot
-- **Final**: 10/12 endpoints (2 slots available)
+- **AI Integration**: Used 1 slot (added `/api/ai/analyze-email.js`)
+- **Final**: 11/12 endpoints (1 slot available)
+
+## 🤖 AI INTEGRATION (Creative Director Assistant)
+
+### Overview
+The app now features AI-powered email analysis that transforms generic email-to-task conversion into intelligent Creative Director-focused task generation.
+
+### AI Features
+- **Smart Task Titles**: "Address client concerns on video pacing" vs "Email Task"
+- **Creative Context**: Understands branding, storytelling, client relationships
+- **Priority Intelligence**: Critical for negative feedback, high for deliverables
+- **Context Tags**: @creative, @feedback, @strategy, @meeting, @executive
+- **Sentiment Analysis**: Polite-but-disappointed, enthusiastic, urgent tones
+- **Key Theme Extraction**: Brand positioning, visual hierarchy, CTA clarity
+
+### Technical Implementation
+```typescript
+// Frontend: AIService calls secure server endpoint
+const analysis = await aiService.analyzeEmail({
+  emailSubject, emailSender, emailContent, emailSnippet
+});
+
+// Backend: Edge Function processes with Groq API
+/api/ai/analyze-email.js → Groq Llama 3.1 70B → Creative Analysis
+```
+
+### AI Response Structure
+```json
+{
+  "is_actionable": true,
+  "task_type": "feedback_request",
+  "task_title": "Address client concerns on video pacing",
+  "task_description": "Summary: Client feedback on video draft.\nAction Items:\n- Review luxury brand positioning\n- Source sophisticated music options\n- Deliver revised version by tomorrow",
+  "priority": "critical",
+  "due_date": "2025-08-03",
+  "creative_analysis": {
+    "tone": "polite_but_disappointed",
+    "sentiment": "negative",
+    "key_themes": ["brand positioning", "music selection"],
+    "notes": "Client unhappy with current direction, needs careful handling"
+  },
+  "context_tags": ["MegaCorp", "video_revision", "client_feedback"]
+}
+```
+
+### Environment Variables
+```bash
+# Required for AI features
+GROQ_API_KEY=gsk_your_actual_groq_api_key_here
+
+# Google OAuth (existing)
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CREDENTIALS_JSON=your_base64_service_account_json
+```
+
+### AI Debugging
+Filter console with `🔥 [DEBUG-AI]` to trace AI analysis flow:
+- Connection testing and API key validation
+- Email content analysis and parsing
+- Task generation and creative enhancement
+- Fallback handling when AI unavailable
 
 ## 🔧 DEPLOYMENT WORKFLOW
 
@@ -281,14 +353,17 @@ const projectService = createProjectService(fetchWithAuth, driveService);
 - **API Base**: https://calm-productivity-app.vercel.app/api/
 - **Status**: ✅ ACTIVE (v1.2.2 Stable - UX Optimized)
 - **Current Branch**: `main` (stable development)
-- **Latest Stable Tag**: `v1.2.2` (July 31, 2025) - **RECOMMENDED**
-- **Previous Stable Tags**: `v1.2.1` (July 31, 2025), `v1.2.0` (July 28, 2025), `v1.0.0` (July 30, 2025)
+- **Latest Stable Tag**: `v1.3.0` (August 1, 2025) - **RECOMMENDED** 🤖 AI Integration
+- **Previous Stable Tags**: `v1.2.2` (July 31, 2025), `v1.2.1` (July 31, 2025), `v1.2.0` (July 28, 2025)
 
-### API Capabilities (Current v1.2.2)
+### API Capabilities (Current v1.3.0)
 - ✅ Full task management (create, read, update, delete)
 - ✅ Project management (create, read, update, delete)
 - ✅ Google Drive file operations (list, upload, enhanced query system)
 - ✅ Gmail integration (search emails, convert to tasks)
+- ✅ **🤖 AI-Powered Email Analysis** (NEW) - Creative Director-focused task generation
+- ✅ **🔒 Secure AI Processing** (NEW) - Server-side Groq API integration via Edge Functions
+- ✅ **🎨 Creative Intelligence** (NEW) - Understands branding, client relationships, creative feedback
 - ✅ Area/category management
 - ✅ Authentication and authorization with token expiration handling
 - ✅ Cache invalidation system for data consistency
@@ -313,13 +388,14 @@ const projectService = createProjectService(fetchWithAuth, driveService);
   - Calendar, Drive Files, and Notes tiles
   - Window-style tile management (close/open)
 
-### Planned AI Integration (Local Ollama)
-- **Privacy-First**: All AI processing on user's machine
-- **Zero API Costs**: No external AI service fees
-- **Features**: Email analysis, natural language search, content summarization
-- **Models**: Llama 3.1, Codestral, user-configurable
+### ✅ COMPLETED: AI Integration (v1.3.0)
+- **Status**: LIVE - AI-powered Creative Director email analysis
+- **Implementation**: Groq API + Llama 3.1 70B via secure Edge Functions
+- **Features**: Smart task generation, creative context understanding, sentiment analysis
+- **Security**: Server-side processing, API keys never exposed to browser
+- **Performance**: Sub-second response times (500+ tokens/sec)
 
-### Future Enhancements
+### Future AI Enhancements
 - Enhanced mobile responsiveness for tile system
 - Advanced AI features (bulk processing, context detection)
 - Team collaboration features
