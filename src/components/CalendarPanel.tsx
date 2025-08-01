@@ -39,6 +39,7 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
   // Load calendar events on mount
   useEffect(() => {
     if (userProfile) {
+      console.log(`📅 useEffect triggered - timeRange changed to: ${timeRange} days`);
       loadCalendarEvents();
     }
   }, [userProfile, timeRange]);
@@ -50,7 +51,7 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
     setError(null);
     
     try {
-      console.log('📅 Loading calendar events from Google Calendar API...');
+      console.log(`📅 Loading calendar events from Google Calendar API for ${timeRange} days...`);
       
       // Build query parameters for calendar events
       const queryParams = new URLSearchParams({
@@ -336,7 +337,10 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
         <div className="mb-3">
           <select
             value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
+            onChange={(e) => {
+              console.log(`📅 Time range changed from ${timeRange} to ${e.target.value} days`);
+              setTimeRange(e.target.value);
+            }}
             className="text-sm border border-gray-300 rounded px-2 py-1 w-full"
           >
             <option value="1">Today</option>
