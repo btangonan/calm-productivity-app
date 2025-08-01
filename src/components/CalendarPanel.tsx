@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import { aiService } from '../services/ai';
 
 interface CalendarEvent {
   id: string;
@@ -118,16 +119,59 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
     }
 
     try {
-      console.log('🔄 Converting calendar event to task with optimistic UI...', event.id);
+      console.log('🔥 [DEBUG-AI] Converting calendar event to task with AI analysis...', event.id);
+      
+      // Test AI connection first
+      console.log('🔥 [DEBUG-AI] Testing AI connection...');
+      const aiConnected = await aiService.testConnection();
+      console.log('🔥 [DEBUG-AI] AI connection result:', aiConnected);
+      
+      let aiEnhancedTask;
+      
+      if (aiConnected) {
+        console.log('🔥 [DEBUG-AI] AI connected, analyzing calendar event...');
+        
+        try {
+          // Use AI to analyze calendar event and generate smart task
+          const [smartTitle, analysis] = await Promise.all([
+            aiService.generateTaskTitle({
+              emailSubject: event.summary || '',
+              emailSender: 'Calendar Event',
+              emailContent: event.description || '',
+              emailSnippet: event.summary || ''
+            }),
+            aiService.analyzeEmail({
+              emailSubject: event.summary || '',
+              emailSender: 'Calendar Event',
+              emailContent: `Calendar Event: ${event.summary || 'Untitled Event'}\n\nDescription: ${event.description || 'No description'}\n\nScheduled: ${event.start.dateTime || event.start.date}`,
+              emailSnippet: event.summary || ''
+            })
+          ]);
+          
+          console.log('🔥 [DEBUG-AI] AI analysis complete:', { smartTitle, analysis });
+          
+          aiEnhancedTask = {
+            title: smartTitle,
+            description: analysis.task_description,
+            context: `@calendar ${analysis.context_tags.join(' @')}`,
+            priority: analysis.priority
+          };
+          
+          console.log('🔥 [DEBUG-AI] ✨ AI-enhanced calendar task created:', aiEnhancedTask.title);
+        } catch (aiError) {
+          console.error('🔥 [DEBUG-AI] Calendar event AI analysis failed:', aiError);
+          aiEnhancedTask = null;
+        }
+      }
       
       // Create optimistic task for instant UI feedback
       const optimisticTaskId = `temp-calendar-${Date.now()}`;
       const optimisticTask = {
         id: optimisticTaskId, // Temporary ID
-        title: event.summary || 'Calendar Event',
-        description: `Calendar Event: ${event.summary || 'Untitled Event'}\n${event.description || ''}`,
+        title: aiEnhancedTask?.title || event.summary || 'Calendar Event',
+        description: aiEnhancedTask?.description || `Calendar Event: ${event.summary || 'Untitled Event'}\n${event.description || ''}`,
         projectId: state.selectedProjectId || null,
-        context: '@calendar',
+        context: aiEnhancedTask?.context || '@calendar',
         dueDate: event.start.dateTime || event.start.date || null,
         isCompleted: false,
         sortOrder: 0,
@@ -143,11 +187,12 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
       };
       
       // Update UI immediately for instant feedback
-      console.log('⚡ Adding optimistic calendar task to UI');
+      console.log('🔥 [DEBUG-AI] ⚡ Adding final task to UI:', optimisticTask.title);
       dispatch({ type: 'ADD_TASK', payload: optimisticTask });
       
       // Show success feedback immediately
       setError(null);
+      console.log('🔥 [DEBUG-AI] Final task object:', optimisticTask);
       
       // Convert to real task in background
       const response = await apiService.fetchWithAuth(
@@ -158,7 +203,11 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
           body: JSON.stringify({
             eventId: event.id,
             projectId: state.selectedProjectId || null,
-            context: '@calendar'
+            context: aiEnhancedTask?.context || '@calendar',
+            // Send AI-enhanced data to backend
+            title: aiEnhancedTask?.title || event.summary || 'Calendar Event',
+            description: aiEnhancedTask?.description || `Calendar Event: ${event.summary || 'Untitled Event'}\n${event.description || ''}`,
+            priority: aiEnhancedTask?.priority || 'medium'
           })
         }, 
         'Convert calendar event to task',
@@ -167,13 +216,15 @@ const CalendarPanel = ({ onClose }: CalendarPanelProps) => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Calendar event converted to real task successfully:', result);
+        console.log('🔥 [DEBUG-AI] ✅ Backend response:', result);
         
         if (result.success && result.data?.task) {
-          // Replace optimistic task with real task
+          // Replace optimistic task with real task but keep AI enhancements
+          console.log('🔥 [DEBUG-AI] Keeping AI-enhanced task, updating ID only');
           dispatch({ type: 'DELETE_TASK', payload: optimisticTaskId });
           dispatch({ type: 'ADD_TASK', payload: result.data.task });
-          console.log('✅ Replaced optimistic calendar task with real task:', result.data.task.id);
+          console.log('🔥 [DEBUG-AI] ✅ Made AI-enhanced task persistent:', result.data.task.id);
+          console.log('🔥 [DEBUG-AI] Persistent task object:', result.data.task);
         } else {
           throw new Error(result.error || 'Invalid response format');
         }
