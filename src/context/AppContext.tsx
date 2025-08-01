@@ -117,6 +117,18 @@ function appReducer(state: AppState, action: AppAction): AppState {
         taskToUpdate: state.tasks.find(t => t.id === action.payload.id)
       });
       
+      // CRITICAL: Check if the task being updated actually exists in state
+      const targetTask = state.tasks.find(t => t.id === action.payload.id);
+      if (!targetTask) {
+        console.error(`🔄 [DEBUG-TASK-UPDATE] CRITICAL BUG FOUND: Task ${action.payload.id} does NOT exist in current state!`, {
+          searchingFor: action.payload.id,
+          availableTaskIds: state.tasks.map(t => t.id),
+          taskCount: state.tasks.length
+        });
+      } else {
+        console.log(`🔄 [DEBUG-TASK-UPDATE] Task found in state:`, targetTask);
+      }
+      
       if (state.tasks.length < 10) {
         console.log(`🔄 [DEBUG-TASK-UPDATE] WARNING: Only ${state.tasks.length} tasks in state during UPDATE_TASK!`, {
           allTasks: state.tasks.map(t => ({ id: t.id, title: t.title.substring(0, 30) }))
